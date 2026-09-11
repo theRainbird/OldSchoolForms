@@ -26,11 +26,11 @@ public class DesignForm : ContainerControl
     }
 
     /// <summary>
-    /// Gets the client area inside the form (below the title bar).
-    /// This is where designed controls are placed.
+    /// Gets the client area inside the form (below the title bar), relative to the
+    /// form's own origin. This is where designed controls are placed.
     /// </summary>
     public Rectangle FormClientArea => new Rectangle(
-        X + 1, Y + TitleBarHeight + 1,
+        1, TitleBarHeight + 1,
         Width - 2, Height - TitleBarHeight - 2);
 
     /// <summary>
@@ -43,6 +43,10 @@ public class DesignForm : ContainerControl
 
     /// <summary>
     /// Renders the design-form chrome: shadow, border, title bar, then child controls.
+    /// The chrome is drawn relative to the control's own origin; the parent surface
+    /// translates the coordinate system by the form's <see cref="Control.Location"/>,
+    /// so drawing here at (0, 0) keeps the rendered position consistent with the
+    /// selection chrome and with <see cref="PointToScreen"/>.
     /// </summary>
     /// <param name="g">The graphics context.</param>
     public override void Render(Graphics g)
@@ -50,22 +54,22 @@ public class DesignForm : ContainerControl
         var theme = ThemeManager.CurrentTheme;
 
         // Draw drop shadow
-        g.FillRectangle(Color.FromArgb(0, 0, 0, 30), X + 4, Y + 4, Width, Height);
+        g.FillRectangle(Color.FromArgb(0, 0, 0, 30), 4, 4, Width, Height);
 
         // Draw form background in the form's own background color
-        g.FillRectangle(BackColor, X, Y, Width, Height);
+        g.FillRectangle(BackColor, 0, 0, Width, Height);
 
         // Draw title bar
         var titleBarColor = theme.ActiveCaption;
-        g.FillRectangle(titleBarColor, X, Y, Width, TitleBarHeight);
+        g.FillRectangle(titleBarColor, 0, 0, Width, TitleBarHeight);
 
         // Draw title text
         var titleFont = new Font("Segoe UI", 11f, FontStyle.Regular);
-        g.DrawString(_formTitle, titleFont, Color.White, X + 8, Y + (TitleBarHeight - 16) / 2f);
+        g.DrawString(_formTitle, titleFont, Color.White, 8, (TitleBarHeight - 16) / 2f);
 
         // Draw form border
         var borderColor = Color.FromArgb(200, 200, 200);
-        g.DrawRectangle(borderColor, X, Y, Width, Height, 1);
+        g.DrawRectangle(borderColor, 0, 0, Width, Height, 1);
 
         // Render child controls (designed controls go here), shifted by the render
         // offset so they appear below the title bar and stay aligned with hit-testing.

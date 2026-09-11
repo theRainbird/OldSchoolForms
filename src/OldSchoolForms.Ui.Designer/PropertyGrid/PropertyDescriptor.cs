@@ -47,6 +47,14 @@ public class PropertyDescriptor
     internal object Target => _target;
 
     /// <summary>
+    /// Occurs when a value has been written to the underlying property via <see cref="SetValue"/>,
+    /// carrying the target control, the property name, and the previous and new values. This lets
+    /// the <see cref="PropertyGrid"/> forward the change so the designer can push an undo entry,
+    /// mark the document dirty, and repaint the surface.
+    /// </summary>
+    public event EventHandler<PropertyValueChangedEventArgs>? ValueChanged;
+
+    /// <summary>
     /// Initializes a new instance.
     /// </summary>
     /// <param name="property">The reflection PropertyInfo.</param>
@@ -72,16 +80,26 @@ public class PropertyDescriptor
     }
 
     /// <summary>
-    /// Sets the value of the property on the target.
+    /// Sets the value of the property on the target and raises <see cref="ValueChanged"/>
+    /// with the previous and new values so the PropertyGrid can forward the change to the
+    /// designer for undo, dirty tracking, and repainting.
     /// </summary>
     public void SetValue(object? value)
     {
         try
         {
+            var oldValue = _property.GetValue(_target);
             var converted = ConvertValue(value, PropertyType);
             _property.SetValue(_target, converted);
+            OnValueChanged(oldValue, converted);
         }
         catch { }
+    }
+
+    private void OnValueChanged(object? oldValue, object? newValue)
+    {
+        ValueChanged?.Invoke(this, new PropertyValueChangedEventArgs(
+            _target as Control, _property.Name, oldValue, newValue));
     }
 
     private static object? ConvertValue(object? value, Type targetType)

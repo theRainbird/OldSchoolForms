@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using OldSchoolForms.Ui.Core;
 
 namespace OldSchoolForms.Ui.Designer.Services;
 
 /// <summary>
-/// Represents a snapshot of control bounds for undo/redo operations.
+/// Represents a snapshot of control bounds or a single property change for undo/redo operations.
+/// A snapshot without <see cref="PropertyName"/> restores bounds and text; a snapshot with a
+/// property name restores that property to <see cref="RestoreValue"/>.
 /// </summary>
 public class UndoSnapshot
 {
@@ -25,6 +28,17 @@ public class UndoSnapshot
     public string? Text { get; }
 
     /// <summary>
+    /// Gets the name of the property captured by this snapshot, or null for bounds/text snapshots.
+    /// </summary>
+    public string? PropertyName { get; }
+
+    /// <summary>
+    /// Gets the value to restore. For property snapshots this is the property value; for
+    /// bounds/text snapshots it is null.
+    /// </summary>
+    public object? RestoreValue { get; }
+
+    /// <summary>
     /// Initializes a new snapshot for the given control.
     /// </summary>
     public UndoSnapshot(Control control)
@@ -32,6 +46,15 @@ public class UndoSnapshot
         Control = control;
         Bounds = control.Bounds;
         Text = control.Text;
+    }
+
+    internal UndoSnapshot(Control control, string propertyName, object? restoreValue)
+    {
+        Control = control;
+        Bounds = control.Bounds;
+        Text = control.Text;
+        PropertyName = propertyName;
+        RestoreValue = restoreValue;
     }
 
     /// <summary>
@@ -42,6 +65,20 @@ public class UndoSnapshot
         Control.Bounds = Bounds;
         if (Text != null)
             Control.Text = Text;
+        if (PropertyName != null)
+            RestoreProperty(Control, PropertyName, RestoreValue);
+    }
+
+    private static void RestoreProperty(Control control, string propertyName, object? value)
+    {
+        try
+        {
+            var prop = control.GetType().GetProperty(propertyName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null && prop.CanWrite)
+                prop.SetValue(control, value);
+        }
+        catch { }
     }
 }
 
@@ -98,6 +135,33 @@ public class UndoService
     }
 
     /// <summary>
+    /// Captures a single property change and pushes it onto the undo stack, clearing the redo
+    /// stack since a new action invalidates redo history. Used by the PropertyGrid to make
+    /// inline property edits (color, enum, text, numeric, bool, point, size) undoable.
+    /// </summary>
+    /// <param name="control">The control whose property changed.</param>
+    /// <param name="propertyName">The name of the modified property.</param>
+    /// <param name="oldValue">The previous property value, restored on undo.</param>
+    public void PushPropertyChange(Control? control, string propertyName, object? oldValue)
+    {
+        if (control == null || string.IsNullOrEmpty(propertyName)) return;
+
+        var snapshot = new UndoSnapshot(control, propertyName, oldValue);
+        _undoStack.Push(new[] { snapshot });
+        _redoStack.Clear();
+
+        if (_undoStack.Count > MaxUndoDepth)
+        {
+            var temp = new Stack<UndoSnapshot[]>(_undoStack.ToArray()[..MaxUndoDepth]);
+            _undoStack.Clear();
+            foreach (var item in temp)
+                _undoStack.Push(item);
+        }
+
+        OnStateChanged();
+    }
+
+    /// <summary>
     /// Performs an undo, restoring the most recent snapshot.
     /// The current state is pushed onto the redo stack.
     /// </summary>
@@ -107,10 +171,13 @@ public class UndoService
 
         var snapshots = _undoStack.Pop();
 
-        // Save current state for redo
+        // Save current state for redo, preserving property-change information.
         var redoSnapshots = new UndoSnapshot[snapshots.Length];
         for (int i = 0; i < snapshots.Length; i++)
-            redoSnapshots[i] = new UndoSnapshot(snapshots[i].Control);
+            redoSnapshots[i] = snapshots[i].PropertyName != null
+                ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
+                    CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                : new UndoSnapshot(snapshots[i].Control);
         _redoStack.Push(redoSnapshots);
 
         foreach (var snapshot in snapshots)
@@ -128,16 +195,32 @@ public class UndoService
 
         var snapshots = _redoStack.Pop();
 
-        // Save current state for undo
+        // Save current state for undo, preserving property-change information.
         var undoSnapshots = new UndoSnapshot[snapshots.Length];
         for (int i = 0; i < snapshots.Length; i++)
-            undoSnapshots[i] = new UndoSnapshot(snapshots[i].Control);
+            undoSnapshots[i] = snapshots[i].PropertyName != null
+                ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
+                    CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                : new UndoSnapshot(snapshots[i].Control);
         _undoStack.Push(undoSnapshots);
 
         foreach (var snapshot in snapshots)
             snapshot.Restore();
 
         OnStateChanged();
+    }
+
+    private static object? CurrentValueOf(Control control, string propertyName)
+    {
+        try
+        {
+            var prop = control.GetType().GetProperty(propertyName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (prop != null)
+                return prop.GetValue(control);
+        }
+        catch { }
+        return null;
     }
 
     /// <summary>

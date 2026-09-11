@@ -479,6 +479,51 @@ public class DesignerContainerTests
     }
 
     /// <summary>
+    /// When the design form is moved off the origin, the selection chrome must still
+    /// frame the form border. The form chrome is drawn at the form's own origin and the
+    /// surface translates by the form's Location, so the border must land at
+    /// Location * zoom (not 2 * Location * zoom). Previously the border was drawn at the
+    /// form's Location *and* translated by that same Location, so it landed at 2x while
+    /// the chrome used the single Location and the box looked offset by Location * zoom.
+    /// </summary>
+    [Fact]
+    public void DrawSelectionChrome_AlignsWithFormBorder_WhenFormMoved()
+    {
+        var form = new Form();
+        form.Zoom = 1.25f;
+        var surface = new DesignSurface { SnapToGrid = false, Size = new Size(1400, 1000) };
+        form.Controls.Add(surface);
+        surface.BeginDesignForm();
+
+        var designForm = (DesignForm) surface.RootControl!;
+        designForm.Location = new Point(100, 50);
+        surface.Selection.Select(surface.RootItem!);
+
+        using var g = new Graphics();
+        surface.Render(g);
+
+        float zoom = g.Zoom;
+        Assert.Equal(1.25f, zoom, 3);
+
+        // Form border (grey 200) is drawn at the form origin and translated by Location,
+        // so it must land at Location * zoom, not 2 * Location * zoom.
+        var border = g.GetCommands()
+            .FirstOrDefault(c => c.Type == DrawCommandType.DrawRectangle
+                && c.Color.R == 200 && c.Color.G == 200 && c.Color.B == 200);
+        Assert.NotNull(border);
+        Assert.Equal(100f * zoom, border!.X, 3);
+        Assert.Equal(50f * zoom, border.Y, 3);
+
+        // Primary selection box (inset by 1px, lineWidth 2) must frame the border.
+        var frame = g.GetCommands()
+            .FirstOrDefault(c => c.Type == DrawCommandType.DrawRectangle
+                && Math.Abs(c.LineWidth - 2f * zoom) < 0.001f);
+        Assert.NotNull(frame);
+        Assert.Equal((100f - 1) * zoom, frame!.X, 3);
+        Assert.Equal((50f - 1) * zoom, frame.Y, 3);
+    }
+
+    /// <summary>
     /// Placing a control inside a FlowLayoutPanel must lay it out immediately by the
     /// flow layout, not leave it at the drop point until the next layout pass.
     /// </summary>

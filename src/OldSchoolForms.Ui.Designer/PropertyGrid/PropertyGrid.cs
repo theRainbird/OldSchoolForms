@@ -49,6 +49,7 @@ public class PropertyGrid : ContainerControl
    private PropertyGridRow? _colorPickerRow;
     private int _colorPickerX;
     private int _colorPickerY;
+    private int _colorPickerRowY;
     private int _colorPickerWidth;
     private int _rgbEditingChannel = -1;
     private PropertyGridRow? _rgbPickerRow;
@@ -65,6 +66,14 @@ public class PropertyGrid : ContainerControl
     /// invalidating the design surface or pushing an undo entry.
     /// </summary>
     public event EventHandler? PropertyCommitted;
+
+    /// <summary>
+    /// Occurs after an inline property value (color, enum, text, numeric, bool, point, size)
+    /// has been committed to the target control. Subscribers receive the affected control,
+    /// the property name, and the previous and new values so they can push an undo entry,
+    /// mark the document dirty, or repaint the design surface.
+    /// </summary>
+    public event EventHandler<PropertyValueChangedEventArgs>? PropertyValueChanged;
 
     /// <summary>
     /// Initializes a new instance.
@@ -123,6 +132,7 @@ public class PropertyGrid : ContainerControl
         {
             if (_activeCategory != null && prop.Category != _activeCategory)
                 continue;
+            prop.ValueChanged += OnDescriptorValueChanged;
             _rows.Add(new PropertyGridRow(prop, NameColumnWidth));
         }
 
@@ -240,6 +250,7 @@ public class PropertyGrid : ContainerControl
                     if (colorIndex >= 0)
                     {
                         _colorPickerRow.CommitColorSelection(colorIndex);
+                        PropertyCommitted?.Invoke(this, EventArgs.Empty);
                         _colorPickerRow = null;
                         _rgbEditingChannel = -1;
                         _rgbPickerRow = null;
@@ -287,6 +298,7 @@ public class PropertyGrid : ContainerControl
                     {
                         _dropdownRow.SelectEnumItem(itemIndex);
                         _dropdownRow.CommitEdit();
+                        PropertyCommitted?.Invoke(this, EventArgs.Empty);
                         _dropdownSelectedIndex = itemIndex;
                         CloseEnumDropdown();
                         Invalidate();
@@ -342,17 +354,21 @@ public class PropertyGrid : ContainerControl
 
             if (dropdownOpened)
             {
-                if (row.IsColorProperty)
-                {
-                    row.StartColorPicker();
-                    _dropdownValueX = valueX;
-                    _colorPickerRow = row;
-                    _colorPickerX = valueX;
-                    _colorPickerY = rowY;
-                    _colorPickerWidth = valueWidth;
-                    CapturingMouse = true;
-                    Invalidate();
-                }
+            if (row.IsColorProperty)
+            {
+                row.StartColorPicker();
+                _dropdownValueX = valueX;
+                _colorPickerRow = row;
+                _colorPickerRowY = rowY;
+                _colorPickerWidth = valueWidth;
+                int totalPickerHeight = PropertyGridRow.SystemColorComboBoxHeight +
+                    Math.Max(PropertyGridRow.SystemColorCount * PropertyGridRow.SystemColorDropdownItemHeight,
+                        (PropertyGridRow.ColorPaletteMaxVisibleRows - 1) * 19) +
+                    PropertyGridRow.RgbSectionHeight;
+                ResolveColorPickerPlacement(_colorPickerWidth, totalPickerHeight);
+                CapturingMouse = true;
+                Invalidate();
+            }
                 else
                 {
                     OpenEnumDropdown(row, valueX, rowY);
@@ -490,6 +506,92 @@ public class PropertyGrid : ContainerControl
         CapturingMouse = false;
         Invalidate();
     }
+
+    /// <summary>
+    /// Computes the final on-screen position and width of the color picker palette based
+    /// on the available space around the value column and clamps it to the bounds of the
+    /// top-level form. The result is stored in <c>_colorPickerX</c>, <c>_colorPickerY</c>
+    /// and <c>_colorPickerWidth</c> so that both rendering and mouse hit-testing use one
+    /// single, consistent coordinate system.
+    /// </summary>
+    /// <param name="paletteWidth">The requested palette width before clamping.</param>
+    /// <param name="totalPickerHeight">The total height of the palette including RGB section.</param>
+    private void ResolveColorPickerPlacement(int paletteWidth, int totalPickerHeight)
+    {
+        if (_colorPickerRow == null) return;
+
+        Form? topForm = null;
+        Control? current = this;
+        while (current != null)
+        {
+            if (current is Form form)
+            {
+                topForm = form;
+                break;
+            }
+            current = current.Parent;
+        }
+
+        int gridFormX = 0, gridFormY = 0;
+        if (topForm != null)
+        {
+            Control? c = this;
+            while (c != null && c != topForm)
+            {
+                gridFormX += c.X;
+                gridFormY += c.Y;
+                c = c.Parent;
+            }
+        }
+
+        int formLeft = topForm?.ClientRectangle.Left ?? 0;
+        int formRight = topForm?.ClientRectangle.Right ?? ClientRectangle.Right;
+        int formTop = topForm?.ClientRectangle.Top ?? 0;
+        int formBottom = topForm?.ClientRectangle.Bottom ?? ClientRectangle.Bottom;
+
+        int paletteFormX = gridFormX + _dropdownValueX;
+        int paletteFormY = gridFormY + _colorPickerRowY + RowHeight;
+
+        int spaceRight = formRight - (paletteFormX + paletteWidth);
+        int spaceLeft = paletteFormX - formLeft;
+        int spaceBelow = formBottom - (paletteFormY + totalPickerHeight);
+        int spaceAbove = paletteFormY - formTop;
+
+        int paletteX;
+        if (spaceLeft > spaceRight && spaceLeft >= paletteWidth)
+            paletteX = _dropdownValueX + ValueColumnWidth - paletteWidth;
+        else
+            paletteX = _dropdownValueX;
+
+        int paletteFormX2 = gridFormX + paletteX;
+        if (paletteFormX2 < formLeft)
+            paletteX = formLeft - gridFormX;
+        if (paletteFormX2 + paletteWidth > formRight)
+            paletteWidth = Math.Max(200, formRight - paletteFormX2);
+
+        int paletteY;
+        if (spaceAbove > spaceBelow && spaceAbove >= totalPickerHeight)
+            paletteY = _colorPickerRowY - totalPickerHeight;
+        else
+            paletteY = _colorPickerRowY + RowHeight;
+
+        int paletteFormY2 = gridFormY + paletteY;
+        if (paletteFormY2 < formTop)
+            paletteY = formTop - gridFormY;
+        if (paletteFormY2 + totalPickerHeight > formBottom)
+            paletteY = formBottom - totalPickerHeight - gridFormY;
+
+        _colorPickerX = paletteX;
+        _colorPickerY = paletteY;
+        _colorPickerWidth = paletteWidth;
+    }
+
+    /// <summary>
+    /// Forwards a property descriptor value change to <see cref="PropertyValueChanged"/>
+    /// subscribers such as the designer host, which wires undo and dirty tracking.
+    /// </summary>
+    private void OnDescriptorValueChanged(object? sender, PropertyValueChangedEventArgs e)
+        => PropertyValueChanged?.Invoke(this, e);
 
     protected override void OnTextInput(string text)
     {
@@ -1014,75 +1116,9 @@ public class PropertyGrid : ContainerControl
                     (PropertyGridRow.ColorPaletteMaxVisibleRows - 1) * 19) +
                 PropertyGridRow.RgbSectionHeight;
 
-            Form? topForm = null;
-            Control? current = this;
-            while (current != null)
-            {
-                if (current is Form form)
-                {
-                    topForm = form;
-                    break;
-                }
-                current = current.Parent;
-            }
+            ResolveColorPickerPlacement(paletteWidth, totalPickerHeight);
 
-            // Convert PropertyGrid position to form coordinates
-            int gridFormX = 0, gridFormY = 0;
-            if (topForm != null)
-            {
-                Control? c = this;
-                while (c != null && c != topForm)
-                {
-                    gridFormX += c.X;
-                    gridFormY += c.Y;
-                    c = c.Parent;
-                }
-            }
-
-            int formLeft = topForm?.ClientRectangle.Left ?? 0;
-            int formRight = topForm?.ClientRectangle.Right ?? ClientRectangle.Right;
-            int formTop = topForm?.ClientRectangle.Top ?? 0;
-            int formBottom = topForm?.ClientRectangle.Bottom ?? ClientRectangle.Bottom;
-
-            // Palette edges in form coordinates
-            int paletteFormX = gridFormX + _dropdownValueX;
-            int paletteFormY = gridFormY + _dropdownRowY + RowHeight;
-
-            // Available space in each direction
-            int spaceRight = formRight - (paletteFormX + paletteWidth);
-            int spaceLeft = paletteFormX - formLeft;
-            int spaceBelow = formBottom - (paletteFormY + totalPickerHeight);
-            int spaceAbove = paletteFormY - formTop;
-
-            // Horizontal: prefer side with more space
-            int paletteX;
-            if (spaceLeft > spaceRight && spaceLeft >= paletteWidth)
-                paletteX = _dropdownValueX + ValueColumnWidth - paletteWidth;
-            else
-                paletteX = _dropdownValueX;
-
-            // Clamp horizontal to form bounds
-            int paletteFormX2 = gridFormX + paletteX;
-            if (paletteFormX2 < formLeft)
-                paletteX = formLeft - gridFormX;
-            if (paletteFormX2 + paletteWidth > formRight)
-                paletteWidth = Math.Max(200, formRight - paletteFormX2);
-
-            // Vertical: prefer side with more space
-            int paletteY;
-            if (spaceAbove > spaceBelow && spaceAbove >= totalPickerHeight)
-                paletteY = _dropdownRowY - totalPickerHeight;
-            else
-                paletteY = _dropdownRowY + RowHeight;
-
-            // Clamp vertical to form bounds
-            int paletteFormY2 = gridFormY + paletteY;
-            if (paletteFormY2 < formTop)
-                paletteY = formTop - gridFormY;
-            if (paletteFormY2 + totalPickerHeight > formBottom)
-                paletteY = formBottom - totalPickerHeight - gridFormY;
-
-            PropertyGridRow.DrawColorPalette(g, paletteX, paletteY, paletteWidth,
+            PropertyGridRow.DrawColorPalette(g, _colorPickerX, _colorPickerY, _colorPickerWidth,
                 _colorPickerRow.ColorPickerHoveredIndex,
                 _colorPickerRow.ColorPickerSelectedIndex,
                 _colorPickerRow._rgbRBuffer,
@@ -1154,5 +1190,47 @@ public class PropertyGrid : ContainerControl
                     _dropdownValueX + 4, itemY + 2);
             }
         }
+    }
+}
+
+/// <summary>
+/// Carries the details of a committed inline property value change from the
+/// <see cref="PropertyGrid"/> to subscribers.
+/// </summary>
+public sealed class PropertyValueChangedEventArgs : EventArgs
+{
+    /// <summary>
+    /// Gets the control whose property was modified, or null if unavailable.
+    /// </summary>
+    public Control? Control { get; }
+
+    /// <summary>
+    /// Gets the name of the modified property.
+    /// </summary>
+    public string PropertyName { get; }
+
+    /// <summary>
+    /// Gets the previous value of the property before the change.
+    /// </summary>
+    public object? OldValue { get; }
+
+    /// <summary>
+    /// Gets the new value of the property after the change.
+    /// </summary>
+    public object? NewValue { get; }
+
+    /// <summary>
+    /// Initializes a new instance.
+    /// </summary>
+    /// <param name="control">The control whose property changed, or null if unavailable.</param>
+    /// <param name="propertyName">The name of the modified property.</param>
+    /// <param name="oldValue">The previous property value.</param>
+    /// <param name="newValue">The new property value.</param>
+    public PropertyValueChangedEventArgs(Control? control, string propertyName, object? oldValue, object? newValue)
+    {
+        Control = control;
+        PropertyName = propertyName;
+        OldValue = oldValue;
+        NewValue = newValue;
     }
 }

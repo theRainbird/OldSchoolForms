@@ -229,6 +229,13 @@ public class DesignerForm : Form
             _designSurface.Invalidate();
         };
 
+        _propertyGrid.PropertyValueChanged += (_, e) =>
+        {
+            _designSurface.Undo.PushPropertyChange(e.Control, e.PropertyName, e.OldValue);
+            _statusLabel.Text = "Geändert";
+            _designSurface.Invalidate();
+        };
+
         Resize += (_, _) =>
         {
             _mainContentSplit.SplitterDistance = Math.Max(
