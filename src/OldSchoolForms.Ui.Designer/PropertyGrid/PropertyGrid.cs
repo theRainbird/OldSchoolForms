@@ -563,11 +563,12 @@ public class PropertyGrid : ContainerControl
         else
             paletteX = _dropdownValueX;
 
+        const int horizontalMargin = 8;
         int paletteFormX2 = gridFormX + paletteX;
-        if (paletteFormX2 < formLeft)
-            paletteX = formLeft - gridFormX;
-        if (paletteFormX2 + paletteWidth > formRight)
-            paletteWidth = Math.Max(200, formRight - paletteFormX2);
+        if (paletteFormX2 < formLeft + horizontalMargin)
+            paletteX += (formLeft + horizontalMargin) - paletteFormX2;
+        else if (paletteFormX2 + paletteWidth > formRight - horizontalMargin)
+            paletteX -= (paletteFormX2 + paletteWidth) - (formRight - horizontalMargin);
 
         int paletteY;
         if (spaceAbove > spaceBelow && spaceAbove >= totalPickerHeight)

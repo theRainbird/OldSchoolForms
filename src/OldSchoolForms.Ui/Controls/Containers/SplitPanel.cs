@@ -317,25 +317,26 @@ public class SplitPanel : ContainerControl
     }
 
     /// <summary>
-    /// Renders overlay elements (like dropdowns) for both panels with clipping.
+    /// Renders overlay elements (like dropdowns) for both panels.
+    /// Popups are not clipped to their panel so they can paint over the splitter
+    /// and sibling panels, which is required for wide dropdowns such as the
+    /// PropertyGrid color picker that overflow the control's bounds.
     /// </summary>
     /// <param name="g">The Graphics object.</param>
     public override void RenderOverlay(Graphics g)
     {
         if (!Visible) return;
 
-        RenderPanelOverlayClipped(g, _panel1);
-        RenderPanelOverlayClipped(g, _panel2);
+        RenderPanelOverlay(g, _panel1);
+        RenderPanelOverlay(g, _panel2);
     }
 
-    private static void RenderPanelOverlayClipped(Graphics g, Panel panel)
+    private static void RenderPanelOverlay(Graphics g, Panel panel)
     {
         g.Save();
-        g.SetClip(panel.Bounds);
         g.TranslateTransform(panel.X, panel.Y);
         panel.RenderOverlay(g);
         g.Restore();
-        g.ResetClip();
     }
 
     /// <summary>

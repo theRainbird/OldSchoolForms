@@ -82,7 +82,7 @@ public class PropertyGridRow
     public const int SystemColorCount = 12;
     public const int SystemColorComboBoxHeight = 24;
     public const int SystemColorDropdownItemHeight = 22;
-    public const int RgbSectionHeight = 48;
+    public const int RgbSectionHeight = 34;
     public const int RgbInputWidth = 42;
 
  
