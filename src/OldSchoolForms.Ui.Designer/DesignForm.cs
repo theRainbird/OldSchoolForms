@@ -97,6 +97,13 @@ public class DesignForm : ContainerControl
     }
 
     /// <summary>
+    /// Gets the layout area for child controls, excluding the title bar and border so that
+    /// docking, filling, and anchoring stay within the visible client area.
+    /// </summary>
+    /// <returns>The layout area in the form's local coordinates.</returns>
+    protected override Rectangle GetChildLayoutArea() => GetChildClipRectangle();
+
+    /// <summary>
     /// Returns the form-relative position of this design form.
     /// </summary>
     public override Point GetFormRelativePosition()

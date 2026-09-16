@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer;
 using OldSchoolForms.Ui.Designer.Services;
@@ -90,13 +91,11 @@ public class CodeGenerator
         var fieldNameMap = BuildFieldNameMap(className);
 
         // Field declarations
-        foreach (var item in _surface.Items)
+        foreach (var kvp in fieldNameMap)
         {
-            if (item.Control == _surface.RootControl) continue;
-            var control = item.Control;
-            string typeName = control.GetType().Name;
-            string fieldName = fieldNameMap[control];
-            sb.AppendLine($"{subIndent}private {typeName} {fieldName};");
+            if (kvp.Key == _surface.RootControl) continue;
+            string typeName = kvp.Key.GetType().Name;
+            sb.AppendLine($"{subIndent}private {typeName} {kvp.Value};");
         }
 
         sb.AppendLine();
@@ -121,11 +120,11 @@ public class CodeGenerator
         sb.AppendLine($"{bodyIndent}SuspendLayout();");
 
         // Configure each control
-        foreach (var item in _surface.Items)
+        foreach (var kvp in fieldNameMap)
         {
-            if (item.Control == _surface.RootControl) continue;
-            var control = item.Control;
-            string fieldName = fieldNameMap[control];
+            if (kvp.Key == _surface.RootControl) continue;
+            var control = kvp.Key;
+            string fieldName = kvp.Value;
 
             sb.AppendLine();
             sb.AppendLine($"{bodyIndent}//");
@@ -186,15 +185,19 @@ public class CodeGenerator
         sb.AppendLine($"{indent}// Control hierarchy");
         sb.AppendLine();
 
-        // For simplicity, generate Controls.Add for all items at root level
-        foreach (var item in surface.Items)
+        foreach (var kvp in fieldNameMap)
         {
-            if (item.Control == surface.RootControl) continue;
-            var control = item.Control;
-            string fieldName = fieldNameMap[control];
+            var control = kvp.Key;
+            if (control == surface.RootControl) continue;
+            string fieldName = kvp.Value;
             Control? parent = control.Parent;
 
-            if (parent != null && parent != surface && parent != surface.RootControl)
+            if (parent is TabControl tabPageParent)
+            {
+                string parentField = fieldNameMap[tabPageParent];
+                sb.AppendLine($"{indent}{parentField}.TabPages.Add({fieldName});");
+            }
+            else if (parent != null && parent != surface && parent != surface.RootControl)
             {
                 string parentField = fieldNameMap[parent];
                 sb.AppendLine($"{indent}{parentField}.Controls.Add({fieldName});");
@@ -228,9 +231,24 @@ public class CodeGenerator
         foreach (var item in _surface.Items)
         {
             if (item.Control == _surface.RootControl) continue;
-            map[item.Control] = BuildUniqueName(item.Control, reserved);
+            CollectFields(item.Control, map, reserved);
         }
         return map;
+    }
+
+    private static void CollectFields(Control control, Dictionary<Control, string> map, HashSet<string> reserved)
+    {
+        if (map.ContainsKey(control)) return;
+        map[control] = BuildUniqueName(control, reserved);
+
+        foreach (var child in control.Controls)
+            CollectFields(child, map, reserved);
+
+        if (control is TabControl tc)
+        {
+            foreach (var page in tc.TabPages)
+                CollectFields(page, map, reserved);
+        }
     }
 
     /// <summary>

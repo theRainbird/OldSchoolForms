@@ -327,7 +327,7 @@ public class PropertyGrid : ContainerControl
             var row = _rows[rowIndex];
             int rowY = GetRowY(rowIndex);
             int valueX = NameColumnWidth;
-            int valueWidth = Width - valueX;
+            int valueWidth = Width - _vScrollBar.ScrollBarSize - valueX;
 
             // The ellipsis button is drawn at the right edge of the row content (Width - sbw),
             // so the click region must subtract the scrollbar width to match it exactly and

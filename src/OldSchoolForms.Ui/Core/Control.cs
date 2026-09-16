@@ -738,6 +738,27 @@ if (_focused != value)
     protected virtual Rectangle GetChildClipRectangle() => new Rectangle(0, 0, Width, Height);
 
     /// <summary>
+    /// Gets the layout area in which child controls are placed, in the control's local
+    /// coordinate space (origin 0,0). This is the region occupied by child controls after
+    /// subtracting the client inset (border, title bar, padding). It defines the coordinate
+    /// space in which docking, filling, and anchoring are computed and must match
+    /// <see cref="GetChildClipRectangle"/>.
+    /// </summary>
+    /// <remarks>
+    /// The default implementation reproduces the padding-based layout area. Container controls
+    /// that offset or clip their children (title bars, borders, group-box captions) override
+    /// this to return <see cref="GetChildClipRectangle"/> so that child geometry stays within the
+    /// visible client area.
+    /// </remarks>
+    /// <returns>The layout area in the control's local coordinates.</returns>
+    protected virtual Rectangle GetChildLayoutArea() =>
+        new Rectangle(
+            _padding.Left,
+            _padding.Top,
+            Math.Max(0, _bounds.Width - _padding.Horizontal),
+            Math.Max(0, _bounds.Height - _padding.Vertical));
+
+    /// <summary>
     /// Gets the render offset applied to child controls by this parent.
     /// Override to report visual offsets (e.g., TabControl's tab header).
     /// </summary>
@@ -878,8 +899,9 @@ if (_focused != value)
     {
         if (_parent != null)
         {
-            _anchorRightDistance = Math.Max(0, _parent.Width - (X + Width));
-            _anchorBottomDistance = Math.Max(0, _parent.Height - (Y + Height));
+            var client = _parent.GetChildLayoutArea();
+            _anchorRightDistance = Math.Max(0, (client.X + client.Width) - (X + Width));
+            _anchorBottomDistance = Math.Max(0, (client.Y + client.Height) - (Y + Height));
         }
     }
 
@@ -895,10 +917,11 @@ if (_controls == null || _controls.Count == 0) return;
     {
         if (_controls == null || _controls.Count == 0) return;
 
-        int areaX = _padding.Left;
-        int areaY = _padding.Top;
-        int areaW = Math.Max(0, _bounds.Width - _padding.Horizontal);
-        int areaH = Math.Max(0, _bounds.Height - _padding.Vertical);
+        var area = GetChildLayoutArea();
+        int areaX = area.X;
+        int areaY = area.Y;
+        int areaW = area.Width;
+        int areaH = area.Height;
 
         // First pass: edge-docked controls (Top/Bottom/Left/Right) in Z-order
         foreach (Control child in Controls)
@@ -954,8 +977,9 @@ if (_controls == null || _controls.Count == 0) return;
     {
         if (_controls == null || _controls.Count == 0) return;
 
-        int parentWidth = _bounds.Width;
-        int parentHeight = _bounds.Height;
+        var client = GetChildLayoutArea();
+        int clientRight = client.X + client.Width;
+        int clientBottom = client.Y + client.Height;
 
         foreach (Control child in Controls)
         {
@@ -976,20 +1000,20 @@ if (_controls == null || _controls.Count == 0) return;
 
             if (anchorLeft && anchorRight)
             {
-                w = parentWidth - x - child._anchorRightDistance;
+                w = clientRight - x - child._anchorRightDistance;
             }
             else if (anchorRight)
             {
-                x = parentWidth - child._anchorRightDistance - w;
+                x = clientRight - child._anchorRightDistance - w;
             }
 
             if (anchorTop && anchorBottom)
             {
-                h = parentHeight - y - child._anchorBottomDistance;
+                h = clientBottom - y - child._anchorBottomDistance;
             }
             else if (anchorBottom)
             {
-                y = parentHeight - child._anchorBottomDistance - h;
+                y = clientBottom - child._anchorBottomDistance - h;
             }
 
             child._layoutDrivenBoundsChange = true;
@@ -1219,6 +1243,39 @@ if (_controls == null || _controls.Count == 0) return;
         if (!Enabled) return;
         KeyDown?.Invoke(this, e);
     }
+
+    /// <summary>
+    /// Processes a mouse event for design-mode interaction.
+    /// The designer intercepts input for placed controls; design adapters call this method
+    /// to forward events to this control's own handlers so that control-specific chrome
+    /// (tab headers, dropdowns, ...) can be used while designing.
+    /// </summary>
+    /// <param name="e">The mouse event arguments, in this control's local coordinates.</param>
+    public void DesignerMouseDown(MouseEventArgs e) => OnMouseDown(e);
+
+    /// <summary>
+    /// Processes a mouse-move event for design-mode interaction.
+    /// </summary>
+    /// <param name="e">The mouse event arguments, in this control's local coordinates.</param>
+    public void DesignerMouseMove(MouseEventArgs e) => OnMouseMove(e);
+
+    /// <summary>
+    /// Processes a mouse-up event for design-mode interaction.
+    /// </summary>
+    /// <param name="e">The mouse event arguments, in this control's local coordinates.</param>
+    public void DesignerMouseUp(MouseEventArgs e) => OnMouseUp(e);
+
+    /// <summary>
+    /// Processes a mouse-wheel event for design-mode interaction.
+    /// </summary>
+    /// <param name="e">The mouse event arguments, in this control's local coordinates.</param>
+    public void DesignerMouseWheel(MouseEventArgs e) => OnMouseWheel(e);
+
+    /// <summary>
+    /// Processes a key-down event for design-mode interaction.
+    /// </summary>
+    /// <param name="e">The key event arguments.</param>
+    public void DesignerKeyDown(KeyEventArgs e) => OnKeyDown(e);
 
     /// <summary>
     /// Raises the KeyPress event.

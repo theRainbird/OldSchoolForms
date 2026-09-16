@@ -1,5 +1,6 @@
 using System.Linq;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Designer;
 using OldSchoolForms.Ui.Designer.Roslyn;
@@ -155,5 +156,40 @@ public class CodeGeneratorTests
         var instantiated = InstantiatedFields(code).OrderBy(f => f).ToList();
         Assert.Equal(declared, instantiated);
         Assert.Equal(3, declared.Count);
+    }
+
+    [Fact]
+    public void Generate_TabControlWithPages_GeneratesTabPagesAdd()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var tab = new TabControl { Size = new Size(400, 300) };
+        tab.AddTabPage(new TabPage { Text = "Page 1" });
+        tab.AddTabPage(new TabPage { Text = "Page 2" });
+        surface.AddControl(tab, new Point(10, 10));
+
+        string code = new CodeGenerator(surface).Generate("Demo", "MainForm");
+
+        Assert.Contains("TabPages.Add", code);
+        Assert.Contains("tabControl", code);
+        Assert.Contains("tabPage", code);
+        Assert.DoesNotContain("Controls.Add(tabPage", code);
+    }
+
+    [Fact]
+    public void Generate_ControlOnTabPage_GeneratesTabPageControlsAdd_NoKeyNotFoundException()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var tab = new TabControl { Size = new Size(400, 300) };
+        tab.AddTabPage(new TabPage { Text = "Page 1" });
+        tab.AddTabPage(new TabPage { Text = "Page 2" });
+        surface.AddControl(tab, new Point(10, 10));
+
+        var button = new Button { Size = new Size(120, 40), Text = "Click" };
+        surface.AddControl(button, tab.TabPages[0], new Point(20, 40));
+
+        string code = new CodeGenerator(surface).Generate("Demo", "MainForm");
+
+        Assert.Contains("Controls.Add", code);
+        Assert.Contains("TabPages.Add", code);
     }
 }

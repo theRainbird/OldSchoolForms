@@ -197,6 +197,35 @@ public class DesignerContainerTests
     }
 
     [Fact]
+    public void Resize_Control_GrowsViaHandle_InteractivePath()
+    {
+        var surface = new TestableDesignSurface { SnapToGrid = false };
+        var button = new Button { Size = new Size(120, 40) };
+        var item = surface.AddControl(button, new Point(250, 50));
+        surface.Selection.Select(item);
+
+        // The handles are rendered in surface coordinates, so the bottom-right handle sits at
+        // the control's surface bottom-right corner. Clicking it and dragging past the move
+        // threshold must start a resize (regression: hit-testing used parent-relative bounds).
+        var surfaceTL = surface.PointToClient(button.PointToScreen(Point.Empty));
+        int half = SelectionService.GetHandleSize() / 2;
+        int handleX = surfaceTL.X + button.Width - half;
+        int handleY = surfaceTL.Y + button.Height - half;
+        int originalWidth = button.Width;
+
+        surface.RaiseMouseDown(new MouseEventArgs(MouseButtons.Left, 1, handleX, handleY, 0f));
+        // First move past the threshold starts the resize on the detected handle; the
+        // second move actually applies the new size via ContinueDrag.
+        surface.RaiseMouseMove(new MouseEventArgs(MouseButtons.Left, 1, handleX + 20, handleY + 20, 0f));
+        surface.RaiseMouseMove(new MouseEventArgs(MouseButtons.Left, 1, handleX + 40, handleY + 40, 0f));
+
+        Assert.True(surface.Drag.IsDragging);
+        Assert.True(button.Width > originalWidth);
+
+        surface.Drag.EndDrag();
+    }
+
+    [Fact]
     public void Drag_LiveReparentsIntoContainer_PreservingSurfacePosition()
     {
         var surface = new DesignSurface { SnapToGrid = false };
@@ -521,6 +550,37 @@ public class DesignerContainerTests
         Assert.NotNull(frame);
         Assert.Equal((100f - 1) * zoom, frame!.X, 3);
         Assert.Equal((50f - 1) * zoom, frame.Y, 3);
+    }
+
+    /// <summary>
+    /// The selection chrome for a Dock=Fill control on the design form must frame the
+    /// form's client area (below the title bar), not the whole form. Previously the Fill
+    /// layout sized the control to the parent's full bounds, so the box was taller than
+    /// the visible client area by the title-bar height.
+    /// </summary>
+    [Fact]
+    public void DrawSelectionChrome_ForFillDockedControl_FramesClientArea_NotWholeForm()
+    {
+        var surface = new DesignSurface { SnapToGrid = false, Size = new Size(400, 400) };
+        var panel = new Panel { Dock = DockStyle.Fill };
+        var panelItem = surface.AddControl(panel, new Point(0, 0));
+        surface.Selection.Select(panelItem);
+
+        Assert.Equal(new Rectangle(0, 0, 798, 568), panel.Bounds);
+
+        using var g = new Graphics();
+        g.Zoom = 1f;
+        surface.Render(g);
+
+        var cmd = g.GetCommands()
+            .FirstOrDefault(c => c.Type == DrawCommandType.DrawRectangle && Math.Abs(c.LineWidth - 2f) < 0.001f);
+        Assert.NotNull(cmd);
+        var chrome = new Rectangle((int)(cmd!.X / g.Zoom), (int)(cmd.Y / g.Zoom),
+                                   (int)(cmd.Width / g.Zoom), (int)(cmd.Height / g.Zoom));
+
+        // Client area maps to (1,31,798,568) in surface space; the primary box is inset by 1
+        // with a +2 size, giving (0,30,800,570) - not the whole form (0,30,800,602).
+        Assert.Equal(new Rectangle(0, 30, 800, 570), chrome);
     }
 
     /// <summary>

@@ -867,4 +867,74 @@ public class DockAndAnchorTests
         Assert.Equal(480, anchored.Width);
         Assert.Equal(330, anchored.Height);
     }
+
+    /// <summary>
+    /// A Dock=Fill control inside a GroupBox must be sized to the client area (below the
+    /// caption and inside the border), not to the group box's full bounds.
+    /// </summary>
+    [Fact]
+    public void Dock_Fill_InGroupBox_ShouldFillClientArea_ExcludingCaption()
+    {
+        var box = new GroupBox { Size = new Size(300, 200) };
+        box.Font = new Font("Segoe UI", 8f); // ContentOffsetY = (8 * 1) / 2 = 4
+        var child = new Label { Dock = DockStyle.Fill };
+        box.Controls.Add(child);
+
+        // clip = (1, 0, Width-2, Height-ContentOffsetY) = (1, 0, 298, 196).
+        Assert.Equal(new Rectangle(1, 0, 298, 196), child.Bounds);
+    }
+
+    /// <summary>
+    /// A Dock=Fill control inside a FixedSingle panel must be inset by the border on every side.
+    /// </summary>
+    [Fact]
+    public void Dock_Fill_InFixedSinglePanel_ShouldSubtractBorder()
+    {
+        var panel = new Panel { Size = new Size(300, 200), BorderStyle = BorderStyle.FixedSingle };
+        var child = new Label { Dock = DockStyle.Fill };
+        panel.Controls.Add(child);
+
+        Assert.Equal(new Rectangle(1, 1, 298, 198), child.Bounds);
+    }
+
+    /// <summary>
+    /// A Dock=Fill control inside a border-less panel keeps the full bounds (default behavior).
+    /// </summary>
+    [Fact]
+    public void Dock_Fill_InBorderNonePanel_ShouldFillEntireArea()
+    {
+        var panel = new Panel { Size = new Size(300, 200), BorderStyle = BorderStyle.None };
+        var child = new Label { Dock = DockStyle.Fill };
+        panel.Controls.Add(child);
+
+        Assert.Equal(new Rectangle(0, 0, 300, 200), child.Bounds);
+    }
+
+    /// <summary>
+    /// An anchored control must re-anchor to the client area when the container's caption grows
+    /// between layout passes. Anchor distances are measured at add time against the client; with
+    /// the fix ProcessAnchorLayout uses the same client area, so the child shrinks to stay inside
+    /// the client instead of overlapping the caption.
+    /// </summary>
+    [Fact]
+    public void Anchor_All_InGroupBox_ShouldStayWithinClient_WhenCaptionGrows()
+    {
+        var box = new GroupBox { Size = new Size(300, 200) };
+        box.Font = new Font("Segoe UI", 8f); // ContentOffsetY = 4
+        var child = new Label { Location = new Point(10, 20), Size = new Size(100, 50) };
+        child.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        box.Controls.Add(child);
+
+        // Grow the caption (larger font) so the client area shrinks, then force a layout pass
+        // without recomputing anchor distances (the caption changed between passes).
+        box.Font = new Font("Segoe UI", 20f); // ContentOffsetY = 10
+        box.MarkLayoutDirty();
+        box.PerformLayout();
+
+        // clientBottom = 200 - 10 = 190; h = 190 - 20 - 126 = 44 (stays inside the client).
+        Assert.Equal(44, child.Height);
+        Assert.Equal(20, child.Y);
+        // anchorLeft && anchorRight preserves the width.
+        Assert.Equal(100, child.Width);
+    }
 }

@@ -100,6 +100,16 @@ public class FormParser
         var warnings = new List<string>();
         surface.ClearAll();
 
+        // ClearAll detaches the previous root from the surface's render tree without
+        // replacing it. Re-establish a fresh root so the controls added below are
+        // parented to a control that is actually part of the surface (mirrors the
+        // NewForm idiom of ClearAll followed by BeginDesignX). The root type (form vs.
+        // user control) is chosen based on the loaded source's base class.
+        if (IsUserControlSource(sourceCode))
+            surface.BeginDesignUserControl();
+        else
+            surface.BeginDesignForm();
+
         try
         {
             var body = ExtractInitializeComponentBody(sourceCode);
@@ -151,14 +161,46 @@ public class FormParser
                 }
             }
 
-            foreach (var (fieldName, control) in controlMap)
+            // Register every control as a design item so that controls nested inside
+            // containers become selectable too. Parents must be placed before their
+            // children so each child can resolve its parent design item (mirrors the
+            // AddControl(control, parent, localPoint) used by the toolbox drag-drop path).
+            // Top-level controls are parented to the surface root; nested ones to their
+            // container.
+            var pending = new Dictionary<string, Core.Control>(controlMap, StringComparer.OrdinalIgnoreCase);
+            var placed = new HashSet<Core.Control>();
+            if (surface.RootControl != null)
+                placed.Add(surface.RootControl);
+
+            bool madeProgress = true;
+            while (pending.Count > 0 && madeProgress)
             {
-                if (control.Parent == null)
+                madeProgress = false;
+                foreach (var (fieldName, control) in pending.ToArray())
                 {
-                    var designItem = surface.AddControl(control, control.Location);
-                    designItem.Selected = false;
-                    warnings.Add($"Added to surface: {fieldName} at ({control.X}, {control.Y})");
+                    ContainerControl? parent = control.Parent as ContainerControl;
+                    bool topLevel = parent == null || ReferenceEquals(parent, surface.RootControl);
+                    if (topLevel || placed.Contains(parent!))
+                    {
+                        DesignItem item = topLevel
+                            ? surface.AddControl(control, control.Location)
+                            : surface.AddControl(control, parent!, control.Location);
+                        item.Selected = false;
+                        warnings.Add($"Added to surface: {fieldName} at ({control.X}, {control.Y})");
+                        pending.Remove(fieldName);
+                        placed.Add(control);
+                        madeProgress = true;
+                    }
                 }
+            }
+
+            // Any controls left after the ordering pass (e.g. a parent/child cycle) fall
+            // back to top-level placement so nothing is silently dropped.
+            foreach (var (fieldName, control) in pending.ToArray())
+            {
+                var item = surface.AddControl(control, control.Location);
+                item.Selected = false;
+                warnings.Add($"Added to surface (fallback): {fieldName}");
             }
 
             surface.Invalidate();
@@ -449,5 +491,24 @@ public class FormParser
                (sourceCode.Contains("InitializeComponent") ||
                 sourceCode.Contains("SuspendLayout") ||
                 sourceCode.Contains("Controls.Add"));
+    }
+
+    /// <summary>
+    /// Determines whether the given source declares a user control (derives from
+    /// <c>ContainerControl</c> or <c>UserControl</c>) rather than a form (<c>Form</c>).
+    /// Used to select the correct design root when loading a form file.
+    /// </summary>
+    /// <param name="sourceCode">The full C# source code of the file being loaded.</param>
+    /// <returns>True if the source derives from a user-control base type; otherwise false.</returns>
+    private static bool IsUserControlSource(string sourceCode)
+    {
+        if (string.IsNullOrEmpty(sourceCode)) return false;
+
+        // A base-class clause looks like "class X : Form" or "class X : ContainerControl".
+        // \b keeps identifiers such as "MyForm" from matching "Form".
+        if (System.Text.RegularExpressions.Regex.IsMatch(sourceCode, @":\s*Form\b"))
+            return false;
+
+        return System.Text.RegularExpressions.Regex.IsMatch(sourceCode, @":\s*(ContainerControl|UserControl)\b");
     }
 }

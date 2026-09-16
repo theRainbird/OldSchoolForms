@@ -186,6 +186,43 @@ public class TabControl : ContainerControl
         : null;
 
     /// <summary>
+    /// Gets whether the overflow dropdown is currently displayed.
+    /// The designer adapter uses this to track design-mode interaction state.
+    /// </summary>
+    public bool OverflowDroppedDown => _overflowDroppedDown;
+
+    /// <summary>
+    /// Tests whether the specified point lies within the tab header band of this control.
+    /// </summary>
+    /// <param name="point">The point to test, in TabControl coordinates.</param>
+    /// <param name="tabIndex">The zero-based index of the clicked tab page, or -1 if the point
+    /// is over the overflow button or a gap between visible tabs.</param>
+    /// <returns>true if the point is within the tab header band; otherwise false.</returns>
+    public bool TryHitTabHeaderAreaPublic(Point point, out int tabIndex)
+        => TryHitTabHeaderArea(point, out tabIndex);
+
+    internal bool TryHitTabHeaderArea(Point point, out int tabIndex)
+    {
+        tabIndex = -1;
+        if (point.Y < 0 || point.Y >= TabHeaderHeight || point.X < 0 || point.X >= Width)
+            return false;
+        if (_tabPages.Count == 0)
+            return true;
+
+        var (tabPositions, tabWidths, _) = CalculateTabLayout();
+        for (int i = _firstVisibleTab; i < _firstVisibleTab + _lastVisibleCount; i++)
+        {
+            if (i >= 0 && i < tabPositions.Length && point.X >= tabPositions[i] && point.X < tabPositions[i] + tabWidths[i])
+            {
+                tabIndex = i;
+                return true;
+            }
+        }
+
+        return true; // header band, over the overflow button or a gap between tabs
+    }
+
+    /// <summary>
     /// Gets or sets the height of the tab headers.
     /// </summary>
     public int TabHeight
@@ -614,18 +651,10 @@ public class TabControl : ContainerControl
         }
 
         // Handle tab header clicks
-        if (args.Y < tabHeaderHeight && _tabPages.Count > 0)
+        if (TryHitTabHeaderArea(new Point(args.X, args.Y), out int tabIndex) && tabIndex >= 0)
         {
-            var (tabPositions, tabWidths, _) = CalculateTabLayout();
-            var clickedX = args.X;
-            for (int i = _firstVisibleTab; i < _firstVisibleTab + _lastVisibleCount; i++)
-            {
-                if (clickedX >= tabPositions[i] && clickedX < tabPositions[i] + tabWidths[i])
-                {
-                    SelectedIndex = i;
-                    return;
-                }
-            }
+            SelectedIndex = tabIndex;
+            return;
         }
 
         base.OnMouseDown(e);

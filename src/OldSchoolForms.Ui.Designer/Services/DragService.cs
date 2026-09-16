@@ -333,7 +333,12 @@ public class DragService
     {
         if (item == null) return ResizeHandle.None;
 
-        var bounds = item.Control.Bounds;
+        // item.Control.Bounds is expressed in the control's parent coordinate space, but the
+        // mouse point is in this surface's coordinate space (the same space DrawSelectionChrome
+        // renders the handles in). Convert the top-left to surface coordinates so the hit-test
+        // region lines up with the drawn handles regardless of the root's offset or render offset.
+        var origin = _surface.PointToClient(item.Control.PointToScreen(Point.Empty));
+        var bounds = new Rectangle(origin.X, origin.Y, item.Control.Bounds.Width, item.Control.Bounds.Height);
         int hs = SelectionService.GetHandleSize();
         int half = hs / 2;
 

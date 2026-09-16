@@ -92,6 +92,35 @@ public class PropertyGridEditorTests
         Assert.False(stub.Opened);
     }
 
+    private sealed class LongNameControl
+    {
+        public string LongPropertyName { get; set; } = "value";
+    }
+
+    [Fact]
+    public void PropertyGridRow_NameLabel_IsClippedToNameColumn_WhenNameIsWide()
+    {
+        var control = new LongNameControl();
+        var property = typeof(LongNameControl).GetProperty(nameof(LongNameControl.LongPropertyName))!;
+        var descriptor = new PropertyDescriptor(property, control);
+        var nameColumnWidth = 140;
+        var row = new PropertyGridRow(descriptor, nameColumnWidth);
+
+        var g = new Graphics();
+        row.Render(g, 0, 300, 26, ThemeManager.CurrentTheme);
+
+        var nameCmd = g.GetCommands()
+            .First(c => c.Type == DrawCommandType.DrawString && c.Text == "LongPropertyName");
+
+        Assert.Equal(nameColumnWidth, nameCmd.ClipBounds.Value.Right);
+
+        var valueCmd = g.GetCommands()
+            .First(c => c.Type == DrawCommandType.DrawString && c.Text == "value");
+
+        Assert.True(valueCmd.ClipBounds.Value.X >= nameColumnWidth);
+        Assert.True(valueCmd.ClipBounds.Value.Width > 0);
+    }
+
     [Fact]
     public void PropertyGridRow_DrawsCollectionCount_NotTypeName_WithEllipsis()
     {

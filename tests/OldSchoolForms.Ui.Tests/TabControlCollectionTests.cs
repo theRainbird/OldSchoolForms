@@ -1,4 +1,5 @@
 using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Core;
 using Xunit;
 
 namespace OldSchoolForms.Ui.Tests;
@@ -28,56 +29,36 @@ public class TabControlCollectionTests
     public void AddTabPage_ThrowsOnNullAndIgnoresDuplicates()
     {
         var tab = new TabControl();
-        var page = new TabPage();
 
-        Assert.Throws<System.ArgumentNullException>(() => tab.AddTabPage(null!));
-        tab.AddTabPage(page);
-        tab.AddTabPage(page);
+        TabPage page = null!;
+        Assert.Throws<ArgumentNullException>(() => tab.AddTabPage(page));
+
+        var p1 = new TabPage { Text = "P1" };
+        tab.AddTabPage(p1);
+        tab.AddTabPage(p1);
 
         Assert.Single(tab.TabPages);
-        Assert.Single(tab.Controls);
     }
 
     [Fact]
-    public void Indexer_ReturnsPageAtPosition()
+    public void SelectedIndex_ClampsOutOfRange()
     {
         var tab = new TabControl();
-        var a = new TabPage { Name = "a", Text = "A" };
-        var b = new TabPage { Name = "b", Text = "B" };
+        tab.AddTabPage(new TabPage { Text = "A" });
 
-        tab.AddTabPage(a);
-        tab.AddTabPage(b);
+        tab.SelectedIndex = 5;
+        Assert.Equal(0, tab.SelectedIndex);
 
-        Assert.Same(a, tab[0]);
-        Assert.Same(b, tab[1]);
+        tab.SelectedIndex = -1;
+        Assert.Equal(0, tab.SelectedIndex);
     }
 
     [Fact]
-    public void RemoveAt_SyncsCollections_AndClampsSelectedIndex()
+    public void RemoveTabPage_KeepsControlsInSync()
     {
         var tab = new TabControl();
-        var a = new TabPage();
-        var b = new TabPage();
-        var c = new TabPage();
-        tab.AddTabPage(a);
-        tab.AddTabPage(b);
-        tab.AddTabPage(c);
-        tab.SelectedIndex = 2;
-
-        tab.RemoveAt(2);
-
-        Assert.Equal(2, tab.TabPages.Count);
-        Assert.DoesNotContain(c, tab.TabPages);
-        Assert.DoesNotContain(c, tab.Controls);
-        Assert.Equal(1, tab.SelectedIndex);
-    }
-
-    [Fact]
-    public void RemovePage_ClampsSelectedIndex()
-    {
-        var tab = new TabControl();
-        var a = new TabPage();
-        var b = new TabPage();
+        var a = new TabPage { Text = "A" };
+        var b = new TabPage { Text = "B" };
         tab.AddTabPage(a);
         tab.AddTabPage(b);
         tab.SelectedIndex = 1;
@@ -85,7 +66,22 @@ public class TabControlCollectionTests
         tab.RemoveTabPage(a);
 
         Assert.Single(tab.TabPages);
-        Assert.Same(b, tab.SelectedTab);
+        Assert.Single(tab.Controls);
+        Assert.Same(b, tab.TabPages[0]);
+        Assert.Equal(0, tab.SelectedIndex);
+    }
+
+    [Fact]
+    public void RemoveTabPage_LastPage_ResetsSelection()
+    {
+        var tab = new TabControl();
+        var a = new TabPage { Text = "A" };
+        tab.AddTabPage(a);
+
+        tab.RemoveTabPage(a);
+
+        Assert.Empty(tab.TabPages);
+        Assert.Empty(tab.Controls);
         Assert.Equal(0, tab.SelectedIndex);
     }
 
@@ -106,5 +102,43 @@ public class TabControlCollectionTests
         Assert.Same(mid, tab[1]);
         Assert.Same(mid, tab.Controls[1]);
         Assert.Equal(2, tab.SelectedIndex);
+    }
+
+    [Fact]
+    public void TryHitTabHeaderArea_ReturnsTabIndexWhenOverTab()
+    {
+        var tab = new TabControl { Size = new Size(400, 200) };
+        tab.AddTabPage(new TabPage { Text = "A" });
+        tab.AddTabPage(new TabPage { Text = "B" });
+
+        Assert.True(tab.TryHitTabHeaderAreaPublic(new Point(10, 5), out int idx0));
+        Assert.Equal(0, idx0);
+
+        Assert.True(tab.TryHitTabHeaderAreaPublic(new Point(60, 5), out int idx1));
+        Assert.Equal(1, idx1);
+    }
+
+    [Fact]
+    public void TryHitTabHeaderArea_ReturnsFalseWhenOutsideHeader()
+    {
+        var tab = new TabControl { Size = new Size(400, 200) };
+        tab.AddTabPage(new TabPage { Text = "A" });
+
+        Assert.False(tab.TryHitTabHeaderAreaPublic(new Point(10, 50), out _));
+        Assert.False(tab.TryHitTabHeaderAreaPublic(new Point(-1, 5), out _));
+        Assert.False(tab.TryHitTabHeaderAreaPublic(new Point(400, 5), out _));
+    }
+
+    [Fact]
+    public void DesignerMouseDown_SwitchesTabViaBridge()
+    {
+        var tab = new TabControl { Size = new Size(400, 200) };
+        tab.AddTabPage(new TabPage { Text = "A" });
+        tab.AddTabPage(new TabPage { Text = "B" });
+
+        var args = new MouseEventArgs(MouseButtons.Left, 1, 55, 5, 0);
+        tab.DesignerMouseDown(args);
+
+        Assert.Equal(1, tab.SelectedIndex);
     }
 }

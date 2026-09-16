@@ -42,7 +42,7 @@ public class DesignerForm : Form
         Title = "OldSchoolForms Form Designer";
         Width = 1400;
         Height = 900;
-        Zoom = 1.25f;
+        Zoom = 1.0f;
 
         _toolboxService = new ToolboxService();
         _designSurface = new DesignSurface();
@@ -68,7 +68,8 @@ public class DesignerForm : Form
         };
         _toolbox = new ToolboxControl(_toolboxService)
         {
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.FixedSingle
         };
         _toolboxPanel.Controls.Add(_toolbox);
         Controls.Add(_toolboxPanel);

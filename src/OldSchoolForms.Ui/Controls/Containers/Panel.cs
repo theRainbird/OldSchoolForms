@@ -46,6 +46,14 @@ public class Panel : ContainerControl
     }
 
     /// <summary>
+    /// Gets the layout area for child controls, excluding the border when FixedSingle so that
+    /// docking, filling, and anchoring stay within the visible client area. Adapts automatically
+    /// to the current <see cref="BorderStyle"/>.
+    /// </summary>
+    /// <returns>The layout area in the panel's local coordinates.</returns>
+    protected override Rectangle GetChildLayoutArea() => GetChildClipRectangle();
+
+    /// <summary>
     /// Renders the panel with its background and border.
     /// </summary>
     /// <param name="g">The Graphics object to use for rendering.</param>

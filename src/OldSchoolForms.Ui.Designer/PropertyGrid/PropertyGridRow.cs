@@ -88,6 +88,11 @@ public class PropertyGridRow
  
 
     /// <summary>
+    /// Gets the property name.
+    /// </summary>
+    public string Name => _descriptor.Name;
+
+    /// <summary>
     /// Gets the property category.
     /// </summary>
     public string Category => _descriptor.Category;
@@ -156,11 +161,11 @@ public class PropertyGridRow
 
         if (_descriptor.PropertyType.IsEnum)
         {
-            if (localX >= valueColumnWidth - DropdownArrowWidth)
-            {
-                StartEnumDropdown();
-                return true;
-            }
+            // Enum values are selected exclusively through the dropdown; the value text is
+            // not editable, so any click in the value column opens the dropdown instead of
+            // starting inline text editing.
+            StartEnumDropdown();
+            return true;
         }
 
         if (!_isEditing)
@@ -177,7 +182,9 @@ public class PropertyGridRow
         int valueWidth = width - _nameWidth;
 
         // Name label
+        g.SetClip(new Rectangle(0, y, _nameWidth, height));
         g.DrawString(_descriptor.Name, theme.DefaultFont, theme.ControlText, 6, y + 5);
+        g.ResetClip();
 
         // Value
         var value = _descriptor.GetValue();

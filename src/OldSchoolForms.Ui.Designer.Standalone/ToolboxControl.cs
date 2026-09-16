@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Theming;
@@ -32,7 +33,7 @@ public class ToolboxDragEventArgs : EventArgs
 /// A visual toolbox control that displays available controls grouped by category.
 /// Supports initiating drag operations for placing controls on the design surface.
 /// </summary>
-public class ToolboxControl : ContainerControl
+public class ToolboxControl : Panel
 {
     private readonly ToolboxService _toolboxService;
     private readonly List<ToolboxItem> _filteredItems = new();
@@ -169,6 +170,11 @@ public class ToolboxControl : ContainerControl
                 var textColor = idx == _hoveredIndex ? theme.HighlightText : theme.ControlText;
                 g.DrawString(entry.item!.DisplayName, theme.DefaultFont, textColor, 8, entry.y + 4);
             }
+        }
+
+        if (BorderStyle == BorderStyle.FixedSingle)
+        {
+            g.DrawRectangle(theme.PanelBorder, 0, 0, Width, Height, 1);
         }
     }
 }

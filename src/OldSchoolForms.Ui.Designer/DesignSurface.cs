@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Theming;
@@ -26,12 +27,20 @@ public class DesignSurface : ContainerControl
     private ContainerControl? _rootControl;
     private Point _rootOffset = Point.Empty;
 
+    internal readonly ScrollBarEngine _vscroll = new();
+    internal readonly ScrollBarEngine _hscroll = new();
+    private Point _scrollOffset = Point.Empty;
+    private ScrollBarContext? _scrollBarContext;
+
     private Point _lastMouseDown;
     private bool _hasMouseMovedSinceDown;
     private bool _leftButtonPressed;
     private ResizeHandle _pendingResizeHandle = ResizeHandle.None;
 
     private ToolboxItem? _pendingDropItem;
+
+    private readonly ControlDesignAdapterRegistry _adapterRegistry = new();
+    private IControlDesignAdapter? _activeAdapter;
 
     private const int GridSize = 8;
     private bool _showGrid = true;
@@ -173,8 +182,22 @@ public class DesignSurface : ContainerControl
 
         _dragService.DragStarted += (_, _) => Invalidate();
 
+        _vscroll.Orientation = ScrollBarEngine.ScrollBarOrientation.Vertical;
+        _vscroll.ScrollBarSize = ScrollBarEngine.DefaultScrollBarSize;
+        _vscroll.SmallChange = GridSize;
+        _vscroll.LargeChange = GridSize * 5;
+        _vscroll.Scroll += (_, _) => Invalidate();
+
+        _hscroll.Orientation = ScrollBarEngine.ScrollBarOrientation.Horizontal;
+        _hscroll.ScrollBarSize = ScrollBarEngine.DefaultScrollBarSize;
+        _hscroll.SmallChange = GridSize;
+        _hscroll.LargeChange = GridSize * 5;
+        _hscroll.Scroll += (_, _) => Invalidate();
+
         // A surface is immediately usable: start with an empty design form as the root.
         BeginDesignForm();
+
+        _adapterRegistry.Register<TabControl>(c => new TabControlDesignAdapter(c));
     }
 
     /// <summary>
@@ -215,6 +238,10 @@ public class DesignSurface : ContainerControl
 
         _rootItem = new DesignItem(root);
         _designItems.Insert(0, _rootItem);
+
+        _vscroll.Value = 0;
+        _hscroll.Value = 0;
+        _scrollOffset = Point.Empty;
 
         ContentModified?.Invoke(this, EventArgs.Empty);
         Invalidate();
@@ -286,10 +313,14 @@ public class DesignSurface : ContainerControl
     /// <returns>The corresponding point in the root's client area.</returns>
     private Point ToRootLocal(Point surfacePoint)
     {
+        // The root's actual position on the surface is its Location, which already
+        // includes the scroll offset applied by LayoutRoot. Subtract it (plus the
+        // root's own render offset, e.g. below a title bar) to land in the root's
+        // client area where child controls are positioned.
         var offset = _rootControl!.GetChildRenderOffsetPublic();
         return new Point(
-            surfacePoint.X - _rootOffset.X - offset.X,
-            surfacePoint.Y - _rootOffset.Y - offset.Y);
+            surfacePoint.X - _rootControl!.X - offset.X,
+            surfacePoint.Y - _rootControl!.Y - offset.Y);
     }
 
     /// <summary>
@@ -348,6 +379,38 @@ public class DesignSurface : ContainerControl
     public DesignItem? FindItem(Control control)
     {
         return _designItems.FirstOrDefault(di => di.Control == control);
+    }
+
+    /// <summary>
+    /// Finds the design adapter whose interaction region contains the given surface point.
+    /// Returns the adapter and the point converted to the adapter control's local coordinates.
+    /// </summary>
+    private IControlDesignAdapter? FindDesignAdapter(Point surfacePoint, out Point localPoint)
+    {
+        localPoint = Point.Empty;
+
+        if (_activeAdapter != null)
+        {
+            localPoint = _activeAdapter.Control.PointToClient(this.PointToScreen(surfacePoint));
+            return _activeAdapter;
+        }
+
+        var formPoint = this.PointToScreen(surfacePoint);
+        for (int i = _designItems.Count - 1; i >= 0; i--)
+        {
+            var item = _designItems[i];
+            var adapter = _adapterRegistry.GetAdapter(item.Control);
+            if (adapter == null) continue;
+
+            var local = item.Control.PointToClient(formPoint);
+            if (adapter.TryHitRegion(local))
+            {
+                localPoint = local;
+                return adapter;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -424,8 +487,11 @@ public class DesignSurface : ContainerControl
                 return item;
             }
 
-            var parentSpace = ctrl.PointToClient(formPoint);
-            if (ctrl.HitTest(parentSpace))
+            // `PointToClient` yields the point in the control's own local space, where the
+            // control fills (0,0,Width,Height). Bounds is parent-relative, so comparing the
+            // local point against it would only match at (0,0); test against the local bounds.
+            var localPoint = ctrl.PointToClient(formPoint);
+            if (new Rectangle(0, 0, ctrl.Width, ctrl.Height).Contains(localPoint))
                 return item;
         }
 
@@ -513,6 +579,27 @@ public class DesignSurface : ContainerControl
             return;
         }
 
+        var downPoint = new Point(args.X, args.Y);
+        if (HandleScrollbarMouseDown(downPoint))
+            return;
+
+        // Design-mode adapter routing: forward clicks on interaction regions
+        // (e.g. tab headers) to the matching adapter so placed controls can be
+        // interacted with while designing.
+        if (FindDesignAdapter(downPoint, out var localDown) is { } downAdapter)
+        {
+            if (_activeAdapter != downAdapter)
+            {
+                var item = FindItem(downAdapter.Control);
+                if (item != null && !GetCurrentModifiers().HasFlag(ModifierKeys.Control))
+                    _selectionService.Select(item);
+            }
+            _activeAdapter = downAdapter;
+            downAdapter.OnMouseDown(localDown, new MouseEventArgs(args.Button, args.Clicks, localDown.X, localDown.Y, args.Delta));
+            if (!downAdapter.IsInteracting) _activeAdapter = null;
+            return;
+        }
+
         _lastMouseDown = new Point(args.X, args.Y);
         _hasMouseMovedSinceDown = false;
 
@@ -562,6 +649,21 @@ public class DesignSurface : ContainerControl
         if (e is not MouseEventArgs args) return;
 
         var point = new Point(args.X, args.Y);
+
+        if (HandleScrollbarMouseMove(point))
+        {
+            Invalidate();
+            return;
+        }
+
+        // Design-mode adapter routing: forward moves to the active adapter
+        // (e.g. overflow dropdown hover tracking).
+        if (FindDesignAdapter(point, out var localAdapter) is { } adapter)
+        {
+            adapter.OnMouseMove(localAdapter, new MouseEventArgs(args.Button, args.Clicks, localAdapter.X, localAdapter.Y, args.Delta));
+            if (!adapter.IsInteracting) _activeAdapter = null;
+            return;
+        }
 
         if (_dragService.IsDragging)
         {
@@ -622,6 +724,27 @@ public class DesignSurface : ContainerControl
     {
         if (e is not MouseEventArgs args) return;
 
+        if (_vscroll.IsDragging || _hscroll.IsDragging ||
+            _vscroll.IsUpButtonPressed || _vscroll.IsDownButtonPressed ||
+            _hscroll.IsUpButtonPressed || _hscroll.IsDownButtonPressed)
+        {
+            if (_vscroll.NeedsScrollbar) _vscroll.HandleMouseUp(ScrollbarContext);
+            if (_hscroll.NeedsScrollbar) _hscroll.HandleMouseUp(ScrollbarContext);
+            return;
+        }
+
+        var point = new Point(args.X, args.Y);
+
+        // Design-mode adapter routing: forward the up event to the active adapter
+        // (e.g. closing the overflow dropdown).
+        if (FindDesignAdapter(point, out var localAdapter) is { } adapter)
+        {
+            adapter.OnMouseUp(localAdapter, new MouseEventArgs(args.Button, args.Clicks, localAdapter.X, localAdapter.Y, args.Delta));
+            if (!adapter.IsInteracting) _activeAdapter = null;
+            _leftButtonPressed = false;
+            return;
+        }
+
         if (_dragService.IsDragging)
         {
             _dragService.EndDrag();
@@ -629,8 +752,6 @@ public class DesignSurface : ContainerControl
             // No need to call them here again.
             return;
         }
-
-        var point = new Point(args.X, args.Y);
 
         // Use _leftButtonPressed instead of args.Button - Silk.NET may not pass correct
         // button state in MouseUp events either.
@@ -672,6 +793,30 @@ public class DesignSurface : ContainerControl
             Invalidate();
             e.Handled = true;
             return;
+        }
+
+        // Design-mode adapter routing: forward keys to the active adapter
+        // (e.g. overflow dropdown keyboard navigation).
+        if (_activeAdapter != null)
+        {
+            _activeAdapter.OnKeyDown(e);
+            if (!_activeAdapter.IsInteracting) _activeAdapter = null;
+            return;
+        }
+
+        // Allow F4 to open the overflow dropdown when a TabControl is the primary selection.
+        if (e.KeyCode == Keys.F4)
+        {
+            var primaryControl = _selectionService.PrimarySelection?.Control;
+            if (primaryControl != null)
+            {
+                var adapter = _adapterRegistry.GetAdapter(primaryControl);
+                if (adapter != null && adapter.OnKeyDown(e))
+                {
+                    _activeAdapter = adapter;
+                    return;
+                }
+            }
         }
 
         if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
@@ -732,12 +877,49 @@ public class DesignSurface : ContainerControl
         base.OnKeyUp(e);
     }
 
+    protected override void OnMouseWheel(EventArgs e)
+    {
+        if (e is MouseEventArgs args)
+        {
+            // Design-mode adapter routing: forward wheel events to the active adapter
+            // (e.g. scrolling the overflow dropdown).
+            var wheelPoint = new Point(args.X, args.Y);
+            if (FindDesignAdapter(wheelPoint, out var localAdapter) is { } adapter)
+            {
+                adapter.OnMouseWheel(localAdapter, new MouseEventArgs(args.Button, args.Clicks, localAdapter.X, localAdapter.Y, args.Delta));
+                if (!adapter.IsInteracting) _activeAdapter = null;
+                return;
+            }
+
+            // Keep the scrollbar ranges fresh (content size may have changed), then
+            // hand the wheel delta to whichever scrollbar is currently overflowed.
+            LayoutRoot();
+            if (_vscroll.NeedsScrollbar)
+                _vscroll.HandleMouseWheel(args.Delta, ScrollbarContext);
+            if (_hscroll.NeedsScrollbar)
+                _hscroll.HandleMouseWheel(args.Delta, ScrollbarContext);
+        }
+
+        base.OnMouseWheel(e);
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        _vscroll.HandleMouseLeave(ScrollbarContext);
+        _hscroll.HandleMouseLeave(ScrollbarContext);
+        base.OnMouseLeave(e);
+    }
+
     public override void Render(Graphics g)
     {
         // Fix: Fill background first to clear previous frame content.
         // Without this, the SKSurface retains old content at the old control
         // positions, causing ghost lines and flickering during drag operations.
         g.FillRectangle(BackColor, 0, 0, Width, Height);
+
+        // Keep the root position and scrollbar ranges in sync with the current
+        // content size before anything is drawn.
+        LayoutRoot();
 
         // Draw grid background
         DrawGrid(g);
@@ -751,6 +933,9 @@ public class DesignSurface : ContainerControl
         // Draw smart guide lines during drag
         DrawGuideLines(g);
 
+        // Draw scrollbars when the root content overflows the surface.
+        DrawScrollbars(g);
+
         // Draw subtle top banner when in toolbox drop mode
         if (_pendingDropItem != null)
         {
@@ -763,6 +948,120 @@ public class DesignSurface : ContainerControl
             g.DrawString(msg, ThemeManager.CurrentTheme.DefaultFont,
                 Color.FromArgb(0, 80, 160), 10, 10);
         }
+    }
+
+    private void LayoutRoot()
+    {
+        if (_rootControl == null) return;
+
+        var root = _rootControl;
+
+        // Vertical range: content height vs. the visible height.
+        _vscroll.ViewSize = Height;
+        _vscroll.ContentSize = root.Height;
+        if (_vscroll.Value > _vscroll.MaxScroll)
+            _vscroll.Value = _vscroll.MaxScroll;
+
+        // Horizontal range: content width vs. the visible width.
+        _hscroll.ViewSize = Width;
+        _hscroll.ContentSize = root.Width;
+        if (_hscroll.Value > _hscroll.MaxScroll)
+            _hscroll.Value = _hscroll.MaxScroll;
+
+        var newOffset = new Point(_hscroll.Value, _vscroll.Value);
+        if (newOffset.X == _scrollOffset.X && newOffset.Y == _scrollOffset.Y) return;
+
+        _scrollOffset = newOffset;
+
+        // Move the root by the negative scroll offset so its content pans into view.
+        // The position is only rewritten while scrolling actually changes, which keeps
+        // a location set directly on the root (e.g. by callers or tests) intact whenever
+        // the content fits the surface.
+        root.Location = new Point(_rootOffset.X - newOffset.X, _rootOffset.Y - newOffset.Y);
+        Invalidate();
+    }
+
+    private void DrawScrollbars(Graphics g)
+    {
+        var theme = ThemeManager.CurrentTheme;
+        int vsw = _vscroll.ScrollBarSize;
+        int hsh = _hscroll.ScrollBarSize;
+
+        if (_vscroll.NeedsScrollbar)
+            _vscroll.Render(g, new Rectangle(Width - vsw, 0, vsw, Height), theme);
+
+        if (_hscroll.NeedsScrollbar)
+            _hscroll.Render(g, new Rectangle(0, Height - hsh, Width, hsh), theme);
+    }
+
+    private bool HandleScrollbarMouseDown(Point point)
+    {
+        int vsw = _vscroll.ScrollBarSize;
+        int hsh = _hscroll.ScrollBarSize;
+
+        if (_vscroll.NeedsScrollbar)
+        {
+            var vRect = new Rectangle(Width - vsw, 0, vsw, Height);
+            if (vRect.Contains(point))
+            {
+                _vscroll.HandleMouseDown(point, vRect, ScrollbarContext);
+                return true;
+            }
+        }
+
+        if (_hscroll.NeedsScrollbar)
+        {
+            var hRect = new Rectangle(0, Height - hsh, Width, hsh);
+            if (hRect.Contains(point))
+            {
+                _hscroll.HandleMouseDown(point, hRect, ScrollbarContext);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool HandleScrollbarMouseMove(Point point)
+    {
+        if (!_vscroll.IsDragging && !_hscroll.IsDragging) return false;
+
+        int vsw = _vscroll.ScrollBarSize;
+        int hsh = _hscroll.ScrollBarSize;
+
+        if (_vscroll.IsDragging && _vscroll.NeedsScrollbar)
+        {
+            var vRect = new Rectangle(Width - vsw, 0, vsw, Height);
+            _vscroll.HandleMouseMove(point, vRect, ScrollbarContext);
+        }
+
+        if (_hscroll.IsDragging && _hscroll.NeedsScrollbar)
+        {
+            var hRect = new Rectangle(0, Height - hsh, Width, hsh);
+            _hscroll.HandleMouseMove(point, hRect, ScrollbarContext);
+        }
+
+        return true;
+    }
+
+    private ScrollBarContext ScrollbarContext => _scrollBarContext ??= new ScrollBarContext(this);
+
+    /// <summary>
+    /// Adapts a surface to the <see cref="IScrollBarContext"/> contract so that a
+    /// <see cref="ScrollBarEngine"/> can query the current zoom, request repaints, and
+    /// capture the mouse while a thumb or button is being dragged.
+    /// </summary>
+    private sealed class ScrollBarContext : IScrollBarContext
+    {
+        private readonly DesignSurface _owner;
+
+        public ScrollBarContext(DesignSurface owner) => _owner = owner;
+
+        public float Zoom => _owner.EffectiveZoom;
+
+        public void Invalidate() => _owner.Invalidate();
+
+        public void CaptureMouse(bool capture) => _owner.CapturingMouse = capture;
     }
 
     private void DrawGrid(Graphics g)

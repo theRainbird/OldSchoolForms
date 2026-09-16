@@ -291,6 +291,7 @@ public class TreeView : Control
         }
 
         g.TranslateTransform(0, _scrollOffsetY);
+        g.ResetClip();
 
         int visibleCount = GetVisibleNodes().Count;
         int totalContentHeight = visibleCount * ItemHeight;

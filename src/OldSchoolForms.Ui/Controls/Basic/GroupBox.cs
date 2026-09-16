@@ -51,6 +51,13 @@ public class GroupBox : ContainerControl
     }
 
     /// <summary>
+    /// Gets the layout area for child controls, excluding the caption offset and border so that
+    /// docking, filling, and anchoring stay within the visible client area.
+    /// </summary>
+    /// <returns>The layout area in the group box's local coordinates.</returns>
+    protected override Rectangle GetChildLayoutArea() => GetChildClipRectangle();
+
+    /// <summary>
     /// Called when the theme changes. Keeps the transparent background.
     /// </summary>
     /// <param name="newTheme">The new theme that was activated.</param>
