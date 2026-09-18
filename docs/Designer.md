@@ -198,9 +198,10 @@ Manages the palette of controls available for placement on the design surface. P
 
 | Category | Controls |
 |---|---|
-| Basic | Button, Label, TextBox, CheckBox, RadioButton, ComboBox, ListBox, ProgressBar, DateTimePicker |
-| Containers | Panel, GroupBox, TabControl, SplitPanel, FlowLayoutPanel |
-| Advanced | DataGridView, TreeView, CalendarView, HtmlBox |
+| Basic | Button, Label, TextBox, CheckBox, RadioButton, ComboBox, ListBox, ProgressBar, DateTimePicker, PictureBox, FontPicker, MemoBox, Spinner |
+| Containers | Panel, GroupBox, TabControl, SplitPanel, FlowLayoutPanel, MenuStrip, ToolStrip, TableLayoutPanel |
+| Advanced | DataGridView, TreeView, CalendarView, HtmlBox, DiagramView, PivotTable, KanbanBoardView, StatusStrip |
+| Separators | SeperatorControl |
 
 ### UndoService
 

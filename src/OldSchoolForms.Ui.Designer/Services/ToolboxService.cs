@@ -5,6 +5,7 @@ using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Controls.Separators;
 using OldSchoolForms.Ui.Layout;
 
 namespace OldSchoolForms.Ui.Designer.Services;
@@ -120,17 +121,30 @@ public class ToolboxService
         Register(new ToolboxItem("ListBox", "Basic", typeof(ListBox), new Size(160, 100)));
         Register(new ToolboxItem("ProgressBar", "Basic", typeof(ProgressBar), new Size(200, 28)));
         Register(new ToolboxItem("DateTimePicker", "Basic", typeof(DateTimePicker), new Size(200, 28)));
+        Register(new ToolboxItem("PictureBox", "Basic", typeof(PictureBox), new Size(120, 90)));
+        Register(new ToolboxItem("FontPicker", "Basic", typeof(FontPicker), new Size(220, 30)));
+        Register(new ToolboxItem("MemoBox", "Basic", typeof(MemoBox), new Size(200, 80)));
+        Register(new ToolboxItem("Spinner", "Basic", typeof(Spinner), new Size(120, 28)));
 
         Register(new ToolboxItem("Panel", "Containers", typeof(Panel), new Size(300, 200)));
         Register(new ToolboxItem("GroupBox", "Containers", typeof(GroupBox), new Size(300, 200)));
         Register(new ToolboxItem("TabControl", "Containers", typeof(TabControl), new Size(400, 300)));
         Register(new ToolboxItem("SplitPanel", "Containers", typeof(SplitPanel), new Size(400, 300)));
         Register(new ToolboxItem("FlowLayoutPanel", "Containers", typeof(FlowLayoutPanel), new Size(400, 300)));
+        Register(new ToolboxItem("MenuStrip", "Containers", typeof(MenuStrip), new Size(200, 29)));
+        Register(new ToolboxItem("ToolStrip", "Containers", typeof(ToolStrip), new Size(200, 29)));
+        Register(new ToolboxItem("TableLayoutPanel", "Containers", typeof(TableLayoutPanel), new Size(360, 300)));
 
         Register(new ToolboxItem("DataGridView", "Advanced", typeof(DataGridView), new Size(400, 200)));
         Register(new ToolboxItem("TreeView", "Advanced", typeof(TreeView), new Size(200, 200)));
         Register(new ToolboxItem("CalendarView", "Advanced", typeof(CalendarView), new Size(400, 300)));
         Register(new ToolboxItem("HtmlBox", "Advanced", typeof(HtmlBox), new Size(400, 300)));
+        Register(new ToolboxItem("DiagramView", "Advanced", typeof(DiagramView), new Size(400, 300)));
+        Register(new ToolboxItem("PivotTable", "Advanced", typeof(PivotTable), new Size(400, 300)));
+        Register(new ToolboxItem("KanbanBoardView", "Advanced", typeof(KanbanBoardView), new Size(600, 300)));
+        Register(new ToolboxItem("StatusStrip", "Advanced", typeof(StatusStrip), new Size(200, 25)));
+
+        Register(new ToolboxItem("SeperatorControl", "Separators", typeof(SeperatorControl), new Size(200, 2)));
     }
 
     private static string GenerateControlName(Control control)
