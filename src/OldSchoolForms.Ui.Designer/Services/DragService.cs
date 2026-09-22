@@ -166,11 +166,10 @@ public class DragService
             // converts the desired surface position into whatever the current parent is.
             MoveDragItems(screenPoint);
 
-            // Snap only applies to a single control moving on the surface itself.
-            if (_dragItems.Count == 1 && _dropTarget == null && _surface.SnapToGrid)
-            {
-                ApplyMoveSnap();
-            }
+            // Smart guide snapping applies to moves regardless of selection size, container
+            // nesting, or the grid toggle, so controls align to sibling edges and to the
+            // client edges of their container (or the form).
+            ApplyMoveSnap();
         }
         else
         {
@@ -229,20 +228,97 @@ public class DragService
     private void ApplyMoveSnap()
     {
         var primary = _dragItems[0];
-        var movingBounds = primary.Control.Bounds;
-        var siblingBounds = _surface.Items
-            .Where(i => i != primary)
-            .Select(i => i.Control.Bounds)
-            .ToList();
+        var parent = primary.Control.Parent;
 
-        _currentSnap = _snapService.ComputeSnap(movingBounds, primary.OriginalBounds, siblingBounds);
+        // Everything is computed in surface coordinates so that snapping to the form, to a
+        // nested container, and to sibling controls is consistent. The snap delta is a pure
+        // translation, so it can be applied to each control's Location regardless of parent.
+        var groupBounds = GetDragGroupSurfaceBounds();
+
+        var siblingBounds = new List<Rectangle>();
+        foreach (var item in _surface.Items)
+        {
+            if (_dragItems.Contains(item)) continue;
+            if (!ReferenceEquals(item.Control.Parent, parent)) continue;
+            siblingBounds.Add(ToSurfaceBounds(item.Control));
+        }
+
+        var containerEdges = new List<Rectangle>();
+        var container = GetSnapContainer(parent);
+        if (container != null)
+            containerEdges.Add(GetContainerClientBounds(container));
+
+        _currentSnap = _snapService.ComputeSnap(groupBounds, primary.OriginalBounds, siblingBounds, containerEdges);
 
         if (_currentSnap.HasSnap)
         {
-            primary.Control.Location = new Point(
-                movingBounds.X + _currentSnap.SnapX,
-                movingBounds.Y + _currentSnap.SnapY);
+            foreach (var item in _dragItems)
+                item.Control.Location = new Point(
+                    item.Control.Location.X + _currentSnap.SnapX,
+                    item.Control.Location.Y + _currentSnap.SnapY);
         }
+    }
+
+    /// <summary>
+    /// Converts a control's bounds to the surface's coordinate space.
+    /// </summary>
+    /// <param name="ctrl">The control whose bounds are converted.</param>
+    /// <returns>The control's bounds expressed in surface coordinates.</returns>
+    private Rectangle ToSurfaceBounds(Control ctrl)
+    {
+        var topLeft = _surface.PointToClient(ctrl.PointToScreen(Point.Empty));
+        return new Rectangle(topLeft.X, topLeft.Y, ctrl.Bounds.Width, ctrl.Bounds.Height);
+    }
+
+    /// <summary>
+    /// Computes the bounding rectangle of all dragged controls in surface coordinates.
+    /// </summary>
+    /// <returns>The smallest surface rectangle enclosing every dragged control.</returns>
+    private Rectangle GetDragGroupSurfaceBounds()
+    {
+        int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
+        foreach (var item in _dragItems)
+        {
+            var b = ToSurfaceBounds(item.Control);
+            minX = Math.Min(minX, b.X);
+            minY = Math.Min(minY, b.Y);
+            maxX = Math.Max(maxX, b.Right);
+            maxY = Math.Max(maxY, b.Bottom);
+        }
+
+        return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /// <summary>
+    /// Determines the container whose client edges the dragged group should snap to.
+    /// Controls parented directly to the surface snap to the form (root control); controls
+    /// nested in a container snap to that container.
+    /// </summary>
+    /// <param name="parent">The parent of the dragged primary control.</param>
+    /// <returns>The container control to snap against, or null if none is available.</returns>
+    private ContainerControl? GetSnapContainer(Control? parent)
+    {
+        if (parent is ContainerControl container && !ReferenceEquals(container, _surface))
+            return container;
+
+        return _surface.RootControl as ContainerControl;
+    }
+
+    /// <summary>
+    /// Computes the client-area rectangle of a container in surface coordinates. The client
+    /// area is the region child controls can occupy, i.e. the clip rectangle shifted by the
+    /// container's render offset (which accounts for borders and title bars).
+    /// </summary>
+    /// <param name="container">The container whose client area is computed.</param>
+    /// <returns>The container's client-area rectangle in surface coordinates.</returns>
+    private Rectangle GetContainerClientBounds(ContainerControl container)
+    {
+        var offset = container.GetChildRenderOffsetPublic();
+        var clip = container.GetChildClipRectanglePublic();
+        var clientLocal = new Rectangle(offset.X, offset.Y, clip.Width, clip.Height);
+
+        var topLeft = _surface.PointToClient(container.PointToScreen(clientLocal.Location));
+        return new Rectangle(topLeft.X, topLeft.Y, clientLocal.Width, clientLocal.Height);
     }
 
     private void MoveDragItems(Point screenPoint)

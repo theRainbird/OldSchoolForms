@@ -23,6 +23,6 @@ public sealed class TabPagesEditor : IValueEditor
     public void Open(Control control)
     {
         if (control is not TabControl tabControl) return;
-        Dialogs.TabPagesEditorDialog.ShowDialog(tabControl, control.FindForm());
+        OldSchoolForms.Ui.Dialogs.TabPagesEditorDialog.ShowDialog(tabControl, control.FindForm());
     }
 }

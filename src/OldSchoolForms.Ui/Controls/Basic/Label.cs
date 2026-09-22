@@ -9,6 +9,8 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// </summary>
 public class Label : Control
 {
+    private ContentAlignment _textAlign = ContentAlignment.MiddleLeft;
+
     /// <summary>
     /// Initializes a new instance of Label.
     /// </summary>
@@ -16,6 +18,22 @@ public class Label : Control
     {
         _backColor = Color.Transparent;
         Size = new Size(150, 28);
+    }
+
+    /// <summary>
+    /// Gets or sets the alignment of the text within the label bounds.
+    /// </summary>
+    public ContentAlignment TextAlign
+    {
+        get => _textAlign;
+        set
+        {
+            if (_textAlign != value)
+            {
+                _textAlign = value;
+                Invalidate();
+            }
+        }
     }
 
     /// <summary>
@@ -45,7 +63,25 @@ public class Label : Control
             var theme = ThemeManager.CurrentTheme;
             var textColor = Enabled ? ForeColor : theme.GrayText;
             var font = EffectiveFont;
-            g.DrawString(Text, font, textColor, 3, CoordinateTransform.CenterVertically(Height, font, EffectiveZoom));
+            var zoom = EffectiveZoom;
+            var (textWidth, _) = CoordinateTransform.MeasureText(Text, font, zoom);
+            float scaledSize = font.Size * zoom;
+
+            float x = _textAlign switch
+            {
+                ContentAlignment.TopCenter or ContentAlignment.MiddleCenter or ContentAlignment.BottomCenter => (Width - textWidth) / 2f,
+                ContentAlignment.TopRight or ContentAlignment.MiddleRight or ContentAlignment.BottomRight => Width - textWidth - 3,
+                _ => 3
+            };
+
+            float y = _textAlign switch
+            {
+                ContentAlignment.TopLeft or ContentAlignment.TopCenter or ContentAlignment.TopRight => 0f,
+                ContentAlignment.BottomLeft or ContentAlignment.BottomCenter or ContentAlignment.BottomRight => Height - scaledSize,
+                _ => CoordinateTransform.CenterVertically(Height, font, zoom)
+            };
+
+            g.DrawString(Text, font, textColor, x, y);
 
             base.Render(g);
         }

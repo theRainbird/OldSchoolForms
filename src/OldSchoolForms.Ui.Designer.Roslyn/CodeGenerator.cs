@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer;
 using OldSchoolForms.Ui.Designer.Services;
@@ -132,6 +135,9 @@ public class CodeGenerator
             sb.AppendLine($"{bodyIndent}//");
 
             GeneratePropertyAssignments(sb, bodyIndent, control, fieldName);
+
+            if (control is DataGridView dataGridView)
+                GenerateDataGridViewColumns(sb, bodyIndent, dataGridView, fieldName);
         }
 
         // Controls.Add hierarchy
@@ -173,6 +179,116 @@ public class CodeGenerator
                 sb.AppendLine($"{indent}{fieldName}.{propName} = {value};");
             }
         }
+
+        GenerateTextAlign(sb, indent, control, fieldName);
+    }
+
+    /// <summary>
+    /// Emits a <c>TextAlign</c> assignment for controls that expose a writable
+    /// <see cref="ContentAlignment"/> property whose current value differs from the
+    /// value a freshly created instance of the same control type carries.
+    /// </summary>
+    /// <param name="sb">The builder to append to.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="control">The control whose alignment is serialized.</param>
+    /// <param name="fieldName">The field name of the control.</param>
+    private static void GenerateTextAlign(StringBuilder sb, string indent, Control control, string fieldName)
+    {
+        var prop = control.GetType().GetProperty("TextAlign", BindingFlags.Public | BindingFlags.Instance);
+        if (prop == null || !prop.CanWrite || prop.PropertyType != typeof(ContentAlignment))
+            return;
+
+        var value = (ContentAlignment)prop.GetValue(control)!;
+        var defaultValue = (ContentAlignment)prop.GetValue((Control)Activator.CreateInstance(control.GetType())!)!;
+
+        if (value != defaultValue)
+            sb.AppendLine($"{indent}{fieldName}.TextAlign = ContentAlignment.{value};");
+    }
+
+    /// <summary>
+    /// Emits a <c>Columns.Add(new DataGridViewColumn { ... })</c> call for every column of
+    /// the given grid, serializing each non-default property so designer-created columns
+    /// round-trip into the generated <c>InitializeComponent</c>.
+    /// </summary>
+    /// <param name="sb">The builder to append to.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="grid">The data grid whose columns are serialized.</param>
+    /// <param name="fieldName">The field name of the data grid.</param>
+    private static void GenerateDataGridViewColumns(StringBuilder sb, string indent, DataGridView grid, string fieldName)
+    {
+        if (grid.Columns.Count == 0) return;
+
+        foreach (var column in grid.Columns)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(column.Name)) parts.Add($"Name = {Quote(column.Name)}");
+            if (!string.IsNullOrEmpty(column.HeaderText)) parts.Add($"HeaderText = {Quote(column.HeaderText)}");
+            if (!string.IsNullOrEmpty(column.DataPropertyName)) parts.Add($"DataPropertyName = {Quote(column.DataPropertyName)}");
+            if (column.Width != 100) parts.Add($"Width = {column.Width}");
+            if (column.ReadOnly) parts.Add("ReadOnly = true");
+            if (column.ValueType != null) parts.Add($"ValueType = typeof({FormatTypeName(column.ValueType)})");
+            if (column.TextAlign != DataGridViewContentAlignment.Left) parts.Add($"TextAlign = DataGridViewContentAlignment.{column.TextAlign}");
+            if (!string.IsNullOrEmpty(column.FormatString)) parts.Add($"FormatString = {Quote(column.FormatString)}");
+            if (!column.Resizable) parts.Add("Resizable = false");
+            if (!column.Sortable) parts.Add("Sortable = false");
+            if (!column.Groupable) parts.Add("Groupable = false");
+            if (column.SortOrder != SortOrder.None) parts.Add($"SortOrder = SortOrder.{column.SortOrder}");
+            if (column.CellEditType != DataGridViewColumnEditType.None) parts.Add($"CellEditType = DataGridViewColumnEditType.{column.CellEditType}");
+            if (column.Items != null && column.Items.Count > 0)
+                parts.Add($"Items = new List<object> {{ {string.Join(", ", column.Items.Select(FormatObjectLiteral))} }}");
+            if (column.ComboBoxDropDownStyle != DropDownStyle.DropDownList) parts.Add($"ComboBoxDropDownStyle = DropDownStyle.{column.ComboBoxDropDownStyle}");
+            if (column.TrueValue != null) parts.Add($"TrueValue = {FormatObjectLiteral(column.TrueValue)}");
+            if (column.FalseValue != null) parts.Add($"FalseValue = {FormatObjectLiteral(column.FalseValue)}");
+            if (column.PickerFormat != DateTimePickerFormat.Short) parts.Add($"PickerFormat = DateTimePickerFormat.{column.PickerFormat}");
+            if (!string.IsNullOrEmpty(column.PickerCustomFormat)) parts.Add($"PickerCustomFormat = {Quote(column.PickerCustomFormat)}");
+            if (!string.IsNullOrEmpty(column.ButtonText)) parts.Add($"ButtonText = {Quote(column.ButtonText)}");
+            if (column.ButtonIcon is SvgImage svg && !string.IsNullOrEmpty(svg.ResourceName))
+                parts.Add($"ButtonIcon = SvgImage.FromSvgResource({Quote(svg.ResourceName)}, {svg.DefaultSize})");
+
+            if (parts.Count == 0)
+                sb.AppendLine($"{indent}{fieldName}.Columns.Add(new DataGridViewColumn());");
+            else
+                sb.AppendLine($"{indent}{fieldName}.Columns.Add(new DataGridViewColumn {{ {string.Join(", ", parts)} }});");
+        }
+    }
+
+    /// <summary>
+    /// Formats an arbitrary object value as a C# literal, preserving the common primitive
+    /// types (string, bool, decimal, float, double and other formattable numerics).
+    /// </summary>
+    /// <param name="value">The value to format.</param>
+    /// <returns>A C# literal string for the value.</returns>
+    private static string FormatObjectLiteral(object value)
+    {
+        switch (value)
+        {
+            case null: return "null";
+            case string s: return Quote(s);
+            case bool b: return b ? "true" : "false";
+            case decimal dec: return dec.ToString(CultureInfo.InvariantCulture) + "m";
+            case float f: return f.ToString(CultureInfo.InvariantCulture) + "f";
+            case double dbl: return dbl.ToString(CultureInfo.InvariantCulture);
+            case IFormattable fmt: return fmt.ToString(null, CultureInfo.InvariantCulture);
+            default: return Quote(value.ToString() ?? string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Formats a <see cref="Type"/> as a C# type reference, using keyword aliases for the
+    /// common primitives and the fully qualified name otherwise.
+    /// </summary>
+    /// <param name="type">The type to format.</param>
+    /// <returns>A C# type name usable inside <c>typeof(...)</c>.</returns>
+    private static string FormatTypeName(Type type)
+    {
+        if (type == typeof(int)) return "int";
+        if (type == typeof(long)) return "long";
+        if (type == typeof(double)) return "double";
+        if (type == typeof(float)) return "float";
+        if (type == typeof(decimal)) return "decimal";
+        if (type == typeof(bool)) return "bool";
+        if (type == typeof(string)) return "string";
+        return type.FullName ?? type.Name;
     }
 
     private static void GenerateControlHierarchy(

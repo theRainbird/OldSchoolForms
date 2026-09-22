@@ -10,7 +10,6 @@ namespace OldSchoolForms.Ui.Core;
 /// </summary>
 public class Form : ContainerControl, INativeWindow
 {
-    private string _title = string.Empty;
     protected bool _modal;
     private Form? _ownerForm;
     private DialogResult _dialogResult = DialogResult.None;
@@ -108,19 +107,6 @@ public class Form : ContainerControl, INativeWindow
             _dialogResult = value;
             if (_modal && value != DialogResult.None)
                 Close();
-        }
-    }
-
-    /// <summary>
-    /// Gets or sets the title displayed in the window's title bar.
-    /// </summary>
-    public string Title
-    {
-        get => _title;
-        set
-        {
-            _title = value;
-            UpdateTitle();
         }
     }
 
@@ -1162,11 +1148,15 @@ public class Form : ContainerControl, INativeWindow
         base.OnKeyPress(e);
     }
 
-    private void UpdateTitle()
+    /// <summary>
+    /// Propagates the form's <see cref="Control.Text"/> to the native window title bar.
+    /// </summary>
+    protected override void OnTextChanged()
     {
+        base.OnTextChanged();
         if (_handle != IntPtr.Zero)
         {
-            Platform.Platform.SetWindowTitle(_handle, _title);
+            Platform.Platform.SetWindowTitle(_handle, Text ?? string.Empty);
         }
     }
 

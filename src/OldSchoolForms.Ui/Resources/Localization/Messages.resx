@@ -106,9 +106,93 @@
    <data name="TabPagesDialog_Ok">
      <value>OK</value>
    </data>
-   <data name="TabPagesDialog_Cancel">
-     <value>Cancel</value>
-   </data>
+    <data name="TabPagesDialog_Cancel">
+      <value>Cancel</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_Title">
+      <value>Columns</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_Add">
+      <value>Add</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_Delete">
+      <value>Delete</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_Ok">
+      <value>OK</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_Cancel">
+      <value>Cancel</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColName">
+      <value>Name</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColHeaderText">
+      <value>Header Text</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColDataPropertyName">
+      <value>Data Property Name</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColWidth">
+      <value>Width</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColReadOnly">
+      <value>Read Only</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColValueType">
+      <value>Value Type</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColTextAlign">
+      <value>Text Align</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColFormatString">
+      <value>Format String</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColResizable">
+      <value>Resizable</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColSortable">
+      <value>Sortable</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColGroupable">
+      <value>Groupable</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColSortOrder">
+      <value>Sort Order</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColCellEditType">
+      <value>Cell Edit Type</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColItems">
+      <value>Items</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColComboBoxDropDownStyle">
+      <value>Drop Down Style</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColTrueValue">
+      <value>True Value</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColFalseValue">
+      <value>False Value</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColPickerFormat">
+      <value>Picker Format</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColPickerCustomFormat">
+      <value>Custom Format</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColButtonText">
+      <value>Button Text</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColButtonIcon">
+      <value>Button Icon</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_ColHeaderCell">
+      <value>Header Cell</value>
+    </data>
+    <data name="DataGridViewColumnsDialog_NewColumn">
+      <value>New Column</value>
+    </data>
   <data name="ColorPickerDialog_LabelR">
     <value>R</value>
   </data>

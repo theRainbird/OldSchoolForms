@@ -38,6 +38,19 @@ public class SvgImage : IGraphicsImage
     /// </summary>
     public int Height { get; private set; }
 
+    /// <summary>
+    /// Gets the fully qualified manifest resource name this image was loaded from,
+    /// or <c>null</c> when it was not loaded from an embedded resource. Used by the
+    /// designer to re-emit an equivalent load call when serializing.
+    /// </summary>
+    public string? ResourceName { get; private set; }
+
+    /// <summary>
+    /// Gets the default raster size (in pixels) requested when this image was loaded
+    /// from a resource, or <c>0</c> when not loaded from a resource.
+    /// </summary>
+    public int DefaultSize { get; private set; }
+
     private SvgImage() { }
 
     /// <summary>
@@ -54,7 +67,13 @@ public class SvgImage : IGraphicsImage
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)
                 return null;
-            return FromSvgStream(stream, size);
+            var image = FromSvgStream(stream, size);
+            if (image != null)
+            {
+                image.ResourceName = resourceName;
+                image.DefaultSize = size;
+            }
+            return image;
         }
         catch
         {

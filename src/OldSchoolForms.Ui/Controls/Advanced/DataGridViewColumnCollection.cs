@@ -3,7 +3,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// <summary>
 /// Provides a collection for DataGridView columns.
 /// </summary>
-public class DataGridViewColumnCollection
+public class DataGridViewColumnCollection : System.Collections.Generic.IEnumerable<DataGridViewColumn>
 {
     private readonly List<DataGridViewColumn> _columns = new();
     private readonly Action _invalidate;
@@ -27,6 +27,24 @@ public class DataGridViewColumnCollection
     /// </summary>
     /// <param name="index">The index.</param>
     public DataGridViewColumn this[int index] => _columns[index];
+
+    /// <summary>
+    /// Returns an enumerator that iterates through the columns.
+    /// </summary>
+    /// <returns>An enumerator for the columns.</returns>
+    public System.Collections.Generic.List<DataGridViewColumn>.Enumerator GetEnumerator() => _columns.GetEnumerator();
+
+    /// <summary>
+    /// Returns a typed enumerator that iterates through the columns.
+    /// </summary>
+    /// <returns>A typed enumerator for the columns.</returns>
+    System.Collections.Generic.IEnumerator<DataGridViewColumn> System.Collections.Generic.IEnumerable<DataGridViewColumn>.GetEnumerator() => _columns.GetEnumerator();
+
+    /// <summary>
+    /// Returns an enumerator that iterates through the columns.
+    /// </summary>
+    /// <returns>An enumerator for the columns.</returns>
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _columns.GetEnumerator();
 
     /// <summary>
     /// Adds a column to the collection.

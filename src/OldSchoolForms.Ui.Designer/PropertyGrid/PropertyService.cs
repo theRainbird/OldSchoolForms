@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Design;
 
@@ -40,6 +41,7 @@ public class PropertyService
         if (!_editorsRegistered)
         {
             ValueEditorRegistry.Register(new TabPagesEditor());
+            ValueEditorRegistry.Register(new DataGridViewColumnsEditor());
             _editorsRegistered = true;
         }
     }
@@ -88,6 +90,47 @@ public class PropertyService
 
         return properties.DistinctBy(p => p.Name).ToList();
     }
+
+    /// <summary>
+    /// Gets browsable property descriptors for an arbitrary bound object. When the target is a
+    /// <see cref="Control"/> the control-specific enumeration is used; otherwise every declared
+    /// readable property is returned regardless of type so the full property set is shown.
+    /// Properties that cannot be edited inline are marked read-only.
+    /// </summary>
+    /// <param name="target">The object to inspect.</param>
+    /// <returns>A list of property descriptors.</returns>
+    public List<PropertyDescriptor> GetPropertiesFor(object target)
+    {
+        if (target == null) return new List<PropertyDescriptor>();
+        if (target is Control control) return GetProperties(control);
+        return GetPropertiesForObject(target);
+    }
+
+    /// <summary>
+    /// Enumerates all declared readable properties of a non-control object (such as a
+    /// <see cref="DataGridViewColumn"/>) without the supported-type filter.
+    /// </summary>
+    /// <param name="target">The object to inspect.</param>
+    /// <returns>A list of property descriptors, sorted by category and name.</returns>
+    public List<PropertyDescriptor> GetPropertiesForObject(object target)
+    {
+        if (target == null) return new List<PropertyDescriptor>();
+
+        var readOnlyNames = GetReadOnlyPropertyNames(target);
+
+        return target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(p => p.CanRead)
+            .Select(p => new PropertyDescriptor(p, target, ResolveEditor(p), readOnlyOverride: readOnlyNames.Contains(p.Name)))
+            .OrderBy(p => GetCategoryOrder(p.Category))
+            .ThenBy(p => p.Name)
+            .ToList();
+    }
+
+    private static HashSet<string> GetReadOnlyPropertyNames(object target) => target switch
+    {
+        DataGridViewColumn => new HashSet<string> { "ButtonIcon", "HeaderCell" },
+        _ => new HashSet<string>()
+    };
 
     private static bool HasEditorButton(PropertyInfo property)
         => property.GetCustomAttribute<EditorButtonAttribute>() != null;

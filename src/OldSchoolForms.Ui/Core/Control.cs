@@ -773,6 +773,13 @@ if (_focused != value)
     public Point GetChildRenderOffsetPublic() => GetChildRenderOffset();
 
     /// <summary>
+    /// Gets the clip rectangle applied to child controls. Public accessor for the
+    /// protected virtual <see cref="GetChildClipRectangle"/>, usable from other assemblies.
+    /// </summary>
+    /// <returns>The clip rectangle in the control's local coordinates.</returns>
+    public Rectangle GetChildClipRectanglePublic() => GetChildClipRectangle();
+
+    /// <summary>
     /// Gets the cumulative position of this control relative to its parent Form.
     /// Sums the X/Y coordinates of all parent controls up to the Form,
     /// including any child render offsets applied by parent controls.

@@ -253,7 +253,8 @@ namespace OldSchoolForms.Ui.Rendering;
     /// <param name="x2">The x-coordinate of the end point.</param>
     /// <param name="y2">The y-coordinate of the end point.</param>
     /// <param name="lineWidth">The line width.</param>
-    public void DrawLine(Color color, float x1, float y1, float x2, float y2, float lineWidth = 1f)
+    /// <param name="dashPattern">Optional dash/gap lengths; null draws a solid line.</param>
+    public void DrawLine(Color color, float x1, float y1, float x2, float y2, float lineWidth = 1f, float[]? dashPattern = null)
     {
         _commands.Add(new DrawCommand
         {
@@ -264,6 +265,7 @@ namespace OldSchoolForms.Ui.Rendering;
             X2 = (x2 + _offsetX) * _zoom,
             Y2 = (y2 + _offsetY) * _zoom,
             LineWidth = lineWidth * _zoom,
+            DashPattern = dashPattern == null ? null : dashPattern.Select(d => d * _zoom).ToArray(),
             ClipBounds = ClipBounds
         });
     }
@@ -685,6 +687,13 @@ public class DrawCommand
     /// Gets or sets the line width.
     /// </summary>
     public float LineWidth { get; set; } = 1f;
+
+    /// <summary>
+    /// Gets or sets the dash pattern for stroked commands (e.g. lines, outlines).
+    /// The array alternates dash and gap lengths in the same units as the line width;
+    /// null means a solid stroke.
+    /// </summary>
+    public float[]? DashPattern { get; set; }
 
     /// <summary>
     /// Gets or sets the text (for DrawString commands).

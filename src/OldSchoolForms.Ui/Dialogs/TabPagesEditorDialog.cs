@@ -90,46 +90,33 @@ namespace OldSchoolForms.Ui.Dialogs
 
             Controls.Add(_grid!);
 
-            var buttonPanel = new Panel { Dock = DockStyle.Bottom, Height = 40 };
-
-            var btnAdd = new Button
+            var toolStrip = new ToolStrip
             {
-                Text = LangRes.GetString("TabPagesDialog_Add"),
-                Dock = DockStyle.Left,
-                Width = 100,
+                Dock = DockStyle.Bottom,
                 Height = 30
             };
+
+            var btnAdd = new ToolStripButton(LangRes.GetString("TabPagesDialog_Add"));
             btnAdd.Click += (_, _) => AddRow();
 
-            var btnDelete = new Button
-            {
-                Text = LangRes.GetString("TabPagesDialog_Delete"),
-                Dock = DockStyle.Left,
-                Width = 100,
-                Height = 30
-            };
+            var btnDelete = new ToolStripButton(LangRes.GetString("TabPagesDialog_Delete"));
             btnDelete.Click += (_, _) => DeleteSelectedRow();
 
-            var btnOk = new Button
-            {
-                Text = LangRes.GetString("TabPagesDialog_Ok"),
-                Dock = DockStyle.Right,
-                Width = 75,
-                Height = 30
-            };
+            var separator = new ToolStripSeparator();
+
+            var btnOk = new ToolStripButton(LangRes.GetString("TabPagesDialog_Ok"));
             btnOk.Click += (_, _) => CloseDialog(true);
 
-            var btnCancel = new Button
-            {
-                Text = LangRes.GetString("TabPagesDialog_Cancel"),
-                Dock = DockStyle.Right,
-                Width = 75,
-                Height = 30
-            };
+            var btnCancel = new ToolStripButton(LangRes.GetString("TabPagesDialog_Cancel"));
             btnCancel.Click += (_, _) => CloseDialog(false);
 
-            buttonPanel.Controls.AddRange([btnAdd, btnDelete, btnCancel, btnOk]);
-            Controls.Add(buttonPanel);
+            toolStrip.Items.Add(btnAdd);
+            toolStrip.Items.Add(btnDelete);
+            toolStrip.Items.Add(separator);
+            toolStrip.Items.Add(btnOk);
+            toolStrip.Items.Add(btnCancel);
+
+            Controls.Add(toolStrip);
         }
 
         private void PopulateGrid()

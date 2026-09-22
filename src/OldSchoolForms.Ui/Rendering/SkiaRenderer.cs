@@ -240,7 +240,14 @@ public class SkiaRenderer : IDisposable
     /// <summary>
     /// Draws a line between two points.
     /// </summary>
-    public void DrawLine(Core.Color color, float x1, float y1, float x2, float y2, float lineWidth = 1f)
+    /// <param name="color">The line color.</param>
+    /// <param name="x1">The x-coordinate of the start point.</param>
+    /// <param name="y1">The y-coordinate of the start point.</param>
+    /// <param name="x2">The x-coordinate of the end point.</param>
+    /// <param name="y2">The y-coordinate of the end point.</param>
+    /// <param name="lineWidth">The line width.</param>
+    /// <param name="dashPattern">Optional dash/gap lengths; null draws a solid line.</param>
+    public void DrawLine(Core.Color color, float x1, float y1, float x2, float y2, float lineWidth = 1f, float[]? dashPattern = null)
     {
         using var paint = new SKPaint
         {
@@ -250,6 +257,10 @@ public class SkiaRenderer : IDisposable
             Style = SKPaintStyle.Stroke,
             StrokeCap = lineWidth >= 3f ? SKStrokeCap.Round : SKStrokeCap.Butt
         };
+        if (dashPattern != null && dashPattern.Length >= 2)
+        {
+            paint.PathEffect = SKPathEffect.CreateDash(dashPattern, 0f);
+        }
         _surface.Canvas.DrawLine(x1, y1, x2, y2, paint);
     }
 

@@ -39,7 +39,7 @@ public class DesignerForm : Form
     /// </summary>
     public DesignerForm()
     {
-        Title = "OldSchoolForms Form Designer";
+        Text = "OldSchoolForms Form Designer";
         Width = 1400;
         Height = 900;
         Zoom = 1.0f;
@@ -268,7 +268,7 @@ public class DesignerForm : Form
         _statusLabel.Text = type == NewDocumentType.UserControl
             ? "Neues Benutzersteuerelement"
             : "Neues Formular";
-        Title = "OldSchoolForms Form Designer - [Unbenannt]";
+        Text = "OldSchoolForms Form Designer - [Unbenannt]";
     }
 
     private void OpenForm()
@@ -286,7 +286,7 @@ public class DesignerForm : Form
                 var parser = new Roslyn.FormParser();
                 var warnings = parser.Parse(File.ReadAllText(dialog.FileName), _designSurface);
                 _statusLabel.Text = $"Geöffnet: {dialog.FileName}";
-                Title = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+                Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
             }
             catch (Exception ex)
             {
@@ -316,7 +316,7 @@ public class DesignerForm : Form
             string code = generator.Generate("OldSchoolForms.Ui.Demo", "MainForm");
             File.WriteAllText(dialog.FileName, code);
             _statusLabel.Text = $"Gespeichert: {dialog.FileName}";
-            Title = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+            Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
         }
     }
 }

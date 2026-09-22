@@ -153,6 +153,41 @@ public class DataGridViewColumn
     /// The icon is drawn to the left of the button text.
     /// </summary>
     public IGraphicsImage? ButtonIcon { get; set; }
+
+    /// <summary>
+    /// Creates a shallow copy of this column. The <see cref="Items"/> list is copied so the
+    /// clone can be edited independently; reference-typed values such as <see cref="ButtonIcon"/>
+    /// and <see cref="HeaderCell"/> are shared with the original.
+    /// </summary>
+    /// <returns>A new <see cref="DataGridViewColumn"/> carrying the same property values.</returns>
+    public DataGridViewColumn Clone()
+    {
+        return new DataGridViewColumn
+        {
+            Name = Name,
+            HeaderText = HeaderText,
+            DataPropertyName = DataPropertyName,
+            Width = Width,
+            HeaderCell = HeaderCell,
+            ReadOnly = ReadOnly,
+            ValueType = ValueType,
+            TextAlign = TextAlign,
+            FormatString = FormatString,
+            Resizable = Resizable,
+            Sortable = Sortable,
+            Groupable = Groupable,
+            SortOrder = SortOrder,
+            CellEditType = CellEditType,
+            Items = Items != null ? new List<object>(Items) : null,
+            ComboBoxDropDownStyle = ComboBoxDropDownStyle,
+            TrueValue = TrueValue,
+            FalseValue = FalseValue,
+            PickerFormat = PickerFormat,
+            PickerCustomFormat = PickerCustomFormat,
+            ButtonText = ButtonText,
+            ButtonIcon = ButtonIcon
+        };
+    }
 }
 
 /// <summary>

@@ -30,6 +30,17 @@ public static class Platform
     private static long _lastRenderTicks;
     private static IKeyboard? _keyboard;
 
+    // Held-key auto-repeat. GLFW surfaces key repeat only through the char callback, so
+    // non-textual editing keys (Backspace, Delete, arrows, Home/End) never re-fire KeyDown
+    // while held. We synthesize the repeats here to match native text-editing behaviour.
+    private const long KeyRepeatInitialDelayMs = 500;
+    private const long KeyRepeatIntervalMs = 33;
+    private static Keys _repeatKey = Keys.None;
+    private static ModifierKeys _repeatModifiers;
+    private static long _repeatPressTicks;
+    private static long _repeatLastTicks;
+    private static Form? _repeatForm;
+
     private static readonly Dictionary<uint, List<Action>> _windowCleanupActions = new();
     private static readonly Dictionary<uint, ClickInfo> _lastClickInfo = new();
 
@@ -596,6 +607,20 @@ public static class Platform
                         Modifiers = MapModifierKeys(keyboard)
                     };
                     _focusedWindow.OnKeyDown(args);
+
+                    if (IsAutoRepeatKey(args.KeyCode))
+                    {
+                        _repeatKey = args.KeyCode;
+                        _repeatModifiers = args.Modifiers;
+                        _repeatPressTicks = Environment.TickCount64;
+                        _repeatLastTicks = _repeatPressTicks;
+                        _repeatForm = _focusedWindow;
+                    }
+                    else
+                    {
+                        _repeatKey = Keys.None;
+                        _repeatForm = null;
+                    }
                 };
                 keyboard.KeyDown += keyDown;
                 cleanup.Add(() => keyboard.KeyDown -= keyDown);
@@ -609,6 +634,12 @@ public static class Platform
                         Modifiers = MapModifierKeys(keyboard)
                     };
                     _focusedWindow.OnKeyUp(args);
+
+                    if (args.KeyCode == _repeatKey)
+                    {
+                        _repeatKey = Keys.None;
+                        _repeatForm = null;
+                    }
                 };
                 keyboard.KeyUp += keyUp;
                 cleanup.Add(() => keyboard.KeyUp -= keyUp);
@@ -1156,6 +1187,32 @@ public static class Platform
             try { ctx.Window.Close(); } catch { }
         }
 
+        // Synthesize auto-repeat for held editing/navigation keys (GLFW does not re-raise
+        // KeyDown for these). Runs on the same thread that pumps DoEvents above.
+        if (_repeatForm != null)
+        {
+            long repeatNow = Environment.TickCount64;
+            if (_focusedWindow != _repeatForm)
+            {
+                _repeatKey = Keys.None;
+                _repeatForm = null;
+            }
+            else if (repeatNow - _repeatPressTicks >= KeyRepeatInitialDelayMs &&
+                     repeatNow - _repeatLastTicks >= KeyRepeatIntervalMs)
+            {
+                _repeatLastTicks = repeatNow;
+                try
+                {
+                    _repeatForm.OnKeyDown(new KeyEventArgs
+                    {
+                        KeyCode = _repeatKey,
+                        Modifiers = _repeatModifiers
+                    });
+                }
+                catch { }
+            }
+        }
+
         // 30 fps frame pacing: sleep until the next frame is due
         long elapsed = _frameTimer.Elapsed.Ticks - _lastRenderTicks;
         if (elapsed < FrameInterval.Ticks)
@@ -1249,7 +1306,7 @@ public static class Platform
                 renderer.DrawRectangle(cmd.Color, cmd.X, cmd.Y, cmd.Width, cmd.Height, cmd.LineWidth);
                 break;
             case DrawCommandType.DrawLine:
-                renderer.DrawLine(cmd.Color, cmd.X, cmd.Y, cmd.X2, cmd.Y2, cmd.LineWidth);
+                renderer.DrawLine(cmd.Color, cmd.X, cmd.Y, cmd.X2, cmd.Y2, cmd.LineWidth, cmd.DashPattern);
                 break;
             case DrawCommandType.DrawString:
                 if (!string.IsNullOrEmpty(cmd.Text) && cmd.Font != null)
@@ -1333,6 +1390,29 @@ public static class Platform
         DrawCommandType.DrawEllipse => true,
         _ => false
     };
+
+    /// <summary>
+    /// Determines whether a key should auto-repeat while held. Textual keys repeat via the
+    /// char callback; this covers the non-textual editing/navigation keys that GLFW does not
+    /// re-surface as <c>KeyDown</c>.
+    /// </summary>
+    /// <param name="key">The mapped key to test.</param>
+    /// <returns><c>true</c> if the key should auto-repeat while held; otherwise <c>false</c>.</returns>
+    private static bool IsAutoRepeatKey(Core.Keys key)
+    {
+        return key switch
+        {
+            Core.Keys.Back => true,
+            Core.Keys.Delete => true,
+            Core.Keys.Left => true,
+            Core.Keys.Right => true,
+            Core.Keys.Up => true,
+            Core.Keys.Down => true,
+            Core.Keys.Home => true,
+            Core.Keys.End => true,
+            _ => false
+        };
+    }
 
     private static Core.Keys MapKeyCode(Key key)
     {

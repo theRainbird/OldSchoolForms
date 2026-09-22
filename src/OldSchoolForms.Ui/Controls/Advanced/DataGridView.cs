@@ -2,6 +2,7 @@ using System.ComponentModel;
 using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Data;
+using OldSchoolForms.Ui.Design;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -101,6 +102,10 @@ public class DataGridView : ContainerControl
         else Invalidate();
     }
 
+    /// <summary>
+    /// Gets the collection of columns displayed by the grid.
+    /// </summary>
+    [EditorButton]
     public DataGridViewColumnCollection Columns => _columns;
     public DataGridViewRowCollection Rows => _rows;
 

@@ -45,6 +45,15 @@ public class PropertyGridEnumSelectionTests
             }
         }
 
+        public int DropdownTop
+        {
+            get
+            {
+                FieldInfo fi = typeof(PG).GetField("_dropdownTop", BindingFlags.NonPublic | BindingFlags.Instance)!;
+                return (int)fi.GetValue(this)!;
+            }
+        }
+
         public void SimulateClick(int x, int y)
             => OnMouseDown(new MouseEventArgs(MouseButtons.Left, 1, x, y, 0f));
     }
@@ -89,7 +98,9 @@ public class PropertyGridEnumSelectionTests
         Assert.True(grid.IsDropdownOpen);
 
         // Select the item at index 1 ("Top" in the custom DockStyle declaration order).
-        grid.SimulateClick(valueX + 20, rowY + RowHeight + 1 * DropdownItemHeight);
+        // The dropdown may flip above the row when there is not enough room below, so the
+        // click is anchored to the actual dropdown top rather than a fixed offset.
+        grid.SimulateClick(valueX + 20, grid.DropdownTop + 1 * DropdownItemHeight + 5);
 
         Assert.False(grid.IsDropdownOpen);
         Assert.Equal(DockStyle.Top, button.Dock);

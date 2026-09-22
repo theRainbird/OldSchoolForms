@@ -2909,6 +2909,9 @@ public static class Icons
     /// <summary>Gets the SvgRepo icon: minus</summary>
     public static SvgImage? Minus => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.SvgRepo.minus.svg", 24);
 
+    /// <summary>Gets the SvgRepo icon: delete (trash can)</summary>
+    public static SvgImage? Trash => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.SvgRepo.delete.svg", 24);
+
     /// <summary>Gets the SvgRepo icon: missed-call</summary>
     public static SvgImage? MissedCall => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.SvgRepo.missed-call.svg", 24);
 

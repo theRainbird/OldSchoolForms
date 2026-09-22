@@ -287,6 +287,19 @@ public class PropertyGridRow
         {
             g.DrawString(collection.Count.ToString(), theme.DefaultFont, theme.ControlText, x + 4, y + 5);
         }
+        else if (type == typeof(Type))
+        {
+            g.DrawString(((Type)value).Name, theme.DefaultFont, theme.ControlText, x + 4, y + 5);
+        }
+        else if (value is System.Collections.IEnumerable enumerable && value is not string)
+        {
+            g.DrawString(string.Join(", ", enumerable.Cast<object>()), theme.DefaultFont, theme.ControlText, x + 4, y + 5);
+        }
+        else if (value is OldSchoolForms.Ui.Core.IGraphicsImage)
+        {
+            var name = (value as OldSchoolForms.Ui.Core.SvgImage)?.ResourceName ?? value.ToString() ?? "";
+            g.DrawString(name, theme.DefaultFont, theme.ControlText, x + 4, y + 5);
+        }
         else
         {
             g.DrawString(value.ToString() ?? "", theme.DefaultFont, theme.ControlText, x + 4, y + 5);
@@ -550,11 +563,27 @@ public class PropertyGridRow
     public void StartEdit()
     {
         var value = _descriptor.GetValue();
-        _editBuffer = value?.ToString() ?? "";
+        _editBuffer = ValueToEditText(value);
         _caretPos = _editBuffer.Length;
         _anchor = _caretPos;
         _isEditing = true;
         _isEnumDropdownOpen = false;
+    }
+
+    /// <summary>
+    /// Converts a property value into the text shown in the inline edit buffer. Collections are
+    /// rendered as a comma-separated list and <see cref="Type"/> values as their short name so
+    /// the user can edit them as plain text.
+    /// </summary>
+    /// <param name="value">The current property value.</param>
+    /// <returns>The text to place in the edit buffer.</returns>
+    private static string ValueToEditText(object? value)
+    {
+        if (value == null) return string.Empty;
+        if (value is Type t) return t.Name;
+        if (value is System.Collections.IEnumerable enumerable && value is not string)
+            return string.Join(", ", enumerable.Cast<object>());
+        return value.ToString() ?? string.Empty;
     }
 
     /// <summary>
@@ -948,10 +977,80 @@ public class PropertyGridRow
                 if (size.HasValue)
                     _descriptor.SetValue(size.Value);
             }
+            else if (_descriptor.PropertyType == typeof(Type))
+            {
+                var parsedType = ParseType(_editBuffer);
+                if (parsedType != null)
+                    _descriptor.SetValue(parsedType);
+            }
+            else if (_descriptor.PropertyType == typeof(List<object>))
+            {
+                _descriptor.SetValue(ParseItems(_editBuffer));
+            }
+            else if (_descriptor.PropertyType == typeof(object))
+            {
+                _descriptor.SetValue(ParseScalar(_editBuffer));
+            }
         }
         catch { }
 
         _isEditing = false;
+    }
+
+    /// <summary>
+    /// Parses a <see cref="Type"/> from a friendly keyword (e.g. <c>int</c>, <c>bool</c>,
+    /// <c>decimal</c>) or a fully-qualified type name.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>The parsed type, or <see langword="null"/> if it cannot be resolved.</returns>
+    private static Type? ParseType(string text)
+    {
+        var value = text.Trim();
+        if (value.Length == 0) return null;
+        return value.ToLowerInvariant() switch
+        {
+            "int" or "int32" => typeof(int),
+            "long" or "int64" => typeof(long),
+            "double" => typeof(double),
+            "float" or "single" => typeof(float),
+            "decimal" => typeof(decimal),
+            "bool" or "boolean" => typeof(bool),
+            "string" => typeof(string),
+            "datetime" or "datetimeoffset" => typeof(DateTime),
+            _ => Type.GetType(value, throwOnError: false)
+        };
+    }
+
+    /// <summary>
+    /// Parses a comma-separated string into a list of objects, trimming each entry and
+    /// discarding empty ones.
+    /// </summary>
+    /// <param name="text">The comma-separated text.</param>
+    /// <returns>A list of items, or <see langword="null"/> when no items are present.</returns>
+    private static List<object>? ParseItems(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var items = text.Split(',')
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
+            .Select(s => (object)s)
+            .ToList();
+        return items.Count > 0 ? items : null;
+    }
+
+    /// <summary>
+    /// Parses a scalar value from text, inferring a <see cref="bool"/>, <see cref="int"/>,
+    /// <see cref="decimal"/> or falling back to <see cref="string"/>.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>The inferred scalar value.</returns>
+    private static object ParseScalar(string text)
+    {
+        var value = text.Trim();
+        if (bool.TryParse(value, out var b)) return b;
+        if (int.TryParse(value, out var i)) return i;
+        if (decimal.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+        return value;
     }
 
     /// <summary>

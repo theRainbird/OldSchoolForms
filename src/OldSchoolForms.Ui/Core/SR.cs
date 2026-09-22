@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Core;
 /// <summary>
 /// Provides localized string resources for the framework.
 /// </summary>
-internal static class LangRes
+public static class LangRes
 {
     private static readonly ResourceManager _manager =
         new("OldSchoolForms.Ui.Resources.Localization.Messages", typeof(LangRes).Assembly);

@@ -43,7 +43,6 @@ public class MultiWindowPage : UserControl
         {
             var win = new Form
             {
-                Title = SR.GetString("SimpleWindowTitle"),
                 Text = SR.GetString("SimpleWindowTitle"),
                 Width = 400,
                 Height = 300
@@ -70,7 +69,6 @@ public class MultiWindowPage : UserControl
             int clickCount = 0;
             var win = new Form
             {
-                Title = SR.GetString("WindowControlsTitle"),
                 Text = SR.GetString("WindowControlsTitle"),
                 Width = 400,
                 Height = 250,
@@ -118,7 +116,6 @@ public class MultiWindowPage : UserControl
         {
             var dlg = new Form
             {
-                Title = SR.GetString("ModalWindowTitle"),
                 Text = SR.GetString("ModalWindowTitle"),
                 Width = 350,
                 Height = 200,
@@ -146,7 +143,6 @@ public class MultiWindowPage : UserControl
         {
             var dlg = new Form
             {
-                Title = SR.GetString("ConfirmTitle"),
                 Text = SR.GetString("ConfirmTitle"),
                 Width = 300,
                 Height = 180,
@@ -202,7 +198,6 @@ public class MultiWindowPage : UserControl
         {
             var dlg = new Form
             {
-                Title = SR.GetString("FixedDialogTitle"),
                 Text = SR.GetString("FixedDialogTitle"),
                 Width = 350,
                 Height = 200,

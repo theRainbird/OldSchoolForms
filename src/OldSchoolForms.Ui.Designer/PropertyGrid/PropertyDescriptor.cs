@@ -14,6 +14,7 @@ public class PropertyDescriptor
 {
     private readonly PropertyInfo _property;
     private readonly object _target;
+    private readonly bool _readOnlyOverride;
 
     /// <summary>
     /// Gets the display name of the property.
@@ -31,9 +32,11 @@ public class PropertyDescriptor
     public Type PropertyType => _property.PropertyType;
 
     /// <summary>
-    /// Gets whether this property is read-only.
+    /// Gets whether this property is read-only. True when the property has no setter or when
+    /// a read-only override was supplied at construction (used for properties that have a
+    /// setter but cannot be edited inline, such as image or complex object properties).
     /// </summary>
-    public bool IsReadOnly => !_property.CanWrite;
+    public bool IsReadOnly => _readOnlyOverride || !_property.CanWrite;
 
     /// <summary>
     /// Gets the dedicated value editor for this property, or null if the property
@@ -60,11 +63,13 @@ public class PropertyDescriptor
     /// <param name="property">The reflection PropertyInfo.</param>
     /// <param name="target">The object instance to read/write values from.</param>
     /// <param name="editor">The dedicated value editor for the property, if any.</param>
-    public PropertyDescriptor(PropertyInfo property, object target, IValueEditor? editor = null)
+    /// <param name="readOnlyOverride">When true, forces the property to be read-only even if it has a setter.</param>
+    public PropertyDescriptor(PropertyInfo property, object target, IValueEditor? editor = null, bool readOnlyOverride = false)
     {
         _property = property;
         _target = target;
         Editor = editor;
+        _readOnlyOverride = readOnlyOverride;
 
         Category = property.GetCustomAttribute<System.ComponentModel.CategoryAttribute>()?.Category
             ?? GuessCategory(property.Name);

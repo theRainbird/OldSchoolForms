@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OldSchoolForms.Ui\OldSchoolForms.Ui.csproj" />
+    <ProjectReference Include="..\..\src\OldSchoolForms.Ui.Designer.Roslyn\OldSchoolForms.Ui.Designer.Roslyn.csproj" />
   </ItemGroup>
 
 </Project>

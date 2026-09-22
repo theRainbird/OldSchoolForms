@@ -192,4 +192,62 @@ public class CodeGeneratorTests
         Assert.Contains("Controls.Add", code);
         Assert.Contains("TabPages.Add", code);
     }
+
+    [Fact]
+    public void Generate_DataGridViewWithColumns_EmitsColumnsAddWithProperties()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var grid = new DataGridView { Name = "dataGrid", Size = new Size(500, 300) };
+        grid.Columns.Add(new DataGridViewColumn
+        {
+            Name = "Status",
+            HeaderText = "Status",
+            Width = 120,
+            CellEditType = DataGridViewColumnEditType.ComboBox,
+            Items = new System.Collections.Generic.List<object> { "Active", "Inactive" }
+        });
+        surface.AddControl(grid, new Point(10, 10));
+
+        string code = new CodeGenerator(surface).Generate("Demo", "MainForm");
+
+        Assert.Contains("dataGrid.Columns.Add(new DataGridViewColumn", code);
+        Assert.Contains("Name = \"Status\"", code);
+        Assert.Contains("HeaderText = \"Status\"", code);
+        Assert.Contains("Width = 120", code);
+        Assert.Contains("CellEditType = DataGridViewColumnEditType.ComboBox", code);
+        Assert.Contains("Items = new List<object> { \"Active\", \"Inactive\" }", code);
+    }
+
+    [Fact]
+    public void Generate_DataGridViewButtonColumn_EmitsButtonTextAndIcon()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var grid = new DataGridView { Name = "dataGrid", Size = new Size(500, 300) };
+        grid.Columns.Add(new DataGridViewColumn
+        {
+            Name = "Actions",
+            CellEditType = DataGridViewColumnEditType.Button,
+            ButtonText = "Edit",
+            ButtonIcon = OldSchoolForms.Ui.Resources.Icons.Edit16
+        });
+        surface.AddControl(grid, new Point(10, 10));
+
+        string code = new CodeGenerator(surface).Generate("Demo", "MainForm");
+
+        Assert.Contains("CellEditType = DataGridViewColumnEditType.Button", code);
+        Assert.Contains("ButtonText = \"Edit\"", code);
+        Assert.Contains("ButtonIcon = SvgImage.FromSvgResource(", code);
+    }
+
+    [Fact]
+    public void Generate_DataGridViewWithNoColumns_EmitsNoColumnsAdd()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var grid = new DataGridView { Name = "dataGrid", Size = new Size(500, 300) };
+        surface.AddControl(grid, new Point(10, 10));
+
+        string code = new CodeGenerator(surface).Generate("Demo", "MainForm");
+
+        Assert.DoesNotContain("Columns.Add", code);
+    }
 }

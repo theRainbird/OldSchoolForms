@@ -17,7 +17,8 @@ namespace OldSchoolForms.Ui.Designer.PropertyGrid;
 public class PropertyGrid : ContainerControl
 {
     private readonly PropertyService _propertyService;
-    private readonly SelectionService _selectionService;
+    private readonly SelectionService? _selectionService;
+    private object? _boundObject;
     private readonly List<PropertyGridRow> _rows = new();
     internal readonly ScrollBarEngine _vScrollBar = new();
     private ScrollBarContext? _scrollBarContext;
@@ -28,7 +29,6 @@ public class PropertyGrid : ContainerControl
     private const int ValueColumnWidth = 160;
     private const int DropdownArrowWidth = 20;
     private const int DropdownItemHeight = 22;
-    private const int MaxDropdownHeight = 150;
     private const int ColorSwatchSize = 18;
     private const int ColorPaletteCols = 17;
     private const int ColorPaletteMaxVisibleRows = 10;
@@ -42,6 +42,10 @@ public class PropertyGrid : ContainerControl
     private int _dropdownValueX;
     private int _dropdownRowY;
     private int _dropdownItemCount;
+    private int _dropdownTop;
+    private int _dropdownHeight;
+    private int _dropdownVisibleCount;
+    private bool _dropdownUp;
 
     private bool _dragSelecting;
     private PropertyGridRow? _dragSelectRow;
@@ -76,13 +80,33 @@ public class PropertyGrid : ContainerControl
     public event EventHandler<PropertyValueChangedEventArgs>? PropertyValueChanged;
 
     /// <summary>
-    /// Initializes a new instance.
+    /// Initializes a new instance of the <see cref="PropertyGrid"/> control without a
+    /// <see cref="SelectionService"/>. Use <see cref="BindObject"/> to edit an arbitrary
+    /// object (such as a <see cref="OldSchoolForms.Ui.Controls.Advanced.DataGridViewColumn"/>)
+    /// instead of the control selected through the designer's selection service.
     /// </summary>
-    /// <param name="selectionService">The selection service to observe.</param>
-    public PropertyGrid(SelectionService selectionService)
+    public PropertyGrid()
     {
         _propertyService = new PropertyService();
+        Initialize();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PropertyGrid"/> control that observes the
+    /// supplied <paramref name="selectionService"/> and edits the currently selected control.
+    /// </summary>
+    /// <param name="selectionService">The selection service to observe.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="selectionService"/> is null.</exception>
+    public PropertyGrid(SelectionService selectionService)
+    {
         _selectionService = selectionService ?? throw new ArgumentNullException(nameof(selectionService));
+        _propertyService = new PropertyService();
+        Initialize();
+        _selectionService.SelectionChanged += OnSelectionChanged;
+    }
+
+    private void Initialize()
+    {
         BackColor = ThemeManager.CurrentTheme.ControlLight;
 
         _vScrollBar.Orientation = ScrollBarEngine.ScrollBarOrientation.Vertical;
@@ -90,8 +114,20 @@ public class PropertyGrid : ContainerControl
         _vScrollBar.SmallChange = RowHeight;
         _vScrollBar.LargeChange = RowHeight * 4;
         _vScrollBar.Scroll += (_, _) => Invalidate();
+    }
 
-        _selectionService.SelectionChanged += OnSelectionChanged;
+    /// <summary>
+    /// Binds the grid to an arbitrary object (such as a
+    /// <see cref="OldSchoolForms.Ui.Controls.Advanced.DataGridViewColumn"/>) instead of the
+    /// control selected through the <see cref="SelectionService"/>. Rebuilds the property rows
+    /// from the bound object's declared properties. Pass null to clear the binding.
+    /// </summary>
+    /// <param name="target">The object to bind, or null to clear.</param>
+    public void BindObject(object? target)
+    {
+        _boundObject = target;
+        RebuildRows();
+        Invalidate();
     }
 
     /// <summary>
@@ -116,7 +152,7 @@ public class PropertyGrid : ContainerControl
 
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
-        TargetControl = _selectionService.PrimarySelection?.Control;
+        TargetControl = _selectionService?.PrimarySelection?.Control;
         RebuildRows();
         Invalidate();
     }
@@ -124,9 +160,10 @@ public class PropertyGrid : ContainerControl
     private void RebuildRows()
     {
         _rows.Clear();
-        if (TargetControl == null) return;
+        var target = _boundObject ?? (object?)TargetControl;
+        if (target == null) return;
 
-        var properties = _propertyService.GetProperties(TargetControl);
+        var properties = _propertyService.GetPropertiesFor(target);
 
         foreach (var prop in properties)
         {
@@ -283,10 +320,10 @@ public class PropertyGrid : ContainerControl
         if (_dropdownOpen && _dropdownRow != null)
         {
             if (args.X >= _dropdownValueX && args.X < _dropdownValueX + ValueColumnWidth &&
-                args.Y >= _dropdownRowY + RowHeight && args.Y < _dropdownRowY + RowHeight + MaxDropdownHeight)
+                args.Y >= _dropdownTop && args.Y < _dropdownTop + _dropdownHeight)
             {
-                int itemIndex = (args.Y - _dropdownRowY - RowHeight) / DropdownItemHeight;
-                if (itemIndex >= 0 && itemIndex < _dropdownItemCount)
+                int itemIndex = (args.Y - _dropdownTop) / DropdownItemHeight;
+                if (itemIndex >= 0 && itemIndex < _dropdownVisibleCount)
                 {
                     if (_dropdownRow.IsFlagsEnum)
                     {
@@ -475,13 +512,92 @@ public class PropertyGrid : ContainerControl
         _dropdownRow = row;
         _dropdownSelectedIndex = row.EnumSelectedIndex;
         _dropdownValueX = valueX;
-        _dropdownRowY = rowY;
         _dropdownItemCount = row.EnumValueCount;
 
+        // Make the row visible first, then place the dropdown relative to its
+        // on-screen (post-scroll) position so the box never overlaps the row itself.
         _vScrollBar.EnsureVisible(rowY + _vScrollBar.Value, RowHeight);
+        int localRowY = GetRowY(_rows.IndexOf(row));
+        _dropdownRowY = localRowY;
+
+        ComputeDropdownPlacement(localRowY, _dropdownItemCount);
 
         CapturingMouse = true;
         Invalidate();
+    }
+
+    /// <summary>
+    /// Computes the on-screen geometry of the enum dropdown so that whole items are always
+    /// shown and the list is never clipped by, or painted over, the surrounding rows. The
+    /// dropdown is rendered below the editing row when there is enough room; otherwise it
+    /// flips above the row (mirroring the color picker placement) and, if neither side can
+    /// host the full list, is limited to the number of whole items that fit in the larger
+    /// of the two available regions. The resulting box is clamped to the bounds of the
+    /// top-level form.
+    /// </summary>
+    /// <param name="rowY">The grid-local Y coordinate of the editing row.</param>
+    /// <param name="itemCount">The total number of enum items in the dropdown.</param>
+    private void ComputeDropdownPlacement(int rowY, int itemCount)
+    {
+        Form? topForm = null;
+        Control? current = this;
+        int gridFormY = 0;
+        while (current != null)
+        {
+            if (current is Form form)
+            {
+                topForm = form;
+                break;
+            }
+            gridFormY += current.Y;
+            current = current.Parent;
+        }
+
+        int formTop = topForm?.ClientRectangle.Top ?? 0;
+        int formBottom = topForm?.ClientRectangle.Bottom ?? Height;
+
+        int formTopLocal = formTop - gridFormY;
+        int formBottomLocal = formBottom - gridFormY;
+
+        int desired = itemCount * DropdownItemHeight;
+        int rowBottomLocal = rowY + RowHeight;
+        int spaceBelow = formBottomLocal - rowBottomLocal;
+        int spaceAbove = rowY - formTopLocal;
+
+        bool up;
+        int available;
+        if (desired <= spaceBelow)
+        {
+            up = false;
+            available = desired;
+        }
+        else if (desired <= spaceAbove)
+        {
+            up = true;
+            available = spaceAbove;
+        }
+        else if (spaceBelow >= spaceAbove)
+        {
+            up = false;
+            available = spaceBelow;
+        }
+        else
+        {
+            up = true;
+            available = spaceAbove;
+        }
+
+        int visible = available / DropdownItemHeight;
+        if (visible < 1) visible = 1;
+        if (visible > itemCount) visible = itemCount;
+
+        _dropdownUp = up;
+        _dropdownVisibleCount = visible;
+        _dropdownHeight = visible * DropdownItemHeight;
+        _dropdownTop = up ? rowY - _dropdownHeight : rowBottomLocal;
+
+        if (_dropdownTop < formTopLocal) _dropdownTop = formTopLocal;
+        if (_dropdownTop + _dropdownHeight > formBottomLocal) _dropdownTop = formBottomLocal - _dropdownHeight;
     }
 
     private void CloseEnumDropdown()
@@ -959,10 +1075,10 @@ public class PropertyGrid : ContainerControl
         {
             MouseEventArgs me = (MouseEventArgs)e;
             if (me.X >= _dropdownValueX && me.X < _dropdownValueX + ValueColumnWidth &&
-                me.Y >= _dropdownRowY + RowHeight && me.Y < _dropdownRowY + RowHeight + _dropdownItemCount * DropdownItemHeight)
+                me.Y >= _dropdownTop && me.Y < _dropdownTop + _dropdownHeight)
             {
-                int hoveredIndex = (me.Y - _dropdownRowY - RowHeight) / DropdownItemHeight;
-                if (hoveredIndex >= 0 && hoveredIndex < _dropdownItemCount)
+                int hoveredIndex = (me.Y - _dropdownTop) / DropdownItemHeight;
+                if (hoveredIndex >= 0 && hoveredIndex < _dropdownVisibleCount)
                 {
                     if (_dropdownHoveredIndex != hoveredIndex)
                     {
@@ -1061,7 +1177,7 @@ public class PropertyGrid : ContainerControl
         g.FillRectangle(theme.ActiveCaption, 0, 0, Width, HeaderHeight);
         g.DrawString("Eigenschaften", theme.DefaultFont, theme.ActiveCaptionText, 6, 4);
 
-        if (TargetControl == null)
+        if (_boundObject == null && TargetControl == null)
         {
             g.DrawString("Keine Auswahl", theme.DefaultFont, theme.GrayText, 10, HeaderHeight + 10);
             _vScrollBar.Render(g, new Rectangle(Width - sbw, 0, sbw, Height), theme);
@@ -1136,23 +1252,25 @@ public class PropertyGrid : ContainerControl
 
         if (!_dropdownOpen || _dropdownRow == null) return;
 
-        int dropdownHeight = Math.Min(_dropdownItemCount * DropdownItemHeight, MaxDropdownHeight);
+        int dropdownHeight = _dropdownHeight;
+        int dropdownTop = _dropdownTop;
+
+        // Clip to the dropdown box so no item can bleed over the surrounding rows.
+        g.SetClip(new Rectangle(_dropdownValueX, dropdownTop, ValueColumnWidth, dropdownHeight));
 
         // Background overlay
-        g.FillRectangle(theme.ControlLight, _dropdownValueX, _dropdownRowY + RowHeight,
+        g.FillRectangle(theme.ControlLight, _dropdownValueX, dropdownTop,
             ValueColumnWidth, dropdownHeight);
 
         // Border
-        g.DrawRectangle(theme.ComboBoxDropdownArrow, _dropdownValueX, _dropdownRowY + RowHeight,
+        g.DrawRectangle(theme.ComboBoxDropdownArrow, _dropdownValueX, dropdownTop,
             ValueColumnWidth, dropdownHeight);
 
-        // Draw enum values
-        for (int i = 0; i < _dropdownItemCount; i++)
+        // Draw enum values (only the whole items that fit inside the box)
+        for (int i = 0; i < _dropdownVisibleCount; i++)
         {
-            int itemY = _dropdownRowY + RowHeight + i * DropdownItemHeight;
-            int itemH = i == _dropdownItemCount - 1 && dropdownHeight < _dropdownItemCount * DropdownItemHeight
-                ? dropdownHeight - (i * DropdownItemHeight)
-                : DropdownItemHeight;
+            int itemY = dropdownTop + i * DropdownItemHeight;
+            int itemH = DropdownItemHeight;
 
             bool isSelected = _dropdownRow.IsFlagSelected(i);
             bool isHovered = i == _dropdownHoveredIndex;
@@ -1191,6 +1309,8 @@ public class PropertyGrid : ContainerControl
                     _dropdownValueX + 4, itemY + 2);
             }
         }
+
+        g.ResetClip();
     }
 }
 

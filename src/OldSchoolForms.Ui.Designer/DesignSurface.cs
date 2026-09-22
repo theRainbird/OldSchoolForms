@@ -1157,30 +1157,28 @@ public class DesignSurface : ContainerControl
 
         var guideColor = Color.FromArgb(255, 0, 120, 215);
         var centerColor = Color.FromArgb(0, 200, 0);
+        var containerColor = Color.FromArgb(255, 255, 120, 0);
+
+        // WinForms-style dash pattern for container/form snap guides.
+        var containerDash = new[] { 5f, 4f };
 
         foreach (var line in snap.GuideLines)
         {
-            bool isCenter = IsCenterGuide(line);
+            bool isCenter = line.Kind == GuideKind.Center;
+            bool isContainer = line.Kind == GuideKind.Container;
 
             // Draw glow (thicker, more transparent)
-            var glowColor = Color.FromArgb(isCenter ? 60 : 40,
-                isCenter ? 0 : 0,
-                isCenter ? 200 : 120,
-                isCenter ? 0 : 215);
+            var glowColor = Color.FromArgb(
+                isContainer ? 50 : (isCenter ? 60 : 40),
+                isContainer ? 255 : (isCenter ? 0 : 0),
+                isContainer ? 120 : (isCenter ? 200 : 120),
+                isContainer ? 0 : 215);
             g.DrawLine(glowColor, line.Start.X, line.Start.Y, line.End.X, line.End.Y, 3);
 
-            // Draw main line
-            g.DrawLine(isCenter ? centerColor : guideColor,
-                line.Start.X, line.Start.Y, line.End.X, line.End.Y, 1);
+            // Draw main line; container/form guides use a dashed stroke so they read as alignment aids.
+            var mainColor = isContainer ? containerColor : (isCenter ? centerColor : guideColor);
+            g.DrawLine(mainColor, line.Start.X, line.Start.Y, line.End.X, line.End.Y, 1, isContainer ? containerDash : null);
         }
-    }
-
-    private static bool IsCenterGuide(GuideLine line)
-    {
-        // Center guides are shorter (they span just the two controls, not full surface)
-        int dx = Math.Abs(line.End.X - line.Start.X);
-        int dy = Math.Abs(line.End.Y - line.Start.Y);
-        return dx < 100 && dy < 100;
     }
 
     private static void DrawHandle(Graphics g, int x, int y, int w, int h, Color borderColor, bool filled)
