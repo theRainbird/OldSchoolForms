@@ -13,11 +13,6 @@ namespace OldSchoolForms.Ui.Demo.UserControls;
 public class DockAnchorPage : UserControl
 {
     /// <summary>
-    /// Occurs when the status text should be updated.
-    /// </summary>
-    public event EventHandler<StatusTextChangedEventArgs>? StatusTextChanged;
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="DockAnchorPage"/> class.
     /// </summary>
     public DockAnchorPage()

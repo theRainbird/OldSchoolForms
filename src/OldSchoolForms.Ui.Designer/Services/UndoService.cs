@@ -58,10 +58,42 @@ public class UndoSnapshot
     }
 
     /// <summary>
-    /// Restores the control to the captured state.
+    /// Initializes a new action-based snapshot that runs delegates instead of restoring
+    /// control state. Used for operations that cannot be expressed as bounds/text/property
+    /// changes, such as adding or removing items from a collection.
+    /// </summary>
+    /// <param name="undoAction">The delegate that reverts the operation.</param>
+    /// <param name="redoAction">The delegate that re-applies the operation.</param>
+    internal UndoSnapshot(Action undoAction, Action redoAction)
+    {
+        Control = null!;
+        UndoAction = undoAction;
+        RedoAction = redoAction;
+    }
+
+    /// <summary>
+    /// Gets the delegate that reverts the operation for action-based snapshots,
+    /// or <see langword="null"/> for state-based snapshots.
+    /// </summary>
+    public Action? UndoAction { get; }
+
+    /// <summary>
+    /// Gets the delegate that re-applies the operation for action-based snapshots,
+    /// or <see langword="null"/> for state-based snapshots.
+    /// </summary>
+    public Action? RedoAction { get; }
+
+    /// <summary>
+    /// Restores the control to the captured state, or invokes the undo delegate for
+    /// action-based snapshots.
     /// </summary>
     public void Restore()
     {
+        if (UndoAction != null)
+        {
+            UndoAction();
+            return;
+        }
         Control.Bounds = Bounds;
         if (Text != null)
             Control.Text = Text;
@@ -162,6 +194,32 @@ public class UndoService
     }
 
     /// <summary>
+    /// Pushes an action-based undo entry that stores explicit undo/redo delegates instead of
+    /// control state. Used for collection mutations such as adding or removing tool strip items.
+    /// Clears the redo stack since a new action invalidates redo history.
+    /// </summary>
+    /// <param name="undoAction">The delegate that reverts the operation.</param>
+    /// <param name="redoAction">The delegate that re-applies the operation.</param>
+    public void PushAction(Action undoAction, Action redoAction)
+    {
+        if (undoAction == null || redoAction == null) return;
+
+        var snapshot = new UndoSnapshot(undoAction, redoAction);
+        _undoStack.Push(new[] { snapshot });
+        _redoStack.Clear();
+
+        if (_undoStack.Count > MaxUndoDepth)
+        {
+            var temp = new Stack<UndoSnapshot[]>(_undoStack.ToArray()[..MaxUndoDepth]);
+            _undoStack.Clear();
+            foreach (var item in temp)
+                _undoStack.Push(item);
+        }
+
+        OnStateChanged();
+    }
+
+    /// <summary>
     /// Performs an undo, restoring the most recent snapshot.
     /// The current state is pushed onto the redo stack.
     /// </summary>
@@ -171,13 +229,15 @@ public class UndoService
 
         var snapshots = _undoStack.Pop();
 
-        // Save current state for redo, preserving property-change information.
+        // Save current state for redo, preserving property-change and action information.
         var redoSnapshots = new UndoSnapshot[snapshots.Length];
         for (int i = 0; i < snapshots.Length; i++)
-            redoSnapshots[i] = snapshots[i].PropertyName != null
-                ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
-                    CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
-                : new UndoSnapshot(snapshots[i].Control);
+            redoSnapshots[i] = snapshots[i].UndoAction != null
+                ? new UndoSnapshot(snapshots[i].RedoAction!, snapshots[i].UndoAction!)
+                : snapshots[i].PropertyName != null
+                    ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
+                        CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                    : new UndoSnapshot(snapshots[i].Control);
         _redoStack.Push(redoSnapshots);
 
         foreach (var snapshot in snapshots)
@@ -195,13 +255,15 @@ public class UndoService
 
         var snapshots = _redoStack.Pop();
 
-        // Save current state for undo, preserving property-change information.
+        // Save current state for undo, preserving property-change and action information.
         var undoSnapshots = new UndoSnapshot[snapshots.Length];
         for (int i = 0; i < snapshots.Length; i++)
-            undoSnapshots[i] = snapshots[i].PropertyName != null
-                ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
-                    CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
-                : new UndoSnapshot(snapshots[i].Control);
+            undoSnapshots[i] = snapshots[i].UndoAction != null
+                ? new UndoSnapshot(snapshots[i].RedoAction!, snapshots[i].UndoAction!)
+                : snapshots[i].PropertyName != null
+                    ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
+                        CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                    : new UndoSnapshot(snapshots[i].Control);
         _undoStack.Push(undoSnapshots);
 
         foreach (var snapshot in snapshots)

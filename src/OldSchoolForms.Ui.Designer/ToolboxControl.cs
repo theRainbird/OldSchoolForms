@@ -7,7 +7,7 @@ using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
-namespace OldSchoolForms.Ui.Designer.Standalone;
+namespace OldSchoolForms.Ui.Designer;
 
 /// <summary>
 /// Event args for toolbox drag operations.

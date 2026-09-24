@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Design;
 
@@ -42,6 +43,7 @@ public class PropertyService
         {
             ValueEditorRegistry.Register(new TabPagesEditor());
             ValueEditorRegistry.Register(new DataGridViewColumnsEditor());
+            ValueEditorRegistry.Register(new ToolStripItemsEditor());
             _editorsRegistered = true;
         }
     }
@@ -69,7 +71,7 @@ public class PropertyService
         var properties = control.GetType().GetProperties(
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(p => p.CanRead)
-            .Where(p => !HiddenProperties.Contains(p.Name))
+            .Where(p => !HiddenProperties.Contains(p.Name) || HasEditorButton(p))
             .Where(p => IsSupportedType(p.PropertyType) || HasEditorButton(p))
             .Select(p => new PropertyDescriptor(p, control, ResolveEditor(p)))
             .OrderBy(p => GetCategoryOrder(p.Category))
@@ -117,18 +119,55 @@ public class PropertyService
         if (target == null) return new List<PropertyDescriptor>();
 
         var readOnlyNames = GetReadOnlyPropertyNames(target);
+        var noiseNames = GetNoisePropertyNames(target);
+        var properties = target is ToolStripItem
+            ? EnumerateToolStripItemProperties(target.GetType())
+            : target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-        return target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(p => p.CanRead)
+        return properties
+            .Where(p => p.CanRead && !noiseNames.Contains(p.Name))
             .Select(p => new PropertyDescriptor(p, target, ResolveEditor(p), readOnlyOverride: readOnlyNames.Contains(p.Name)))
             .OrderBy(p => GetCategoryOrder(p.Category))
             .ThenBy(p => p.Name)
             .ToList();
     }
 
+    /// <summary>
+    /// Enumerates the declared public properties of a <see cref="ToolStripItem"/>-derived type,
+    /// walking up the inheritance chain until <see cref="ToolStripItem"/> itself (inclusive) so
+    /// the shared item properties (Text, DisplayStyle, ...) are browsable as well.
+    /// </summary>
+    /// <param name="type">The concrete item type to enumerate.</param>
+    /// <returns>The deduplicated property set from the type up to and including <see cref="ToolStripItem"/>.</returns>
+    private static IEnumerable<PropertyInfo> EnumerateToolStripItemProperties(Type type)
+    {
+        var seen = new HashSet<string>();
+        for (var t = type; t != null && typeof(ToolStripItem).IsAssignableFrom(t); t = t.BaseType)
+        {
+            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (seen.Add(p.Name))
+                    yield return p;
+            }
+        }
+    }
+
     private static HashSet<string> GetReadOnlyPropertyNames(object target) => target switch
     {
         DataGridViewColumn => new HashSet<string> { "ButtonIcon", "HeaderCell" },
+        _ => new HashSet<string>()
+    };
+
+    /// <summary>
+    /// Returns property names that should be hidden entirely from the grid for a given target,
+    /// because they are runtime-only noise (hover/press state, derived display text) that a
+    /// designer user cannot meaningfully edit.
+    /// </summary>
+    /// <param name="target">The object being inspected.</param>
+    /// <returns>The set of property names to exclude from enumeration.</returns>
+    private static HashSet<string> GetNoisePropertyNames(object target) => target switch
+    {
+        ToolStripItem => new HashSet<string> { "IsHovered", "IsPressed", "DisplayText", "Mnemonic" },
         _ => new HashSet<string>()
     };
 

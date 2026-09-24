@@ -17,6 +17,13 @@ public class ToolStripMenuItem : ToolStripItem
     /// <summary>
     /// Initializes a new instance of ToolStripMenuItem.
     /// </summary>
+    public ToolStripMenuItem()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of ToolStripMenuItem.
+    /// </summary>
     /// <param name="text">The menu item text, optionally containing an ampersand mnemonic prefix.</param>
     public ToolStripMenuItem(string text)
     {

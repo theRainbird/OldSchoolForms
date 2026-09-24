@@ -161,9 +161,9 @@ public class DesignerContainerTests
     {
         var surface = new TestableDesignSurface { SnapToGrid = false };
         var rootItem = surface.RootItem;
-        surface.Selection.Select(rootItem);
+        surface.Selection.Select(rootItem!);
 
-        var start = rootItem.Control.PointToScreen(Point.Empty);
+        var start = rootItem!.Control.PointToScreen(Point.Empty);
 
         // Drag on the empty form area past the move threshold.
         surface.RaiseMouseDown(LeftMouseDown(10, 10));
@@ -180,9 +180,9 @@ public class DesignerContainerTests
     {
         var surface = new TestableDesignSurface { SnapToGrid = false };
         var rootItem = surface.RootItem;
-        surface.Selection.Select(rootItem);
+        surface.Selection.Select(rootItem!);
 
-        var bounds = surface.RootControl.Bounds;
+        var bounds = surface.RootControl!.Bounds;
         var topLeft = surface.RootControl.PointToScreen(Point.Empty);
 
         surface.Drag.BeginResize(topLeft, ResizeHandle.BottomRight);

@@ -16,4 +16,16 @@
     <PackageReference Include="OldSchoolForms.Ui.WebBrowser" Version="0.1.0" />
   </ItemGroup>
 
+  <!--
+    The Microsoft.Web.WebView2 package's buildTransitive targets unconditionally add
+    WPF/WinForms wrapper references that are unused (only Microsoft.Web.WebView2.Core
+    is used) and cause the MSB3277 WindowsBase 4.0.0.0 vs 5.0.0.0 conflict on net10.0.
+  -->
+  <Target Name="RemoveWebView2DesktopReferences" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.Wpf'" />
+      <Reference Remove="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.WinForms'" />
+    </ItemGroup>
+  </Target>
+
 </Project>

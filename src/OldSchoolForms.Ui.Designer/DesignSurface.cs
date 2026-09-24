@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Theming;
@@ -198,7 +199,39 @@ public class DesignSurface : ContainerControl
         BeginDesignForm();
 
         _adapterRegistry.Register<TabControl>(c => new TabControlDesignAdapter(c));
+        _adapterRegistry.Register<ToolStrip>(c =>
+        {
+            var adapter = new ToolStripDesignAdapter(c, this);
+            adapter.SelectedItemChanged += (_, _) => AdapterSelectionChanged?.Invoke(this, EventArgs.Empty);
+            return adapter;
+        });
     }
+
+    /// <summary>
+    /// Raised when a design adapter changes its internal selection (for example a selected
+    /// tool strip item), so the property grid can rebind.
+    /// </summary>
+    public event EventHandler? AdapterSelectionChanged;
+
+    /// <summary>
+    /// Gets the adapter-internal selected value of the primary selection (for example a
+    /// selected tool strip item), or <see langword="null"/> if none.
+    /// </summary>
+    public object? AdapterSelectedValue
+    {
+        get
+        {
+            var control = _selectionService.PrimarySelection?.Control;
+            if (control == null) return null;
+            return _adapterRegistry.GetAdapter(control)?.GetSelectedValue();
+        }
+    }
+
+    /// <summary>
+    /// Raises the <see cref="ContentModified"/> event. Used by design adapters after they
+    /// mutate their control's state (for example adding or removing a tool strip item).
+    /// </summary>
+    internal void NotifyContentModified() => ContentModified?.Invoke(this, EventArgs.Empty);
 
     /// <summary>
     /// Begins designing a form. The current content is cleared and a fresh
@@ -819,8 +852,27 @@ public class DesignSurface : ContainerControl
             }
         }
 
+        if (e.KeyCode == Keys.Escape)
+        {
+            var primaryControl = _selectionService.PrimarySelection?.Control;
+            var escAdapter = primaryControl != null ? _adapterRegistry.GetAdapter(primaryControl) : null;
+            if (escAdapter != null && escAdapter.TryClearSelection())
+            {
+                Invalidate();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
         {
+            var primaryControl = _selectionService.PrimarySelection?.Control;
+            var delAdapter = primaryControl != null ? _adapterRegistry.GetAdapter(primaryControl) : null;
+            if (delAdapter != null && delAdapter.TryDeleteSelection())
+            {
+                e.Handled = true;
+                return;
+            }
             DeleteSelected();
             e.Handled = true;
             return;
@@ -1116,6 +1168,28 @@ public class DesignSurface : ContainerControl
             {
                 g.DrawRectangle(selectionColor, bounds.X - 1, bounds.Y - 1,
                     bounds.Width + 2, bounds.Height + 2, 2);
+
+                var adapter = _adapterRegistry.GetAdapter(item.Control);
+                if (adapter != null)
+                {
+                    if (adapter.TryGetSelectionHighlight(out var itemBounds))
+                    {
+                        var hl = new Rectangle(origin.X + itemBounds.X, origin.Y + itemBounds.Y,
+                            itemBounds.Width, itemBounds.Height);
+                        g.DrawRectangle(selectionColor, hl.X, hl.Y, hl.Width, hl.Height, 1);
+                    }
+
+                    if (adapter.TryGetAddButtonHighlight(out var addBounds))
+                    {
+                        var ab = new Rectangle(origin.X + addBounds.X, origin.Y + addBounds.Y,
+                            addBounds.Width, addBounds.Height);
+                        g.DrawRectangle(selectionColor, ab.X, ab.Y, ab.Width, ab.Height, 1);
+                        int cx = ab.X + ab.Width / 2;
+                        int cy = ab.Y + ab.Height / 2;
+                        g.DrawLine(selectionColor, cx - 3, cy, cx + 3, cy, 1);
+                        g.DrawLine(selectionColor, cx, cy - 3, cx, cy + 3, 1);
+                    }
+                }
             }
             else
             {

@@ -8,7 +8,7 @@ using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
-namespace OldSchoolForms.Ui.Designer.Standalone;
+namespace OldSchoolForms.Ui.Designer;
 
 /// <summary>
 /// The main window of the OldSchoolForms Form Designer standalone application.
@@ -19,6 +19,7 @@ public class DesignerForm : Form
     private readonly ToolboxService _toolboxService;
     private readonly DesignSurface _designSurface;
     private readonly PropertyGrid.PropertyGrid _propertyGrid;
+    private readonly IDesignDocumentService _documentService;
     private ToolboxControl _toolbox = null!;
     private Panel _toolboxPanel = null!;
     private StatusStripPanel _statusPanel = null!;
@@ -35,14 +36,17 @@ public class DesignerForm : Form
     private SplitPanel _mainContentSplit = null!;
 
     /// <summary>
-    /// Initializes a new instance.
+    /// Initializes a new instance of the <see cref="DesignerForm"/> class.
     /// </summary>
-    public DesignerForm()
+    /// <param name="documentService">The service used to load and save designed forms.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="documentService"/> is null.</exception>
+    public DesignerForm(IDesignDocumentService documentService)
     {
+        _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
+
         Text = "OldSchoolForms Form Designer";
         Width = 1400;
         Height = 900;
-        Zoom = 1.0f;
 
         _toolboxService = new ToolboxService();
         _designSurface = new DesignSurface();
@@ -218,6 +222,12 @@ public class DesignerForm : Form
             _statusLabel.Text = primary != null
                 ? $"Selektiert: {primary.Control.Name ?? primary.Control.GetType().Name}"
                 : "Keine Auswahl";
+            _propertyGrid.BindObject(_designSurface.AdapterSelectedValue);
+        };
+
+        _designSurface.AdapterSelectionChanged += (_, _) =>
+        {
+            _propertyGrid.BindObject(_designSurface.AdapterSelectedValue);
         };
 
         _designSurface.ContentModified += (_, _) =>
@@ -283,8 +293,7 @@ public class DesignerForm : Form
             try
             {
                 _designSurface.ClearAll();
-                var parser = new Roslyn.FormParser();
-                var warnings = parser.Parse(File.ReadAllText(dialog.FileName), _designSurface);
+                _documentService.Load(File.ReadAllText(dialog.FileName), _designSurface);
                 _statusLabel.Text = $"Geöffnet: {dialog.FileName}";
                 Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
             }
@@ -298,8 +307,7 @@ public class DesignerForm : Form
 
     private void SaveForm()
     {
-        var generator = new Roslyn.CodeGenerator(_designSurface);
-        string code = generator.Generate("OldSchoolForms.Ui.Demo", "MainForm");
+        string code = _documentService.Save(_designSurface, "OldSchoolForms.Ui.Demo", "MainForm");
         _statusLabel.Text = "Gespeichert (Vorschau generiert)";
     }
 
@@ -312,8 +320,7 @@ public class DesignerForm : Form
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            var generator = new Roslyn.CodeGenerator(_designSurface);
-            string code = generator.Generate("OldSchoolForms.Ui.Demo", "MainForm");
+            string code = _documentService.Save(_designSurface, "OldSchoolForms.Ui.Demo", "MainForm");
             File.WriteAllText(dialog.FileName, code);
             _statusLabel.Text = $"Gespeichert: {dialog.FileName}";
             Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";

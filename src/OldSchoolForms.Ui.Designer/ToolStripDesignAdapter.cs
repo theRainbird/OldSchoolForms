@@ -1,0 +1,177 @@
+using System;
+using OldSchoolForms.Ui.Controls.Containers;
+using OldSchoolForms.Ui.Core;
+
+namespace OldSchoolForms.Ui.Designer;
+
+/// <summary>
+/// Design-mode adapter for <see cref="ToolStrip"/>. Lets the designer select, add and remove
+/// tool strip items in situ: once the strip itself is the primary selection, clicking an item
+/// selects it (without triggering the runtime click behaviour), clicking the plus button at the
+/// end of the strip appends a new button, and the Delete key removes the selected item.
+/// </summary>
+public sealed class ToolStripDesignAdapter : ControlDesignAdapter
+{
+    private readonly ToolStrip _toolStrip;
+    private readonly DesignSurface _surface;
+    private ToolStripItem? _selectedItem;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ToolStripDesignAdapter"/> class.
+    /// </summary>
+    /// <param name="toolStrip">The tool strip this adapter provides interaction for.</param>
+    /// <param name="surface">The design surface hosting the tool strip.</param>
+    public ToolStripDesignAdapter(ToolStrip toolStrip, DesignSurface surface) : base(toolStrip)
+    {
+        _toolStrip = toolStrip;
+        _surface = surface;
+        _surface.Selection.SelectionChanged += OnSurfaceSelectionChanged;
+    }
+
+    /// <summary>
+    /// Gets the tool strip item currently selected in the designer, or <see langword="null"/>.
+    /// </summary>
+    public ToolStripItem? SelectedItem => _selectedItem;
+
+    /// <summary>
+    /// Raised when the adapter-internal item selection changes.
+    /// </summary>
+    public event EventHandler? SelectedItemChanged;
+
+    /// <summary>
+    /// Determines whether <paramref name="localPoint"/> lies on a tool strip item or on the
+    /// add-item button. Only intercepts while the tool strip itself is the primary selection,
+    /// so the first click still selects the strip via the regular surface logic.
+    /// </summary>
+    /// <param name="localPoint">The point in the control's local coordinates.</param>
+    /// <returns>true if the point hits an item or the add button; otherwise false.</returns>
+    public override bool TryHitRegion(Point localPoint)
+    {
+        if (!ReferenceEquals(_surface.Selection.PrimarySelection?.Control, _toolStrip))
+            return false;
+
+        if (_toolStrip.HitTestItemPublic(localPoint) != null)
+            return true;
+
+        var addBounds = _toolStrip.GetAddItemButtonBoundsPublic();
+        return !IsEmpty(addBounds) && addBounds.Contains(localPoint);
+    }
+
+    /// <summary>
+    /// Handles a mouse-down: selects the hit item or appends a new button when the add button
+    /// is clicked. The event is never forwarded to the tool strip, which suppresses the
+    /// runtime <c>PerformClick</c> behaviour while designing.
+    /// </summary>
+    /// <param name="localPoint">The point in the control's local coordinates.</param>
+    /// <param name="e">The mouse event arguments.</param>
+    public override void OnMouseDown(Point localPoint, MouseEventArgs e)
+    {
+        var addBounds = _toolStrip.GetAddItemButtonBoundsPublic();
+        if (!IsEmpty(addBounds) && addBounds.Contains(localPoint))
+        {
+            AddItem(new ToolStripButton { Text = LangRes.GetString("ToolStripItemsDialog_NewButton") });
+            return;
+        }
+
+        var hit = _toolStrip.HitTestItemPublic(localPoint);
+        if (hit != null)
+            SelectItem(hit);
+    }
+
+    /// <summary>
+    /// Gets the bounds of the selected item so the surface can highlight it.
+    /// </summary>
+    /// <param name="bounds">Receives the item bounds in tool strip coordinates.</param>
+    /// <returns>true if an item is selected and its bounds are known.</returns>
+    public override bool TryGetSelectionHighlight(out Rectangle bounds)
+    {
+        if (_selectedItem != null)
+        {
+            bounds = _toolStrip.GetItemBoundsPublic(_selectedItem);
+            return !IsEmpty(bounds);
+        }
+        bounds = Rectangle.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the bounds of the add-item button so the surface can draw it.
+    /// </summary>
+    /// <param name="bounds">Receives the button bounds in tool strip coordinates.</param>
+    /// <returns>true if the add button is available (no overflow).</returns>
+    public override bool TryGetAddButtonHighlight(out Rectangle bounds)
+    {
+        bounds = _toolStrip.GetAddItemButtonBoundsPublic();
+        return !IsEmpty(bounds);
+    }
+
+    private static bool IsEmpty(Rectangle bounds) => bounds.Width <= 0 || bounds.Height <= 0;
+
+    /// <summary>
+    /// Removes the selected item from the tool strip and records an undo action.
+    /// </summary>
+    /// <returns>true if an item was deleted; otherwise false.</returns>
+    public override bool TryDeleteSelection()
+    {
+        if (_selectedItem == null) return false;
+        var item = _selectedItem;
+        int index = _toolStrip.Items.IndexOf(item);
+        if (index < 0)
+        {
+            SelectItem(null);
+            return false;
+        }
+
+        _toolStrip.Items.RemoveAt(index);
+        SelectItem(null);
+        _surface.Undo.PushAction(
+            () => _toolStrip.Items.Insert(index, item),
+            () => _toolStrip.Items.Remove(item));
+        _surface.NotifyContentModified();
+        _surface.Invalidate();
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the selected tool strip item for property-grid binding.
+    /// </summary>
+    /// <returns>The selected item, or <see langword="null"/>.</returns>
+    public override object? GetSelectedValue() => _selectedItem;
+
+    /// <summary>
+    /// Clears the item selection when Escape is pressed.
+    /// </summary>
+    /// <returns>true if a selection was cleared.</returns>
+    public override bool TryClearSelection()
+    {
+        if (_selectedItem == null) return false;
+        SelectItem(null);
+        _surface.Invalidate();
+        return true;
+    }
+
+    private void AddItem(ToolStripItem item)
+    {
+        _toolStrip.Items.Add(item);
+        SelectItem(item);
+        _surface.Undo.PushAction(
+            () => _toolStrip.Items.Remove(item),
+            () => _toolStrip.Items.Add(item));
+        _surface.NotifyContentModified();
+        _surface.Invalidate();
+    }
+
+    private void SelectItem(ToolStripItem? item)
+    {
+        if (ReferenceEquals(_selectedItem, item)) return;
+        _selectedItem = item;
+        SelectedItemChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSurfaceSelectionChanged(object? sender, EventArgs e)
+    {
+        var primary = _surface.Selection.PrimarySelection?.Control;
+        if (!ReferenceEquals(primary, _toolStrip))
+            SelectItem(null);
+    }
+}

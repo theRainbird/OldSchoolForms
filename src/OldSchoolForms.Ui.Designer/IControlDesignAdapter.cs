@@ -64,4 +64,47 @@ public interface IControlDesignAdapter
     /// <param name="e">The key event arguments.</param>
     /// <returns>true if the adapter consumed the key; otherwise false so the surface can process it.</returns>
     bool OnKeyDown(KeyEventArgs e);
+
+    /// <summary>
+    /// Gets the bounds (in the control's local coordinates) of the adapter-internal selection
+    /// that should be highlighted by the design surface, for example a selected tool strip item.
+    /// </summary>
+    /// <param name="bounds">Receives the highlight bounds when this method returns <see langword="true"/>.</param>
+    /// <returns>true if the adapter has a selection to highlight; otherwise false.</returns>
+    bool TryGetSelectionHighlight(out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the bounds (in the control's local coordinates) of an "add item" affordance the
+    /// design surface should draw, for example a plus button at the end of a tool strip.
+    /// </summary>
+    /// <param name="bounds">Receives the button bounds when this method returns <see langword="true"/>.</param>
+    /// <returns>true if an add affordance is available; otherwise false.</returns>
+    bool TryGetAddButtonHighlight(out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Deletes the adapter-internal selection (for example a selected tool strip item).
+    /// </summary>
+    /// <returns>true if a selection was deleted; otherwise false so the surface can delete the control itself.</returns>
+    bool TryDeleteSelection() => false;
+
+    /// <summary>
+    /// Gets the adapter-internal selected object (for example a selected tool strip item) so the
+    /// property grid can bind to it, or <see langword="null"/> to bind to the control instead.
+    /// </summary>
+    /// <returns>The selected object, or <see langword="null"/>.</returns>
+    object? GetSelectedValue() => null;
+
+    /// <summary>
+    /// Clears the adapter-internal selection (for example when the user presses Escape).
+    /// </summary>
+    /// <returns>true if a selection was cleared; otherwise false.</returns>
+    bool TryClearSelection() => false;
 }

@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    The Microsoft.Web.WebView2 package's buildTransitive targets (build/Common.targets)
+    unconditionally add references to the WPF and WinForms wrapper assemblies for any
+    target framework >= net5.0. OldSchoolForms.Ui only uses Microsoft.Web.WebView2.Core
+    (CoreWebView2Environment / CoreWebView2Controller with raw HWND embedding), so these
+    WPF/WinForms references are removed here to avoid the MSB3277 conflict between
+    WindowsBase 4.0.0.0 (net10.0 base ref pack) and WindowsBase 5.0.0.0 (WPF, required
+    by Microsoft.Web.WebView2.Wpf.dll). The WebView2 Core assembly and the
+    WebView2Loader.dll copy are unaffected, so Windows runtime behavior stays intact.
+  -->
+  <Target Name="RemoveWebView2DesktopReferences" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.Wpf'" />
+      <Reference Remove="@(Reference)" Condition="'%(Reference.FileName)' == 'Microsoft.Web.WebView2.WinForms'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

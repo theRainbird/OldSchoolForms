@@ -103,10 +103,15 @@ internal class DialogOverlay : Control
 
         // Render the form content BELOW the title bar.
         // Clip to prevent content from overflowing outside the dialog.
+        // The form's overlay pass (enum dropdowns, color pickers) must be drawn on top
+        // of the form content within the same clip, mirroring the native-window pipeline
+        // where Platform.RenderForm renders Render then RenderOverlay. Without this,
+        // dropdowns opened inside the dialog would never become visible.
         g.Save();
         g.TranslateTransform(_dialogX, _dialogY + TitleBarHeight);
         g.SetClip(new Rectangle(0, 0, _dialogWidth, _dialogHeight - TitleBarHeight));
         _dialogForm.Render(g);
+        _dialogForm.RenderOverlay(g);
         g.ResetClip();
         g.Restore();
 

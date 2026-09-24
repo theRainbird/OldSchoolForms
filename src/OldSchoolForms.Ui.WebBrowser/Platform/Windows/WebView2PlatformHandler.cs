@@ -378,11 +378,13 @@ public class WebView2PlatformHandler : IWebViewPlatformHandler
     /// <inheritdoc/>
     public string? InitializationError => null;
 
+#pragma warning disable CS0067 // Stub raises no navigation events; required by IWebViewPlatformHandler
     /// <inheritdoc/>
     public event EventHandler<WebNavigatingEventArgs>? Navigating;
 
     /// <inheritdoc/>
     public event EventHandler<WebNavigatedEventArgs>? Navigated;
+#pragma warning restore CS0067
 
     /// <summary>
     /// Initializes a new instance of <see cref="WebView2PlatformHandler"/>.

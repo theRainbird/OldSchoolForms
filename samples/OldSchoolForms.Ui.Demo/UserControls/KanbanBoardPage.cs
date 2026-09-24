@@ -136,7 +136,7 @@ public class KanbanBoardPage : UserControl
             Location = new Point(120, 68),
             Size = new Size(100, 28),
         };
-        clearLogBtn.Click += (_, _) => _logList.Items.Clear();
+        clearLogBtn.Click += (_, _) => _logList!.Items.Clear();
 
         _selectedCardLabel = new Label
         {

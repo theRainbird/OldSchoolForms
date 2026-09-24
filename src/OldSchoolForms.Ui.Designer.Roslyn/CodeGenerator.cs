@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Basic;
+using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer;
 using OldSchoolForms.Ui.Designer.Services;
@@ -138,6 +139,9 @@ public class CodeGenerator
 
             if (control is DataGridView dataGridView)
                 GenerateDataGridViewColumns(sb, bodyIndent, dataGridView, fieldName);
+
+            if (control is ToolStrip toolStrip)
+                GenerateToolStripItems(sb, bodyIndent, toolStrip, fieldName);
         }
 
         // Controls.Add hierarchy
@@ -250,6 +254,71 @@ public class CodeGenerator
             else
                 sb.AppendLine($"{indent}{fieldName}.Columns.Add(new DataGridViewColumn {{ {string.Join(", ", parts)} }});");
         }
+    }
+
+    /// <summary>
+    /// Emits an <c>Items.Add(new ToolStripButton { ... })</c> call for every item of the
+    /// given tool strip, serializing each non-default property so designer-created items
+    /// round-trip into the generated <c>InitializeComponent</c>. Nested dropdown items are
+    /// emitted as nested collection initializers.
+    /// </summary>
+    /// <param name="sb">The builder to append to.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="toolStrip">The tool strip whose items are serialized.</param>
+    /// <param name="fieldName">The field name of the tool strip.</param>
+    private static void GenerateToolStripItems(StringBuilder sb, string indent, ToolStrip toolStrip, string fieldName)
+    {
+        if (toolStrip.Items.Count == 0) return;
+
+        foreach (var item in toolStrip.Items)
+            sb.AppendLine($"{indent}{fieldName}.Items.Add({FormatToolStripItemInitializer(item)});");
+    }
+
+    /// <summary>
+    /// Formats a single <see cref="ToolStripItem"/> as an inline object-initializer
+    /// expression (<c>new ToolStripButton { Text = "..." }</c>), emitting only properties
+    /// that differ from a freshly created instance of the same item type.
+    /// </summary>
+    /// <param name="item">The item to serialize.</param>
+    /// <returns>A C# object-initializer expression for the item.</returns>
+    private static string FormatToolStripItemInitializer(ToolStripItem item)
+    {
+        var defaults = (ToolStripItem)Activator.CreateInstance(item.GetType())!;
+        var parts = new List<string>();
+
+        string text = item is ToolStripTextBox tb ? tb.Text : item.Text;
+        if (!string.IsNullOrEmpty(text)) parts.Add($"Text = {Quote(text)}");
+        if (!item.Enabled && defaults.Enabled) parts.Add("Enabled = false");
+        if (!item.Visible && defaults.Visible) parts.Add("Visible = false");
+        if (item.DisplayStyle != defaults.DisplayStyle) parts.Add($"DisplayStyle = ToolStripItemDisplayStyle.{item.DisplayStyle}");
+        if (item.ImageScaling != defaults.ImageScaling) parts.Add($"ImageScaling = ToolStripItemImageScaling.{item.ImageScaling}");
+        if (item.TextAlign != defaults.TextAlign) parts.Add($"TextAlign = ToolStripItemTextAlign.{item.TextAlign}");
+        if (item.Image is SvgImage svg && !string.IsNullOrEmpty(svg.ResourceName))
+            parts.Add($"Image = SvgImage.FromSvgResource({Quote(svg.ResourceName)}, {svg.DefaultSize})");
+
+        switch (item)
+        {
+            case ToolStripButton button:
+                if (button.CheckOnClick) parts.Add("CheckOnClick = true");
+                if (button.Checked) parts.Add("Checked = true");
+                if (button.DropDownItems.Count > 0)
+                    parts.Add($"DropDownItems = {{ {string.Join(", ", button.DropDownItems.Select(FormatToolStripItemInitializer))} }}");
+                break;
+            case ToolStripMenuItem menuItem:
+                if (menuItem.DropDownItems.Count > 0)
+                    parts.Add($"DropDownItems = {{ {string.Join(", ", menuItem.DropDownItems.Select(FormatToolStripItemInitializer))} }}");
+                break;
+            case ToolStripTextBox textBox:
+                if (textBox.TextBoxWidth != 100) parts.Add($"TextBoxWidth = {textBox.TextBoxWidth}");
+                if (textBox.UseSystemPasswordChar) parts.Add("UseSystemPasswordChar = true");
+                break;
+            case ToolStripLabel label:
+                if (label.IsLink) parts.Add("IsLink = true");
+                break;
+        }
+
+        string typeName = item.GetType().Name;
+        return parts.Count == 0 ? $"new {typeName}()" : $"new {typeName} {{ {string.Join(", ", parts)} }}";
     }
 
     /// <summary>

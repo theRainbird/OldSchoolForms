@@ -55,6 +55,11 @@ public class FormParser
         { "TableLayoutPanel", typeof(TableLayoutPanel) },
         { "CalendarView", typeof(CalendarView) },
         { "DataGridView", typeof(DataGridView) },
+        { "ToolStripButton", typeof(ToolStripButton) },
+        { "ToolStripLabel", typeof(ToolStripLabel) },
+        { "ToolStripSeparator", typeof(ToolStripSeparator) },
+        { "ToolStripTextBox", typeof(ToolStripTextBox) },
+        { "ToolStripMenuItem", typeof(ToolStripMenuItem) },
     };
 
     private static readonly Dictionary<string, Color> _namedColors = new(StringComparer.OrdinalIgnoreCase)
@@ -158,6 +163,19 @@ public class FormParser
                 else
                 {
                     warnings.Add($"Warning: Could not resolve hierarchy parent '{parentFieldName}' -> child '{childFieldName}'.");
+                }
+            }
+
+            foreach (var (parentFieldName, item) in ParseToolStripItemAdds(body))
+            {
+                if (controlMap.TryGetValue(parentFieldName, out var parentControl) && parentControl is ToolStrip strip)
+                {
+                    strip.Items.Add(item);
+                    warnings.Add($"Parsed tool strip item: {item.GetType().Name} on {parentFieldName}");
+                }
+                else
+                {
+                    warnings.Add($"Warning: Could not resolve tool strip parent '{parentFieldName}' for item '{item.GetType().Name}'.");
                 }
             }
 
@@ -308,6 +326,196 @@ public class FormParser
         return result;
     }
 
+    /// <summary>
+    /// Finds every <c>toolStrip.Items.Add(new ToolStripXxx { ... })</c> call in the method body
+    /// and reconstructs the corresponding <see cref="ToolStripItem"/> instances, including
+    /// nested <c>DropDownItems</c> collection initializers.
+    /// </summary>
+    /// <param name="body">The InitializeComponent method body.</param>
+    /// <returns>A list of (parent field name, reconstructed item) pairs in source order.</returns>
+    private List<(string parentFieldName, ToolStripItem item)> ParseToolStripItemAdds(string body)
+    {
+        var result = new List<(string, ToolStripItem)>();
+        var pattern = @"(\w+)\.Items\.Add\(\s*new\s+(\w+)";
+        var matches = System.Text.RegularExpressions.Regex.Matches(body, pattern);
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var parentFieldName = match.Groups[1].Value;
+            var typeName = match.Groups[2].Value;
+
+            Type? itemType = ResolveControlType(typeName);
+            if (itemType == null || !typeof(ToolStripItem).IsAssignableFrom(itemType))
+                continue;
+
+            int openParen = body.IndexOf('(', match.Index);
+            if (openParen < 0) continue;
+            int closeParen = FindMatchingClose(body, openParen, '(', ')');
+            if (closeParen < 0) continue;
+
+            string inner = body.Substring(openParen + 1, closeParen - openParen - 1).Trim();
+            var item = ParseItemExpression(inner);
+            if (item != null)
+                result.Add((parentFieldName, item));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Parses a single item expression of the form <c>new Type</c>, <c>new Type()</c> or
+    /// <c>new Type { Prop = value, Nested = { new Other { ... } } }</c> into a live item.
+    /// </summary>
+    /// <param name="expr">The expression text to parse.</param>
+    /// <returns>The reconstructed item, or <c>null</c> when the expression is not a known item type.</returns>
+    private ToolStripItem? ParseItemExpression(string expr)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(expr, @"^new\s+(\w+)");
+        if (!m.Success) return null;
+
+        Type? itemType = ResolveControlType(m.Groups[1].Value);
+        if (itemType == null || !typeof(ToolStripItem).IsAssignableFrom(itemType))
+            return null;
+
+        var item = (ToolStripItem)Activator.CreateInstance(itemType)!;
+
+        string rest = expr.Substring(m.Index + m.Length).Trim();
+        if (!rest.StartsWith("{")) return item;
+
+        int openBrace = rest.IndexOf('{');
+        int closeBrace = FindMatchingClose(rest, openBrace, '{', '}');
+        if (closeBrace < 0) return item;
+
+        string initContent = rest.Substring(openBrace + 1, closeBrace - openBrace - 1);
+        foreach (var member in SplitTopLevel(initContent))
+        {
+            int eq = member.IndexOf('=');
+            if (eq < 0) continue;
+            string propName = member.Substring(0, eq).Trim();
+            string rawValue = member.Substring(eq + 1).Trim();
+
+            var prop = itemType.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null) continue;
+
+            try
+            {
+                if (rawValue.StartsWith("{"))
+                {
+                    // Nested collection initializer: DropDownItems = { new X { ... }, ... }
+                    int nbOpen = rawValue.IndexOf('{');
+                    int nbClose = FindMatchingClose(rawValue, nbOpen, '{', '}');
+                    if (nbClose < 0) continue;
+                    if (prop.GetValue(item) is not System.Collections.IList list) continue;
+
+                    foreach (var nestedExpr in SplitTopLevel(rawValue.Substring(nbOpen + 1, nbClose - nbOpen - 1)))
+                    {
+                        var nested = ParseItemExpression(nestedExpr.Trim());
+                        if (nested != null) list.Add(nested);
+                    }
+                }
+                else
+                {
+                    var value = ParsePropertyValue(prop.PropertyType, rawValue);
+                    if (value != null) prop.SetValue(item, value);
+                }
+            }
+            catch
+            {
+                // Silently skip members that cannot be applied
+            }
+        }
+
+        return item;
+    }
+
+    /// <summary>
+    /// Finds the index of the closing bracket matching the opening bracket at
+    /// <paramref name="openIndex"/>, skipping string and char literals.
+    /// </summary>
+    /// <param name="s">The text to scan.</param>
+    /// <param name="openIndex">Index of the opening bracket.</param>
+    /// <param name="open">The opening bracket character.</param>
+    /// <param name="closeChar">The closing bracket character.</param>
+    /// <returns>The index of the matching closing bracket, or -1 when unbalanced.</returns>
+    private static int FindMatchingClose(string s, int openIndex, char open, char closeChar)
+    {
+        int depth = 0;
+        bool inString = false;
+        bool inChar = false;
+
+        for (int i = openIndex; i < s.Length; i++)
+        {
+            char c = s[i];
+            if (inString)
+            {
+                if (c == '\\') { i++; continue; }
+                if (c == '"') inString = false;
+                continue;
+            }
+            if (inChar)
+            {
+                if (c == '\\') { i++; continue; }
+                if (c == '\'') inChar = false;
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '\'') { inChar = true; continue; }
+            if (c == open) depth++;
+            else if (c == closeChar)
+            {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Splits a text on top-level commas, ignoring commas nested inside braces,
+    /// parentheses, strings or char literals.
+    /// </summary>
+    /// <param name="s">The text to split.</param>
+    /// <returns>The top-level segments with surrounding whitespace trimmed.</returns>
+    private static List<string> SplitTopLevel(string s)
+    {
+        var parts = new List<string>();
+        int depth = 0;
+        bool inString = false;
+        bool inChar = false;
+        int start = 0;
+
+        for (int i = 0; i < s.Length; i++)
+        {
+            char c = s[i];
+            if (inString)
+            {
+                if (c == '\\') { i++; continue; }
+                if (c == '"') inString = false;
+                continue;
+            }
+            if (inChar)
+            {
+                if (c == '\\') { i++; continue; }
+                if (c == '\'') inChar = false;
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '\'') { inChar = true; continue; }
+            if (c == '{' || c == '(') depth++;
+            else if (c == '}' || c == ')') depth--;
+            else if (c == ',' && depth == 0)
+            {
+                parts.Add(s.Substring(start, i - start).Trim());
+                start = i + 1;
+            }
+        }
+
+        var last = s.Substring(start).Trim();
+        if (last.Length > 0) parts.Add(last);
+        return parts;
+    }
+
     private static void ApplyPropertyAssignments(Core.Control control, Dictionary<string, string> propMap, List<string> warnings)
     {
         var controlType = control.GetType();
@@ -419,6 +627,16 @@ public class FormParser
                     int.Parse(m.Groups[2].Value),
                     int.Parse(m.Groups[3].Value),
                     int.Parse(m.Groups[4].Value));
+            }
+        }
+
+        // SvgImage.FromSvgResource("name", size)
+        if (rawValue.StartsWith("SvgImage.FromSvgResource("))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(rawValue, @"SvgImage\.FromSvgResource\s*\(\s*""([^""]*)""\s*,\s*(\d+)\s*\)");
+            if (m.Success)
+            {
+                return SvgImage.FromSvgResource(m.Groups[1].Value, int.Parse(m.Groups[2].Value));
             }
         }
 

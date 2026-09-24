@@ -44,7 +44,7 @@ public class MainForm : Form
     {
         SuspendLayout();
         Controls.Clear();
-        _statusLabel = null;
+        _statusLabel = null!;
 
         var menuStrip = CreateMenuStrip();
         var toolStrip = CreateToolStrip();

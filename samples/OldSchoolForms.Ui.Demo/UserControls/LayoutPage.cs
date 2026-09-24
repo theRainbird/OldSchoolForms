@@ -55,7 +55,7 @@ public class LayoutPage : UserControl
         {
             _itemCount++;
             _flowPanel.Controls.Add(CreateFlowButton($"Item {_itemCount}"));
-            _flowStatus.Text = $"Items: {_flowPanel.Controls.Count}";
+            _flowStatus!.Text = $"Items: {_flowPanel.Controls.Count}";
         };
 
         var removeButton = new Button
@@ -70,7 +70,7 @@ public class LayoutPage : UserControl
             if (_flowPanel.Controls.Count > 0)
             {
                 _flowPanel.Controls.RemoveAt(_flowPanel.Controls.Count - 1);
-                _flowStatus.Text = $"Items: {_flowPanel.Controls.Count}";
+                _flowStatus!.Text = $"Items: {_flowPanel.Controls.Count}";
             }
         };
 

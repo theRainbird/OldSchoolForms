@@ -871,14 +871,6 @@ public class DataGridView : ContainerControl
                         OnCellClick(new DataGridViewCellEventArgs(col, row));
                         OnSelectionChanged();
                         Invalidate();
-                        // Show selected cell value in form title for visual debugging
-                        if (row >= 0 && row < _rows.Count && col >= 0 && col < _columns.Count && col < _rows[row].Cells.Count)
-                        {
-                            var val = _rows[row].Cells[col].Value;
-                            var f = FindForm();
-                            if (f != null && val != null)
-                                f.Text = $"Ausgewählt: {val}";
-                        }
                     }
                 }
                 else if (row >= _rows.Count && _allowUserToAddRows) AddRow();

@@ -110,7 +110,7 @@
       <value>Cancel</value>
     </data>
     <data name="DataGridViewColumnsDialog_Title">
-      <value>Columns</value>
+      <value>Edit columns</value>
     </data>
     <data name="DataGridViewColumnsDialog_Add">
       <value>Add</value>
@@ -210,5 +210,53 @@
   </data>
   <data name="HtmlBox_Toolbar_FontSize">
     <value>Font Size</value>
+  </data>
+  <data name="ToolStripItemsDialog_Title">
+    <value>Edit items</value>
+  </data>
+  <data name="ToolStripItemsDialog_AddButton">
+    <value>Button</value>
+  </data>
+  <data name="ToolStripItemsDialog_AddLabel">
+    <value>Label</value>
+  </data>
+  <data name="ToolStripItemsDialog_AddSeparator">
+    <value>Separator</value>
+  </data>
+  <data name="ToolStripItemsDialog_AddTextBox">
+    <value>TextBox</value>
+  </data>
+  <data name="ToolStripItemsDialog_AddMenuItem">
+    <value>Menu item</value>
+  </data>
+  <data name="ToolStripItemsDialog_Delete">
+    <value>Delete</value>
+  </data>
+  <data name="ToolStripItemsDialog_MoveUp">
+    <value>Up</value>
+  </data>
+  <data name="ToolStripItemsDialog_MoveDown">
+    <value>Down</value>
+  </data>
+  <data name="ToolStripItemsDialog_Ok">
+    <value>OK</value>
+  </data>
+  <data name="ToolStripItemsDialog_Cancel">
+    <value>Cancel</value>
+  </data>
+  <data name="ToolStripItemsDialog_ColType">
+    <value>Type</value>
+  </data>
+  <data name="ToolStripItemsDialog_ColText">
+    <value>Text</value>
+  </data>
+  <data name="ToolStripItemsDialog_NewButton">
+    <value>Button</value>
+  </data>
+  <data name="ToolStripItemsDialog_NewLabel">
+    <value>Label</value>
+  </data>
+  <data name="ToolStripItemsDialog_NewMenuItem">
+    <value>MenuItem</value>
   </data>
 </root>

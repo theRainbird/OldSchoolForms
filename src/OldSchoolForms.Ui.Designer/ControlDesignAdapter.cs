@@ -72,4 +72,50 @@ public abstract class ControlDesignAdapter : IControlDesignAdapter
     /// <param name="e">The key event arguments.</param>
     /// <returns>true if the adapter consumed the key; otherwise false.</returns>
     public virtual bool OnKeyDown(KeyEventArgs e) => false;
+
+    /// <summary>
+    /// Gets the bounds (in the control's local coordinates) of the adapter-internal selection
+    /// that should be highlighted by the design surface. The default implementation returns
+    /// <see langword="false"/>.
+    /// </summary>
+    /// <param name="bounds">Receives the highlight bounds when this method returns <see langword="true"/>.</param>
+    /// <returns>true if the adapter has a selection to highlight; otherwise false.</returns>
+    public virtual bool TryGetSelectionHighlight(out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the bounds (in the control's local coordinates) of an "add item" affordance the
+    /// design surface should draw. The default implementation returns <see langword="false"/>.
+    /// </summary>
+    /// <param name="bounds">Receives the button bounds when this method returns <see langword="true"/>.</param>
+    /// <returns>true if an add affordance is available; otherwise false.</returns>
+    public virtual bool TryGetAddButtonHighlight(out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Deletes the adapter-internal selection. The default implementation returns
+    /// <see langword="false"/> so the surface can delete the control itself.
+    /// </summary>
+    /// <returns>true if a selection was deleted; otherwise false.</returns>
+    public virtual bool TryDeleteSelection() => false;
+
+    /// <summary>
+    /// Gets the adapter-internal selected object so the property grid can bind to it.
+    /// The default implementation returns <see langword="null"/>.
+    /// </summary>
+    /// <returns>The selected object, or <see langword="null"/>.</returns>
+    public virtual object? GetSelectedValue() => null;
+
+    /// <summary>
+    /// Clears the adapter-internal selection. The default implementation returns
+    /// <see langword="false"/>.
+    /// </summary>
+    /// <returns>true if a selection was cleared; otherwise false.</returns>
+    public virtual bool TryClearSelection() => false;
 }

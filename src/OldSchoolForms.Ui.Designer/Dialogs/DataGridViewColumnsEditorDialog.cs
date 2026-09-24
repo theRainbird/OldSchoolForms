@@ -98,7 +98,7 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             {
                 Dock = DockStyle.Fill,
                 Orientation = SplitOrientation.Horizontal,
-                SplitterDistance = 480
+                SplitterDistance = 680
             };
 
             _grid = new DataGridView

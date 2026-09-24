@@ -112,12 +112,12 @@ public class PropertyGridEditorTests
         var nameCmd = g.GetCommands()
             .First(c => c.Type == DrawCommandType.DrawString && c.Text == "LongPropertyName");
 
-        Assert.Equal(nameColumnWidth, nameCmd.ClipBounds.Value.Right);
+        Assert.Equal(nameColumnWidth, nameCmd.ClipBounds!.Value.Right);
 
         var valueCmd = g.GetCommands()
             .First(c => c.Type == DrawCommandType.DrawString && c.Text == "value");
 
-        Assert.True(valueCmd.ClipBounds.Value.X >= nameColumnWidth);
+        Assert.True(valueCmd.ClipBounds!.Value.X >= nameColumnWidth);
         Assert.True(valueCmd.ClipBounds.Value.Width > 0);
     }
 

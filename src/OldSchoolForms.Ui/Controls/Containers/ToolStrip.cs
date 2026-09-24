@@ -1,4 +1,5 @@
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Design;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -66,7 +67,93 @@ public class ToolStrip : ContainerControl
     /// <summary>
     /// Gets the collection of items in the ToolStrip.
     /// </summary>
+    [EditorButton("…")]
     public ToolStripItemCollection Items => _items;
+
+    /// <summary>
+    /// Gets whether the overflow button is currently active (items are hidden in the overflow dropdown).
+    /// </summary>
+    public bool IsOverflowActivePublic
+    {
+        get
+        {
+            CalculateOverflow();
+            return _overflowActive;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether a dropdown menu is currently open on this ToolStrip.
+    /// </summary>
+    public bool IsDropDownOpenPublic => _dropDownVisible;
+
+    /// <summary>
+    /// Hit-tests the visible top-level item band of the ToolStrip in ToolStrip-local coordinates.
+    /// Intended for designer tooling; does not consider the overflow dropdown.
+    /// </summary>
+    /// <param name="point">The point in ToolStrip-local coordinates.</param>
+    /// <returns>The item under the point, or <c>null</c> if no visible top-level item is hit.</returns>
+    public ToolStripItem? HitTestItemPublic(Point point)
+    {
+        CalculateOverflow();
+        return HitTestTopItem(point.X, point.Y);
+    }
+
+    /// <summary>
+    /// Gets the bounds of a top-level item in ToolStrip-local coordinates.
+    /// Intended for designer tooling such as selection highlighting.
+    /// </summary>
+    /// <param name="item">The item to measure. Must be a visible top-level (non-overflowed) item.</param>
+    /// <returns>The item bounds, or <see cref="Rectangle.Empty"/> if the item is not visible or is in the overflow.</returns>
+    public Rectangle GetItemBoundsPublic(ToolStripItem item)
+    {
+        if (item == null) return Rectangle.Empty;
+        CalculateOverflow();
+
+        var font = Font ?? Font.Default;
+        float zoom = EffectiveZoom;
+        int startX = _gripStyle == ToolStripGripStyle.Visible ? _gripWidth : 0;
+        int itemX = startX;
+
+        var visibleItems = _overflowActive ? _items.Take(_items.Count - _overflowItems.Count).ToList() : _items.ToList();
+
+        foreach (var candidate in visibleItems)
+        {
+            if (!candidate.Visible) continue;
+            int itemWidth = candidate.GetPreferredWidth(font, zoom) + 2;
+            if (ReferenceEquals(candidate, item))
+            {
+                return new Rectangle(itemX, 0, itemWidth, Height);
+            }
+            itemX += itemWidth;
+        }
+
+        return Rectangle.Empty;
+    }
+
+    /// <summary>
+    /// Gets the bounds of the designer "add item" button that follows the last visible item,
+    /// in ToolStrip-local coordinates.
+    /// </summary>
+    /// <returns>The add-button bounds, or <see cref="Rectangle.Empty"/> when overflow is active.</returns>
+    public Rectangle GetAddItemButtonBoundsPublic()
+    {
+        CalculateOverflow();
+        if (_overflowActive) return Rectangle.Empty;
+
+        var font = Font ?? Font.Default;
+        float zoom = EffectiveZoom;
+        int startX = _gripStyle == ToolStripGripStyle.Visible ? _gripWidth : 0;
+        int itemX = startX;
+
+        foreach (var candidate in _items)
+        {
+            if (!candidate.Visible) continue;
+            itemX += candidate.GetPreferredWidth(font, zoom) + 2;
+        }
+
+        return new Rectangle(itemX + 2, 2, 18, Math.Max(4, Height - 4));
+    }
 
     /// <summary>
     /// Gets or sets the grip style.
