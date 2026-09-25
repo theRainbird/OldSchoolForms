@@ -24,8 +24,10 @@ public interface IValueEditor
     bool Handles(PropertyInfo property);
 
     /// <summary>
-    /// Opens the dedicated editor for the given control's property.
+    /// Opens the dedicated editor for the given target object's property.
     /// </summary>
-    /// <param name="control">The control that owns the property being edited.</param>
-    void Open(Control control);
+    /// <param name="target">The object that owns the property being edited. This may be a
+    /// <see cref="Control"/> or any other object the property grid is bound to (for example a
+    /// component such as a tool strip item).</param>
+    void Open(object target);
 }

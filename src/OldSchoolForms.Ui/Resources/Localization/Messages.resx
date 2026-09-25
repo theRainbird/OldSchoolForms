@@ -259,4 +259,28 @@
   <data name="ToolStripItemsDialog_NewMenuItem">
     <value>MenuItem</value>
   </data>
+  <data name="ImagePickerDialog_Title">
+    <value>Select Image</value>
+  </data>
+  <data name="ImagePickerDialog_Import">
+    <value>Import</value>
+  </data>
+  <data name="ImagePickerDialog_ImportTitle">
+    <value>Import image</value>
+  </data>
+  <data name="ImagePickerDialog_Remove">
+    <value>Remove</value>
+  </data>
+  <data name="ImagePickerDialog_Ok">
+    <value>OK</value>
+  </data>
+  <data name="ImagePickerDialog_Cancel">
+    <value>Cancel</value>
+  </data>
+  <data name="ImagePickerDialog_PreviewLabel">
+    <value>Preview</value>
+  </data>
+  <data name="ImagePickerDialog_FilterImages">
+    <value>Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|All files (*.*)|*.*</value>
+  </data>
 </root>

@@ -1,4 +1,5 @@
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Design;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -135,6 +136,7 @@ public abstract class ToolStripItem : Component
     /// <summary>
     /// Gets or sets the image displayed on the item.
     /// </summary>
+    [EditorButton("…")]
     public IGraphicsImage? Image
     {
         get => _image;
@@ -248,6 +250,13 @@ public abstract class ToolStripItem : Component
     /// Gets or sets the parent ToolStrip that owns this item.
     /// </summary>
     internal ToolStrip? Owner { get; set; }
+
+    /// <summary>
+    /// Gets the owning container control of this item, for use by the designer to locate the
+    /// owner form (for example when opening a modal editor dialog). Returns <see langword="null"/>
+    /// when the item is not attached to a tool strip.
+    /// </summary>
+    public Control? OwnerControl => Owner;
 
     /// <summary>
     /// Occurs when the item is clicked.

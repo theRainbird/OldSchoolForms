@@ -640,6 +640,26 @@ public class FormParser
             }
         }
 
+        // SvgImage.FromSvgBase64("base64", size)
+        if (rawValue.StartsWith("SvgImage.FromSvgBase64("))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(rawValue, @"SvgImage\.FromSvgBase64\s*\(\s*""([^""]*)""\s*,\s*(\d+)\s*\)");
+            if (m.Success)
+            {
+                return SvgImage.FromSvgBase64(m.Groups[1].Value, int.Parse(m.Groups[2].Value));
+            }
+        }
+
+        // RasterImage.FromBase64("base64")
+        if (rawValue.StartsWith("RasterImage.FromBase64("))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(rawValue, @"RasterImage\.FromBase64\s*\(\s*""([^""]*)""\s*\)");
+            if (m.Success)
+            {
+                return RasterImage.FromBase64(m.Groups[1].Value);
+            }
+        }
+
         // this.someProperty (skip)
         if (rawValue.StartsWith("this.")) return null;
 

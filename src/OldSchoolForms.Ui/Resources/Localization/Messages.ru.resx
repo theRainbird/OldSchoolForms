@@ -73,4 +73,28 @@
   <data name="DataError_InvalidValue">
     <value>Введенное значение недействительно.</value>
   </data>
+  <data name="ImagePickerDialog_Title">
+    <value>Выбрать изображение</value>
+  </data>
+  <data name="ImagePickerDialog_Import">
+    <value>Импорт</value>
+  </data>
+  <data name="ImagePickerDialog_ImportTitle">
+    <value>Изображение импортировать</value>
+  </data>
+  <data name="ImagePickerDialog_Remove">
+    <value>Удалить</value>
+  </data>
+  <data name="ImagePickerDialog_Ok">
+    <value>ОК</value>
+  </data>
+  <data name="ImagePickerDialog_Cancel">
+    <value>Отмена</value>
+  </data>
+  <data name="ImagePickerDialog_PreviewLabel">
+    <value>Предпросмотр</value>
+  </data>
+  <data name="ImagePickerDialog_FilterImages">
+    <value>Файлы изображений (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|Все файлы (*.*)|*.*</value>
+  </data>
 </root>

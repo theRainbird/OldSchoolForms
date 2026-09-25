@@ -295,6 +295,10 @@ public class CodeGenerator
         if (item.TextAlign != defaults.TextAlign) parts.Add($"TextAlign = ToolStripItemTextAlign.{item.TextAlign}");
         if (item.Image is SvgImage svg && !string.IsNullOrEmpty(svg.ResourceName))
             parts.Add($"Image = SvgImage.FromSvgResource({Quote(svg.ResourceName)}, {svg.DefaultSize})");
+        else if (item.Image is SvgImage importedSvg && !string.IsNullOrEmpty(importedSvg.ImportedBase64))
+            parts.Add($"Image = SvgImage.FromSvgBase64({Quote(importedSvg.ImportedBase64)}, {importedSvg.DefaultSize})");
+        else if (item.Image is RasterImage raster && !string.IsNullOrEmpty(raster.ImportedBase64))
+            parts.Add($"Image = RasterImage.FromBase64({Quote(raster.ImportedBase64)})");
 
         switch (item)
         {

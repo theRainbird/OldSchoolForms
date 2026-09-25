@@ -20,9 +20,9 @@ public sealed class TabPagesEditor : IValueEditor
         => property.DeclaringType == typeof(TabControl) && property.Name == nameof(TabControl.TabPages);
 
     /// <inheritdoc />
-    public void Open(Control control)
+    public void Open(object target)
     {
-        if (control is not TabControl tabControl) return;
-        OldSchoolForms.Ui.Dialogs.TabPagesEditorDialog.ShowDialog(tabControl, control.FindForm());
+        if (target is not TabControl tabControl) return;
+        OldSchoolForms.Ui.Dialogs.TabPagesEditorDialog.ShowDialog(tabControl, tabControl.FindForm());
     }
 }

@@ -130,8 +130,7 @@ public class PropertyGridRow
 
         if (mouseX >= valueColumnX + valueColumnWidth - EllipsisButtonWidth)
         {
-            if (_descriptor.Target is Control targetControl)
-                _descriptor.Editor.Open(targetControl);
+            _descriptor.Editor.Open(_descriptor.Target);
             return true;
         }
 

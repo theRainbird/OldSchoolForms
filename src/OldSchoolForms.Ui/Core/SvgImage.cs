@@ -51,7 +51,43 @@ public class SvgImage : IGraphicsImage
     /// </summary>
     public int DefaultSize { get; private set; }
 
+    /// <summary>
+    /// Gets the Base64-encoded SVG data this image was imported from, or <c>null</c>
+    /// when the image was not imported. Used by the designer to re-emit an equivalent
+    /// load call when serializing images that are not embedded resources.
+    /// </summary>
+    public string? ImportedBase64 { get; private set; }
+
     private SvgImage() { }
+
+    /// <summary>
+    /// Loads an SVG image from a Base64-encoded string. The decoded data is retained so
+    /// the designer can re-emit an equivalent load call when serializing imported images.
+    /// </summary>
+    /// <param name="base64">The Base64-encoded SVG data.</param>
+    /// <param name="size">The desired default width/height in pixels.</param>
+    /// <returns>The loaded SvgImage, or null if the input is not valid Base64 or not valid SVG.</returns>
+    public static SvgImage? FromSvgBase64(string base64, int size)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(base64))
+                return null;
+            var bytes = Convert.FromBase64String(base64);
+            using var stream = new MemoryStream(bytes);
+            var image = FromSvgStream(stream, size);
+            if (image != null)
+            {
+                image.ImportedBase64 = base64;
+                image.DefaultSize = size;
+            }
+            return image;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Loads an SVG image from an embedded resource.

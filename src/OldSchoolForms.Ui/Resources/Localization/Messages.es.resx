@@ -73,4 +73,28 @@
   <data name="DataError_InvalidValue">
     <value>El valor introducido no es válido.</value>
   </data>
+  <data name="ImagePickerDialog_Title">
+    <value>Seleccionar imagen</value>
+  </data>
+  <data name="ImagePickerDialog_Import">
+    <value>Importar</value>
+  </data>
+  <data name="ImagePickerDialog_ImportTitle">
+    <value>Importar imagen</value>
+  </data>
+  <data name="ImagePickerDialog_Remove">
+    <value>Quitar</value>
+  </data>
+  <data name="ImagePickerDialog_Ok">
+    <value>Aceptar</value>
+  </data>
+  <data name="ImagePickerDialog_Cancel">
+    <value>Cancelar</value>
+  </data>
+  <data name="ImagePickerDialog_PreviewLabel">
+    <value>Vista previa</value>
+  </data>
+  <data name="ImagePickerDialog_FilterImages">
+    <value>Archivos de imagen (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|Todos los archivos (*.*)|*.*</value>
+  </data>
 </root>

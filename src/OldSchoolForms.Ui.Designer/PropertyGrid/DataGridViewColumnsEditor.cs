@@ -21,9 +21,9 @@ public sealed class DataGridViewColumnsEditor : IValueEditor
         => property.DeclaringType == typeof(DataGridView) && property.Name == nameof(DataGridView.Columns);
 
     /// <inheritdoc />
-    public void Open(Control control)
+    public void Open(object target)
     {
-        if (control is not DataGridView dataGridView) return;
-        DataGridViewColumnsEditorDialog.ShowDialog(dataGridView, control.FindForm());
+        if (target is not DataGridView dataGridView) return;
+        DataGridViewColumnsEditorDialog.ShowDialog(dataGridView, dataGridView.FindForm());
     }
 }

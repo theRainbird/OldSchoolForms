@@ -23,7 +23,7 @@ public class PropertyGridEditorTests
 
         public string ButtonText => "…";
         public bool Handles(PropertyInfo property) => property.Name == nameof(TabControl.TabPages);
-        public void Open(Control control) { Opened = true; OpenedControl = control; }
+        public void Open(object target) { Opened = true; OpenedControl = target as Control; }
     }
 
     [Fact]

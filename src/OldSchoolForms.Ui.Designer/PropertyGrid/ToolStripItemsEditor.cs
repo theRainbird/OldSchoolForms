@@ -21,9 +21,9 @@ public sealed class ToolStripItemsEditor : IValueEditor
         => property.DeclaringType == typeof(ToolStrip) && property.Name == nameof(ToolStrip.Items);
 
     /// <inheritdoc />
-    public void Open(Control control)
+    public void Open(object target)
     {
-        if (control is not ToolStrip toolStrip) return;
-        ToolStripItemsEditorDialog.ShowDialog(toolStrip, control.FindForm());
+        if (target is not ToolStrip toolStrip) return;
+        ToolStripItemsEditorDialog.ShowDialog(toolStrip, toolStrip.FindForm());
     }
 }
