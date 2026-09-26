@@ -25,6 +25,7 @@ public enum SeperatorOrientation
 /// divide content regions within a container. The line colors are taken from
 /// the active theme (SeparatorDark / SeparatorLight).
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.minus.svg")]
 public class SeperatorControl : Control
 {
     private SeperatorOrientation _orientation = SeperatorOrientation.Horizontal;

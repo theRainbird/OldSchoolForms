@@ -8,7 +8,7 @@ namespace OldSchoolForms.Ui.Controls.Containers;
 /// Represents an editable text box in a ToolStrip.
 /// Supports full text editing including cursor, selection, copy/cut/paste, and password mode.
 /// </summary>
-public class ToolStripTextBox : ToolStripItem
+public class ToolStripTextBox : ToolStripItem, IBlinkHost
 {
     private readonly TextEditorEngine _engine = new();
     private TextEditorContext? _context;
@@ -106,9 +106,30 @@ public class ToolStripTextBox : ToolStripItem
                 {
                     _engine.SelectionLength = 0;
                 }
+                if (value)
+                    CursorBlinkDriver.Register(this);
+                else
+                    CursorBlinkDriver.Unregister(this);
                 Owner?.Invalidate();
             }
         }
+    }
+
+    /// <inheritdoc />
+    bool IBlinkHost.ShouldBlink => _focused && Enabled && Visible;
+
+    /// <inheritdoc />
+    void IBlinkHost.InvalidateForBlink() => Owner?.Invalidate();
+
+    /// <summary>
+    /// Releases the resources used by the text box and unregisters it from the shared
+    /// cursor-blink driver if it was focused, so a disposed item cannot keep the timer alive.
+    /// </summary>
+    public override void Dispose()
+    {
+        if (_focused)
+            CursorBlinkDriver.Unregister(this);
+        base.Dispose();
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// A container control that displays a bordered group box with a title.
 /// Used to logically group related controls within a form.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_form_20_color.svg")]
 public class GroupBox : ContainerControl
 {
     /// <summary>

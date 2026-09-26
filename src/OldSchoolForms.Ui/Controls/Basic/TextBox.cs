@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that allows the user to enter text.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_edit_16_color.svg")]
 public class TextBox : Control
 {
     private readonly TextEditorEngine _engine = new();
@@ -26,6 +27,9 @@ public class TextBox : Control
     }
 
     private TextEditorContext Context => _context ??= new TextEditorContext(this);
+
+    /// <inheritdoc />
+    protected internal override bool WantsCursorBlink => true;
 
     /// <summary>
     /// Called when the theme changes. Updates textbox-specific colors.

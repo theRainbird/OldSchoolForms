@@ -9,6 +9,7 @@ namespace OldSchoolForms.Ui.Controls;
 /// <summary>
 /// Displays a hierarchical collection of <see cref="TreeNode"/> objects with scrolling, icons, and keyboard navigation.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_org_16_color.svg")]
 public class TreeView : Control
 {
     private const int DefaultIndent = 24;

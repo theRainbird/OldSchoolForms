@@ -8,6 +8,7 @@ namespace OldSchoolForms.Ui.Controls.Containers;
 /// A menu strip that displays a menu bar with menu items and supports
 /// click detection, dropdown menus, keyboard navigation, and Alt+mnemonic activation.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.menu.svg")]
 public class MenuStrip : ContainerControl
 {
     private readonly List<ToolStripMenuItem> _items = new();

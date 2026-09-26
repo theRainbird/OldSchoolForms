@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Containers;
 /// <summary>
 /// A control that serves as a container for other controls.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_board_16_color.svg")]
 public class Panel : ContainerControl
 {
     private BorderStyle _borderStyle = BorderStyle.None;

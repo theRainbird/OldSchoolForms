@@ -10,6 +10,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that presents a drop-down list of items with configurable <see cref="DropDownStyle"/>.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_options_16_color.svg")]
 public class ComboBox : Control
 {
     private readonly List<object> _items = new();
@@ -266,6 +267,9 @@ public class ComboBox : Control
             Invalidate();
         }
     }
+
+    /// <inheritdoc />
+    protected internal override bool WantsCursorBlink => _dropDownStyle != DropDownStyle.DropDownList;
 
     /// <summary>
     /// Gets the collection of columns for the multi-column drop-down list.

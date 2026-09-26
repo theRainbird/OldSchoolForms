@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that displays static text.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_document_text_16_color.svg")]
 public class Label : Control
 {
     private ContentAlignment _textAlign = ContentAlignment.MiddleLeft;

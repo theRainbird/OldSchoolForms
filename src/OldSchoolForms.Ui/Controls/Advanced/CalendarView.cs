@@ -10,6 +10,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// A calendar control supporting Month, Week, and Day views with appointment display,
 /// navigation, and an appointment editing dialog. Similar in appearance to common Groupware.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_calendar_16_color.svg")]
 public class CalendarView : ContainerControl
 {
     #region Constants

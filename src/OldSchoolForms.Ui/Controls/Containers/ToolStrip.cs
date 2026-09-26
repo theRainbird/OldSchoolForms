@@ -26,6 +26,7 @@ public enum ToolStripGripStyle
 /// Supports overflow behavior when items exceed the available width, grip handle for repositioning,
 /// and dropdown menus on compatible items.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_toolbox_16_color.svg")]
 public class ToolStrip : ContainerControl
 {
     private readonly ToolStripItemCollection _items;

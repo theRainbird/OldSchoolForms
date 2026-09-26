@@ -9,6 +9,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that displays a list of items from which the user can select.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_text_bullet_list_square_16_color.svg")]
 public class ListBox : Control
 {
     private readonly List<object> _items = new();

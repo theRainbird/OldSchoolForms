@@ -12,6 +12,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// aggregated value cells, and interactive drilldown capability.
 /// Supports hierarchical row/column fields, multiple aggregation types, and drill-through.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_data_pie_20_color.svg")]
 public class PivotTable : ContainerControl
 {
     // Core collections

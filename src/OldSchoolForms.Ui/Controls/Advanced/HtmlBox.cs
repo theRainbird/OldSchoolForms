@@ -11,6 +11,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// text colors, lists, tables, images, hyperlinks, and horizontal rules.
 /// Uses SkiaSharp for rendering and HtmlAgilityPack for HTML import/export.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_code_16_color.svg")]
 public class HtmlBox : Control
 {
     private readonly RichTextEngine _engine = new();
@@ -19,6 +20,9 @@ public class HtmlBox : Control
     private bool _readOnly;
     private LinkBehavior _linkBehavior = LinkBehavior.RaiseEvent;
     private static readonly int CursorBlinkInterval = 530;
+
+    /// <inheritdoc />
+    protected internal override bool WantsCursorBlink => !_readOnly;
 
     // Cached layout
     private List<VisualLine>? _cachedLines;

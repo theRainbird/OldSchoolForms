@@ -9,6 +9,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// Represents an animated loading spinner control with chasing dots.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_number_symbol_square_20_color.svg")]
 public class Spinner : Control
 {
     private bool _active;

@@ -23,19 +23,7 @@ public class Form : ContainerControl, INativeWindow
     private bool _processingKeyDown;
     private bool _processingKeyUp;
     private bool _requiresRender = true;
-    private ModifierKeys _currentModifiers;
-    private Keys _lastKeyDown;
-    private readonly Dictionary<Keys, KeyRepeatState> _heldKeys = new();
-    private readonly Dictionary<Keys, string> _keyTextMap = new();
-    private const int KeyRepeatDelay = 400;
-    private const int KeyRepeatInterval = 50;
     private SystemCursorType? _cursor;
-
-    private struct KeyRepeatState
-    {
-        public long FirstPressTime;
-        public long LastRepeatTime;
-    }
 
     /// <summary>
     /// Initializes a new instance of Form.
@@ -399,6 +387,11 @@ public class Form : ContainerControl, INativeWindow
     {
         _requiresRender = true;
         base.Invalidate();
+        // Wake the render loop when invalidation originates off the UI thread (e.g. the
+        // shared cursor-blink timer), so a loop blocked in glfwWaitEventsTimeout picks up
+        // the dirty state immediately instead of after the idle timeout.
+        if (!Platform.Platform.IsOnUiThread)
+            Platform.Platform.PostEmptyEvent();
     }
 
     /// <summary>
@@ -857,54 +850,7 @@ public class Form : ContainerControl, INativeWindow
     /// <param name="e">An EventArgs that contains the event data.</param>
     protected internal override void OnLostFocus(EventArgs e)
     {
-        ClearHeldKeys();
         base.OnLostFocus(e);
-    }
-
-    /// <summary>
-    /// Processes key repeat events for held keys. Called from the application main loop.
-    /// Generates synthetic KeyDown and TextInput events for keys held beyond the repeat delay.
-    /// </summary>
-    public void ProcessKeyRepeat()
-    {
-        if (_heldKeys.Count == 0) return;
-
-        long now = Environment.TickCount;
-
-        foreach (var kvp in _heldKeys)
-        {
-            var key = kvp.Key;
-            var state = kvp.Value;
-            long elapsed = now - state.FirstPressTime;
-
-            if (elapsed < KeyRepeatDelay)
-                continue;
-
-            long sinceLastRepeat = now - state.LastRepeatTime;
-            if (sinceLastRepeat >= KeyRepeatInterval)
-            {
-                state.LastRepeatTime = now;
-                _heldKeys[key] = state;
-
-                var keyArgs = new KeyEventArgs
-                {
-                    KeyCode = key,
-                    Modifiers = _currentModifiers
-                };
-                OnKeyDown(keyArgs);
-
-                if (_keyTextMap.TryGetValue(key, out var text))
-                {
-                    OnTextInput(text);
-                }
-            }
-        }
-    }
-
-    private void ClearHeldKeys()
-    {
-        _heldKeys.Clear();
-        _keyTextMap.Clear();
     }
 
     /// <summary>
@@ -914,10 +860,6 @@ public class Form : ContainerControl, INativeWindow
     protected internal override void OnTextInput(string text)
     {
         if (!Enabled) return;
-        if (!string.IsNullOrEmpty(text) && _lastKeyDown != Keys.None)
-        {
-            _keyTextMap[_lastKeyDown] = text;
-        }
 
         if (ActiveControl != null)
         {
@@ -975,19 +917,7 @@ public class Form : ContainerControl, INativeWindow
 
     protected internal override void OnKeyDown(KeyEventArgs e)
     {
-        _currentModifiers = e.Modifiers;
         if (!Enabled || _processingKeyDown) return;
-
-        if (!_heldKeys.ContainsKey(e.KeyCode))
-        {
-            _heldKeys[e.KeyCode] = new KeyRepeatState
-            {
-                FirstPressTime = Environment.TickCount,
-                LastRepeatTime = Environment.TickCount
-            };
-        }
-
-        _lastKeyDown = e.KeyCode;
 
         _processingKeyDown = true;
         try
@@ -1110,10 +1040,6 @@ public class Form : ContainerControl, INativeWindow
     /// <param name="e">A KeyEventArgs that contains the event data.</param>
     protected internal override void OnKeyUp(KeyEventArgs e)
     {
-        _currentModifiers = e.Modifiers;
-        _heldKeys.Remove(e.KeyCode);
-        _keyTextMap.Remove(e.KeyCode);
-
         if (!Enabled || _processingKeyUp) return;
         _processingKeyUp = true;
         try

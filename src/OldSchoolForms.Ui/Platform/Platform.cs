@@ -25,9 +25,6 @@ public static class Platform
     private static Point _lastMousePosition;
     private static uint _nextWindowId = 1;
     private static readonly Dictionary<(MessageBoxIcon icon, uint windowId, int size), IGraphicsImage> _iconImageCache = new();
-    private static readonly Stopwatch _frameTimer = Stopwatch.StartNew();
-    private static readonly TimeSpan FrameInterval = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / 30);
-    private static long _lastRenderTicks;
     private static IKeyboard? _keyboard;
 
     // Held-key auto-repeat. GLFW surfaces key repeat only through the char callback, so
@@ -35,6 +32,11 @@ public static class Platform
     // while held. We synthesize the repeats here to match native text-editing behaviour.
     private const long KeyRepeatInitialDelayMs = 500;
     private const long KeyRepeatIntervalMs = 33;
+    // Maximum seconds the render loop blocks in glfwWaitEventsTimeout when idle. The
+    // thread sleeps until real input arrives; cross-thread invalidations (cursor blink,
+    // animation timers) wake it earlier via PostEmptyEvent, so this only bounds the
+    // worst-case wake-up for the rare case of a missed post.
+    private const double IdleWaitSeconds = 1.0;
     private static Keys _repeatKey = Keys.None;
     private static ModifierKeys _repeatModifiers;
     private static long _repeatPressTicks;
@@ -74,10 +76,43 @@ public static class Platform
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate IntPtr GlfwGetWaylandWindowDelegate(IntPtr window);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void GlfwWaitEventsTimeoutDelegate(double timeout);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void GlfwPostEmptyEventDelegate();
+
     private static readonly GlfwGetX11DisplayDelegate? _glfwGetX11Display = ResolveGlfwFunc<GlfwGetX11DisplayDelegate>("glfwGetX11Display");
     private static readonly GlfwGetX11WindowDelegate? _glfwGetX11Window = ResolveGlfwFunc<GlfwGetX11WindowDelegate>("glfwGetX11Window");
     private static readonly GlfwGetWaylandDisplayDelegate? _glfwGetWaylandDisplay = ResolveGlfwFunc<GlfwGetWaylandDisplayDelegate>("glfwGetWaylandDisplay");
     private static readonly GlfwGetWaylandWindowDelegate? _glfwGetWaylandWindow = ResolveGlfwFunc<GlfwGetWaylandWindowDelegate>("glfwGetWaylandWindow");
+
+    // Resolved lazily rather than in the static initializer: Silk.NET loads the native
+    // glfw library only when the first window/GL context is created, which happens
+    // after this type's static initializer would otherwise run. Resolving on first use
+    // (inside the render loop) guarantees the library is already mapped into the process.
+    private static GlfwWaitEventsTimeoutDelegate? _glfwWaitEventsTimeout;
+    private static GlfwPostEmptyEventDelegate? _glfwPostEmptyEvent;
+    private static readonly object _glfwResolveLock = new();
+    private static bool _waitEventsResolved;
+
+    private static void EnsureWaitEventsResolved()
+    {
+        if (_waitEventsResolved)
+            return;
+        lock (_glfwResolveLock)
+        {
+            if (_waitEventsResolved)
+                return;
+            _glfwWaitEventsTimeout = ResolveGlfwFunc<GlfwWaitEventsTimeoutDelegate>("glfwWaitEventsTimeout");
+            _glfwPostEmptyEvent = ResolveGlfwFunc<GlfwPostEmptyEventDelegate>("glfwPostEmptyEvent");
+            _waitEventsResolved = true;
+        }
+    }
+
+    // Managed id of the thread that owns the UI/render loop. Recorded by SetUiThread.
+    // Cross-thread invalidations compare against this to decide whether to wake the loop.
+    private static int _uiThreadId = -1;
 
     [DllImport("libc", EntryPoint = "dlopen", ExactSpelling = true)]
     private static extern IntPtr DlOpen(string? filename, int flags);
@@ -91,6 +126,36 @@ public static class Platform
     /// Called every frame before event processing. External components can hook here.
     /// </summary>
     public static Action? OnFrame { get; set; }
+
+    /// <summary>
+    /// Records the managed thread that owns the UI/render loop. Must be called from the
+    /// thread that runs the application message loop before any window is created.
+    /// Cross-thread invalidations use this to decide whether to wake the loop.
+    /// </summary>
+    public static void SetUiThread() => _uiThreadId = Environment.CurrentManagedThreadId;
+
+    /// <summary>
+    /// Gets whether the calling thread is the UI/render thread. Returns <c>true</c> when
+    /// the UI thread has not been recorded yet, so pre-loop invalidations are treated as
+    /// UI-thread work and never trigger a wake-up.
+    /// </summary>
+    public static bool IsOnUiThread => _uiThreadId < 0 || Environment.CurrentManagedThreadId == _uiThreadId;
+
+    /// <summary>
+    /// Posts an empty event to the windowing system to wake a render loop blocked in
+    /// <c>glfwWaitEventsTimeout</c>. Used when invalidation originates off the UI thread
+    /// (for example the cursor-blink timer or a control animation timer) so the pending
+    /// dirty state is picked up promptly instead of after the wait timeout.
+    /// </summary>
+    public static void PostEmptyEvent()
+    {
+        try
+        {
+            EnsureWaitEventsResolved();
+            _glfwPostEmptyEvent?.Invoke();
+        }
+        catch { }
+    }
 
     /// <summary>
     /// Gets the WindowContext for the specified window ID, or null if not found.
@@ -1150,6 +1215,7 @@ public static class Platform
     public static void ProcessEvents(Application app)
     {
         OnFrame?.Invoke();
+        EnsureWaitEventsResolved();
         var contextsSnapshot = _contexts.Values.ToList();
         var pendingCleanup = new List<WindowContext>();
 
@@ -1213,17 +1279,9 @@ public static class Platform
             }
         }
 
-        // 30 fps frame pacing: sleep until the next frame is due
-        long elapsed = _frameTimer.Elapsed.Ticks - _lastRenderTicks;
-        if (elapsed < FrameInterval.Ticks)
-        {
-            // Sleep for the remaining time (max 33ms at 30fps), clamped to a minimum of 1ms
-            long remaining = FrameInterval.Ticks - elapsed;
-            int sleepMs = (int)(remaining / TimeSpan.TicksPerMillisecond);
-            if (sleepMs > 0)
-                Thread.Sleep(sleepMs);
-        }
-
+        // Render only windows that are dirty or explicitly forced. The same skip rules
+        // are applied here as for the wait decision below, so a minimized or hidden
+        // window that happens to be dirty cannot drive a zero-timeout busy loop.
         foreach (var ctx in _contexts.Values.ToList())
         {
             if (ctx.IsClosing || !ctx.IsInitialized || ctx.Renderer == null || ctx.FontRenderer == null)
@@ -1243,6 +1301,11 @@ public static class Platform
             if (!ctx.Window.IsVisible && !ctx.ForceRender)
                 continue;
 
+            // Dirty gate: skip the full clear + command-list rebuild + swap when nothing
+            // changed since the last render. This is the primary idle-CPU optimization.
+            if (!ctx.ForceRender && !form.RequiresRender)
+                continue;
+
             try
             {
                 ctx.Window.MakeCurrent();
@@ -1258,8 +1321,61 @@ public static class Platform
             }
         }
 
-        _lastRenderTicks = _frameTimer.Elapsed.Ticks;
+        // Event-driven pacing instead of busy-polling at a fixed frame rate. Block until
+        // the windowing system reports input. A held auto-repeat key shortens the wait so
+        // synthesized repeats keep firing; a still-pending render (e.g. an invalidate
+        // raised from within a render handler) forces an immediate next pass; otherwise the
+        // thread sleeps until an event or the idle timeout. Cross-thread invalidations
+        // (cursor blink, animation timers) wake the wait early via PostEmptyEvent.
+        double waitSeconds;
+        if (_repeatForm != null)
+            waitSeconds = KeyRepeatIntervalMs / 1000.0;
+        else if (HasPendingRender())
+            waitSeconds = 0.0;
+        else
+            waitSeconds = IdleWaitSeconds;
+
+        if (waitSeconds > 0.0)
+        {
+            if (_glfwWaitEventsTimeout != null)
+            {
+                try { _glfwWaitEventsTimeout(waitSeconds); }
+                catch { Thread.Sleep((int)(waitSeconds * 1000)); }
+            }
+            else
+            {
+                Thread.Sleep((int)(waitSeconds * 1000));
+            }
+        }
+        else if (_glfwWaitEventsTimeout == null && _contexts.Count > 0)
+        {
+            // No event-wait available and work is pending: yield briefly so the loop
+            // keeps draining the event queue without spinning hot on the CPU.
+            Thread.Sleep(1);
+        }
     }
+
+    /// <summary>
+    /// Determines whether any renderable window still has pending work (dirty or forced),
+    /// applying the same minimized/hidden skip rules used by the render pass.
+    /// </summary>
+    /// <returns><c>true</c> if a renderable window needs to be drawn; otherwise <c>false</c>.</returns>
+    private static bool HasPendingRender()
+    {
+        foreach (var ctx in _contexts.Values)
+        {
+            if (ctx.IsClosing || !ctx.IsInitialized)
+                continue;
+            if (ctx.Form.WindowState == FormWindowState.Minimized)
+                continue;
+            if (!ctx.Window.IsVisible && !ctx.ForceRender)
+                continue;
+            if (ctx.ForceRender || ctx.Form.RequiresRender)
+                return true;
+        }
+        return false;
+    }
+
 
     private static void RenderForm(WindowContext ctx)
     {
@@ -1268,6 +1384,11 @@ public static class Platform
         var fontRenderer = ctx.FontRenderer!;
 
         form.ClearRenderFlag();
+        // Pre-clear the dirty tree before painting. Controls that override Render
+        // without calling base never clear their own dirty flag; without this pass
+        // they would keep the form permanently dirty and drive a busy render loop.
+        // Running before the paint pass preserves any Invalidate raised during render.
+        form.ClearDirtyTree();
         renderer.Clear(form.BackColor);
 
         using var g = new Graphics();

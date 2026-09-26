@@ -10,7 +10,7 @@ namespace OldSchoolForms.Ui.Core;
 /// <summary>
 /// Base class for all UI controls, providing properties, methods, and events for visual elements.
 /// </summary>
-public class Control : Component, IThemeChangeSubscriber, INotifyPropertyChanged
+public class Control : Component, IThemeChangeSubscriber, INotifyPropertyChanged, IBlinkHost
 {
     private string _name = string.Empty;
     private Control? _parent;
@@ -681,6 +681,10 @@ if (_focused != value)
     public virtual void Invalidate(Rectangle rect)
     {
         _dirty = true;
+        // Wake a UI thread blocked in glfwWaitEventsTimeout for cross-thread partial
+        // invalidations (the form re-renders via its dirty-descendant check).
+        if (!Platform.Platform.IsOnUiThread)
+            Platform.Platform.PostEmptyEvent();
     }
 
     /// <summary>
@@ -706,6 +710,24 @@ if (_focused != value)
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Recursively clears the dirty flag on this control and all of its descendants.
+    /// The renderer calls this as a pre-pass before painting a window so that controls
+    /// which override <see cref="Render"/> without invoking the base implementation
+    /// still have their dirty state reset. Because it runs before the paint pass, any
+    /// <see cref="Invalidate()"/> raised during rendering is preserved and triggers a
+    /// follow-up frame.
+    /// </summary>
+    internal void ClearDirtyTree()
+    {
+        _dirty = false;
+        if (_controls == null) return;
+        for (int i = 0; i < _controls.Count; i++)
+        {
+            _controls[i].ClearDirtyTree();
+        }
     }
 
     /// <summary>
@@ -1314,6 +1336,19 @@ if (_controls == null || _controls.Count == 0) return;
     }
 
     /// <summary>
+    /// Gets whether this control paints a blinking text caret while focused and
+    /// therefore needs periodic repaints from the shared cursor-blink driver.
+    /// Returns <c>false</c> by default; text-editing controls override to <c>true</c>.
+    /// </summary>
+    protected internal virtual bool WantsCursorBlink => false;
+
+    /// <inheritdoc />
+    bool IBlinkHost.ShouldBlink => Focused && Enabled && Visible;
+
+    /// <inheritdoc />
+    void IBlinkHost.InvalidateForBlink() => Invalidate();
+
+    /// <summary>
     /// Raises the GotFocus event.
     /// </summary>
     /// <param name="e">An EventArgs that contains the event data.</param>
@@ -1324,6 +1359,8 @@ if (_controls == null || _controls.Count == 0) return;
             State |= ControlState.Focused;
         }
         OnFocused();
+        if (WantsCursorBlink)
+            CursorBlinkDriver.Register(this);
         GotFocus?.Invoke(this, e);
     }
 
@@ -1338,6 +1375,8 @@ if (_controls == null || _controls.Count == 0) return;
             State &= ~ControlState.Focused;
         }
         OnUnfocused();
+        if (WantsCursorBlink)
+            CursorBlinkDriver.Unregister(this);
         LostFocus?.Invoke(this, e);
     }
 
@@ -1350,6 +1389,18 @@ if (_controls == null || _controls.Count == 0) return;
     /// Called when the control loses focus. Override to provide custom focus behavior.
     /// </summary>
     protected internal virtual void OnUnfocused() { }
+
+    /// <summary>
+    /// Releases the resources used by the control and unregisters it from the shared
+    /// cursor-blink driver if it was registered, so a disposed caret host cannot keep
+    /// the blink timer alive.
+    /// </summary>
+    public override void Dispose()
+    {
+        if (WantsCursorBlink)
+            CursorBlinkDriver.Unregister(this);
+        base.Dispose();
+    }
 
     /// <summary>
     /// Draws the focus indicator for the control if it has focus and focus cues are enabled.

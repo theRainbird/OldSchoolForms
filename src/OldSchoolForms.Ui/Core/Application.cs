@@ -46,13 +46,16 @@ public class Application
 
         _running = true;
 
+        // Record the UI/render thread so cross-thread invalidations (cursor blink,
+        // animation timers) know when to wake the event-driven render loop.
+        Platform.Platform.SetUiThread();
+
         mainForm.Create();
         _forms.TryAdd(mainForm.Handle, mainForm);
 
         while (_running && !_forms.IsEmpty)
         {
             ProcessEvents();
-            ProcessKeyRepeats();
             Application.DoEvents();
         }
     }
@@ -60,14 +63,6 @@ public class Application
     private void ExitInternal()
     {
         _running = false;
-    }
-
-    private void ProcessKeyRepeats()
-    {
-        foreach (var form in _forms.Values)
-        {
-            form.ProcessKeyRepeat();
-        }
     }
 
     private void ProcessEvents()

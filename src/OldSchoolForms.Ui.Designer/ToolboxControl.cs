@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Services;
@@ -37,6 +38,7 @@ public class ToolboxControl : Panel
 {
     private readonly ToolboxService _toolboxService;
     private readonly List<ToolboxItem> _filteredItems = new();
+    private readonly TextBox _searchBox = new();
     private int _hoveredIndex = -1;
     private int _selectedIndex = -1;
     private int _lastMouseDownY;
@@ -46,9 +48,13 @@ public class ToolboxControl : Panel
     internal readonly ScrollBarEngine _vScrollBar = new();
 
     private const int HeaderHeight = 24;
+    private const int SearchAreaHeight = 26;
     private const int ItemHeight = 26;
     private const int CategoryGap = 20;
     private const int ScrollBarWidth = ScrollBarEngine.DefaultScrollBarSize;
+    private const int IconSize = 16;
+
+    private static int ContentTop => HeaderHeight + SearchAreaHeight;
 
     /// <summary>
     /// Raised when the user starts dragging a toolbox item.
@@ -78,8 +84,35 @@ public class ToolboxControl : Panel
         _vScrollBar.LargeChange = ItemHeight * 3;
         _vScrollBar.Scroll += (_, _) => Invalidate();
 
+        Padding = new Padding(0, HeaderHeight, ScrollBarWidth, 0);
+        _searchBox.Dock = DockStyle.Top;
+        _searchBox.Height = 22;
+        _searchBox.TextChanged += (_, _) =>
+        {
+            BuildFilteredList();
+            UpdateScrollBar();
+            _vScrollBar.ScrollTo(0);
+            Invalidate();
+        };
+        Controls.Add(_searchBox);
+
         BuildFilteredList();
     }
+
+    /// <summary>
+    /// Gets or sets the current search filter text. Only items whose display name
+    /// contains this text (case-insensitive) are shown. Setting triggers a refilter.
+    /// </summary>
+    public string SearchText
+    {
+        get => _searchBox.Text;
+        set => _searchBox.Text = value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Gets the items currently visible after category and search filtering.
+    /// </summary>
+    public IReadOnlyList<ToolboxItem> FilteredItems => _filteredItems.AsReadOnly();
 
     /// <summary>
     /// Filters to show only a specific category. Pass null for all.
@@ -95,7 +128,7 @@ public class ToolboxControl : Panel
 
     private int ContentHeight()
     {
-        int height = HeaderHeight + 4;
+        int height = ContentTop + 4;
         string? currentCat = null;
         foreach (var item in _filteredItems)
         {
@@ -118,10 +151,13 @@ public class ToolboxControl : Panel
     private void BuildFilteredList()
     {
         _filteredItems.Clear();
+        IEnumerable<ToolboxItem> items = _toolboxService.Items;
         if (_activeCategory != null)
-            _filteredItems.AddRange(_toolboxService.Items.Where(i => i.Category == _activeCategory));
-        else
-            _filteredItems.AddRange(_toolboxService.Items);
+            items = items.Where(i => i.Category == _activeCategory);
+        var query = _searchBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(query))
+            items = items.Where(i => i.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase));
+        _filteredItems.AddRange(items);
         _selectedIndex = -1;
     }
 
@@ -135,6 +171,11 @@ public class ToolboxControl : Panel
             return;
         }
         if (e is not MouseEventArgs moveArgs) return;
+        if (moveArgs.Y >= HeaderHeight && moveArgs.Y < ContentTop)
+        {
+            base.OnMouseDown(e);
+            return;
+        }
         _lastMouseDownY = moveArgs.Y;
         int index = HitTestItem(moveArgs.Y);
         if (index >= 0 && index < _filteredItems.Count)
@@ -151,10 +192,10 @@ public class ToolboxControl : Panel
     private List<(int y, int height, ToolboxItem? item, bool isHeader, string category)> BuildLayout()
     {
         var layout = new List<(int y, int height, ToolboxItem? item, bool isHeader, string category)>();
-        int y = HeaderHeight + 4;
+        int y = ContentTop + 4;
         string? currentCat = null;
 
-        foreach (var item in _toolboxService.Items)
+        foreach (var item in _filteredItems)
         {
             if (_activeCategory == null && item.Category != currentCat)
             {
@@ -162,9 +203,6 @@ public class ToolboxControl : Panel
                 layout.Add((y, CategoryGap, null, true, currentCat));
                 y += CategoryGap;
             }
-
-            if (_activeCategory != null && item.Category != _activeCategory)
-                continue;
 
             layout.Add((y, ItemHeight, item, false, item.Category));
             y += ItemHeight;
@@ -221,11 +259,28 @@ public class ToolboxControl : Panel
                     g.FillRectangle(bg, 2, drawY, Width - sbw - 2, entry.height);
 
                 var textColor = idx == _hoveredIndex ? theme.HighlightText : theme.ControlText;
-                g.DrawString(entry.item!.DisplayName, theme.DefaultFont, textColor, 8, drawY + 4);
+                int textX = 8;
+                var icon = entry.item!.GetIcon();
+                if (icon != null)
+                {
+                    g.DrawImage(icon, 6, drawY + (entry.height - IconSize) / 2, IconSize, IconSize);
+                    textX = 6 + IconSize + 6;
+                }
+                g.DrawString(entry.item!.DisplayName, theme.DefaultFont, textColor, textX, drawY + 4);
             }
         }
 
         g.ResetClip();
+
+        // Render the search box child manually: Panel.Render would repaint the
+        // whole background over the custom header/item drawing.
+        if (_searchBox.Visible)
+        {
+            g.Save();
+            g.TranslateTransform(_searchBox.X, _searchBox.Y);
+            _searchBox.Render(g);
+            g.Restore();
+        }
 
         _vScrollBar.Render(g, new Rectangle(Width - sbw, 0, sbw, Height), theme);
 

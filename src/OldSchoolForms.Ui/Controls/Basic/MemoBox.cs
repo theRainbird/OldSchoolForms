@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// Provides a multi-line text editing control with word wrap and auto-show scrollbars.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_notebook_16_color.svg")]
 public class MemoBox : Control
 {
     private readonly MultiLineTextEditorEngine _engine = new();
@@ -18,6 +19,9 @@ public class MemoBox : Control
     private int _textAreaY = 2;
     private int _textAreaWidth;
     private int _textAreaHeight;
+
+    /// <inheritdoc />
+    protected internal override bool WantsCursorBlink => true;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MemoBox"/>.

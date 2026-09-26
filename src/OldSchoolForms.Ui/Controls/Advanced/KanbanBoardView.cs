@@ -12,6 +12,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// Supports drag-and-drop between columns and within columns, data binding, keyboard navigation,
 /// and configurable state transitions.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.todo-list.svg")]
 public class KanbanBoardView : Control
 {
     private object? _dataSource;

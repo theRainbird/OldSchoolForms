@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that can be checked or unchecked.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_checkbox_16_color.svg")]
 public class CheckBox : Control
 {
     private bool _checked;

@@ -36,14 +36,44 @@ public class ToolboxItem
     public Size DefaultSize { get; }
 
     /// <summary>
+    /// Gets the fully qualified name of the embedded SVG icon resource declared via
+    /// <see cref="ToolboxIconAttribute"/> on the control type, or null if none is declared.
+    /// </summary>
+    public string? IconResourceName { get; }
+
+    private SvgImage? _icon;
+    private bool _iconLoaded;
+
+    /// <summary>
     /// Initializes a new toolbox item.
     /// </summary>
+    /// <param name="displayName">The display name shown in the toolbox.</param>
+    /// <param name="category">The toolbox category of the control.</param>
+    /// <param name="controlType">The control type represented by this item.</param>
+    /// <param name="defaultSize">The default size for newly created controls of this type.</param>
     public ToolboxItem(string displayName, string category, Type controlType, Size defaultSize)
     {
         DisplayName = displayName;
         Category = category;
         ControlType = controlType;
         DefaultSize = defaultSize;
+        IconResourceName = controlType.GetCustomAttributes(typeof(ToolboxIconAttribute), true)
+            .OfType<ToolboxIconAttribute>()
+            .FirstOrDefault()?.Resource;
+    }
+
+    /// <summary>
+    /// Gets the toolbox icon for this item as a 16&#215;16 rasterized image.
+    /// The icon is loaded from its SVG resource at most once and cached afterwards.
+    /// </summary>
+    /// <returns>The loaded <see cref="SvgImage"/>, or null if no icon is declared or loading failed.</returns>
+    public SvgImage? GetIcon()
+    {
+        if (_iconLoaded) return _icon;
+        _iconLoaded = true;
+        if (!string.IsNullOrEmpty(IconResourceName))
+            _icon = SvgImage.FromSvgResource(IconResourceName, 16);
+        return _icon;
     }
 }
 
