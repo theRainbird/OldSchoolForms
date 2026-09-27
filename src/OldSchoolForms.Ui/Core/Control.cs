@@ -681,6 +681,17 @@ if (_focused != value)
     public virtual void Invalidate(Rectangle rect)
     {
         _dirty = true;
+        // Propagate to the owning form like the parameterless overload so overlay-hosted
+        // dialogs (no native window) forward the invalidation to their owner. The renderer
+        // performs a full command-list rebuild, so the region hint is advisory only.
+        if (this is not Form)
+        {
+            var form = FindForm();
+            if (form != null && form != this)
+            {
+                form.Invalidate();
+            }
+        }
         // Wake a UI thread blocked in glfwWaitEventsTimeout for cross-thread partial
         // invalidations (the form re-renders via its dirty-descendant check).
         if (!Platform.Platform.IsOnUiThread)

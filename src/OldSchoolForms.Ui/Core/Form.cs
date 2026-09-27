@@ -14,6 +14,13 @@ public class Form : ContainerControl, INativeWindow
     private Form? _ownerForm;
     private DialogResult _dialogResult = DialogResult.None;
 
+    // When this form is displayed as an in-window overlay (Wayland modal path) it has no
+    // native window of its own; it is painted by a DialogOverlay control that lives in the
+    // owner form's control tree. Invalidation raised inside this form must therefore be
+    // forwarded to the owner form so the owner's render gate triggers a repaint of the
+    // overlay. Null when the form owns a native window.
+    internal Form? OverlayHost;
+
     private FormWindowState _windowState = FormWindowState.Normal;
     private FormBorderStyle _formBorderStyle = FormBorderStyle.Sizable;
     private IntPtr _handle;
@@ -341,6 +348,10 @@ public class Form : ContainerControl, INativeWindow
         _ownerForm?.PerformLayout();
         overlay.Invalidate();
 
+        // Route this form's invalidations to the owner form (which owns the native window
+        // and paints the overlay) so content changes inside the dialog trigger a repaint.
+        OverlayHost = _ownerForm;
+
         if (_ownerForm != null)
             _ownerForm.ActiveControl = overlay;
 
@@ -370,6 +381,7 @@ public class Form : ContainerControl, INativeWindow
             _ownerForm.Invalidate();
         }
 
+        OverlayHost = null;
         _ownerForm = null;
         return _dialogResult;
     }
@@ -387,6 +399,12 @@ public class Form : ContainerControl, INativeWindow
     {
         _requiresRender = true;
         base.Invalidate();
+        // Overlay-hosted dialogs have no native window, so their own dirty flag drives no
+        // render pass. Forward the invalidation to the owner form that actually paints the
+        // overlay, otherwise content changes inside the dialog would not repaint until an
+        // unrelated event (e.g. a window move) forces the owner to render.
+        if (_handle == IntPtr.Zero && OverlayHost != null)
+            OverlayHost.Invalidate();
         // Wake the render loop when invalidation originates off the UI thread (e.g. the
         // shared cursor-blink timer), so a loop blocked in glfwWaitEventsTimeout picks up
         // the dirty state immediately instead of after the idle timeout.

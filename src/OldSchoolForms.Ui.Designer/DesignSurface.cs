@@ -205,6 +205,18 @@ public class DesignSurface : ContainerControl
             adapter.SelectedItemChanged += (_, _) => AdapterSelectionChanged?.Invoke(this, EventArgs.Empty);
             return adapter;
         });
+        _adapterRegistry.Register<MenuStrip>(c =>
+        {
+            var adapter = new MenuStripDesignAdapter(c, this);
+            adapter.SelectedItemChanged += (_, _) => AdapterSelectionChanged?.Invoke(this, EventArgs.Empty);
+            return adapter;
+        });
+        _adapterRegistry.Register<StatusStrip>(c =>
+        {
+            var adapter = new StatusStripDesignAdapter(c, this);
+            adapter.SelectedItemChanged += (_, _) => AdapterSelectionChanged?.Invoke(this, EventArgs.Empty);
+            return adapter;
+        });
     }
 
     /// <summary>
@@ -988,6 +1000,9 @@ public class DesignSurface : ContainerControl
         // Draw scrollbars when the root content overflows the surface.
         DrawScrollbars(g);
 
+        // Draw the in-surface add-item type-picker popup of the primary adapter on top.
+        DrawAdapterPopups(g);
+
         // Draw subtle top banner when in toolbox drop mode
         if (_pendingDropItem != null)
         {
@@ -1144,6 +1159,36 @@ public class DesignSurface : ContainerControl
                 // Draw 1 dot per cell at center
                 g.FillRectangle(gridColor, baseX + spacing / 2, baseY + spacing / 2, 1, 1);
             }
+        }
+    }
+
+    private void DrawAdapterPopups(Graphics g)
+    {
+        var primary = _selectionService.PrimarySelection;
+        if (primary == null) return;
+
+        var adapter = _adapterRegistry.GetAdapter(primary.Control);
+        if (adapter == null) return;
+        if (!adapter.TryGetAddPopup(out var localBounds, out var labels, out var hovered)) return;
+        if (labels.Count == 0) return;
+
+        var origin = this.PointToClient(primary.Control.PointToScreen(Point.Empty));
+        var box = new Rectangle(origin.X + localBounds.X, origin.Y + localBounds.Y,
+            localBounds.Width, localBounds.Height);
+        var theme = ThemeManager.CurrentTheme;
+
+        g.FillRectangle(theme.ControlLight, box.X, box.Y, box.Width, box.Height);
+        g.DrawRectangle(theme.ControlDark, box.X, box.Y, box.Width, box.Height, 1);
+
+        int rowHeight = box.Height / labels.Count;
+        for (int i = 0; i < labels.Count; i++)
+        {
+            var rowRect = new Rectangle(box.X, box.Y + i * rowHeight, box.Width, rowHeight);
+            if (i == hovered)
+                g.FillRectangle(theme.HoverHighlight, rowRect.X, rowRect.Y, rowRect.Width, rowRect.Height);
+
+            var textColor = i == hovered ? theme.HighlightText : theme.ControlText;
+            g.DrawString(labels[i], theme.DefaultFont, textColor, rowRect.X + 8, rowRect.Y + 4);
         }
     }
 

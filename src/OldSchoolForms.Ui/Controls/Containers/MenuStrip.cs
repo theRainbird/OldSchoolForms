@@ -1,4 +1,5 @@
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Design;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -46,7 +47,46 @@ public class MenuStrip : ContainerControl
     /// <summary>
     /// Gets the collection of menu items.
     /// </summary>
+    [EditorButton("…")]
     public List<ToolStripMenuItem> Items => _items;
+
+    /// <summary>
+    /// Hit-tests a point (in menu strip coordinates) against the top-level menu items.
+    /// Used by the designer to select items in situ.
+    /// </summary>
+    /// <param name="point">The point to test, in this control's local coordinates.</param>
+    /// <returns>The menu item under the point, or <see langword="null"/> if none.</returns>
+    public ToolStripMenuItem? HitTestItemPublic(Point point)
+    {
+        return HitTestTopItem(point.X, point.Y);
+    }
+
+    /// <summary>
+    /// Gets the bounding rectangle of a top-level menu item in this control's local coordinates.
+    /// Used by the designer to draw the selection highlight.
+    /// </summary>
+    /// <param name="item">The menu item to measure.</param>
+    /// <returns>The item bounds, or <see cref="Rectangle.Empty"/> if the item is not present.</returns>
+    public Rectangle GetItemBoundsPublic(ToolStripMenuItem item)
+    {
+        int index = _items.IndexOf(item);
+        if (index < 0) return Rectangle.Empty;
+        var font = EffectiveFont;
+        int x = GetItemX(index);
+        int width = GetItemWidth(item, font);
+        return new Rectangle(x, 0, width, Height);
+    }
+
+    /// <summary>
+    /// Gets the bounds of the designer "add item" button that appears after the last menu item.
+    /// </summary>
+    /// <returns>The add-button bounds in this control's local coordinates.</returns>
+    public Rectangle GetAddItemButtonBoundsPublic()
+    {
+        var font = EffectiveFont;
+        int x = GetItemX(_items.Count) + 2;
+        return new Rectangle(x, 2, 18, Math.Max(4, Height - 4));
+    }
 
     /// <summary>
     /// Gets or sets whether the menu strip is in menu mode (activated by pressing Alt).
@@ -97,7 +137,7 @@ public class MenuStrip : ContainerControl
                 g.FillRectangle(theme.MenuHover, x, 0, textWidth, Height);
             }
 
-            RenderItemText(g, item, font, x + 5, (int)CoordinateTransform.CenterVertically(Height, font, EffectiveZoom), _menuMode || isHovered || _dropDownVisible);
+            RenderItemText(g, item, font, x + ItemHPadding, (int)CoordinateTransform.CenterVertically(Height, font, EffectiveZoom), _menuMode || isHovered || _dropDownVisible);
             x += textWidth;
         }
 
@@ -530,11 +570,17 @@ public class MenuStrip : ContainerControl
         return x;
     }
 
+    /// <summary>
+    /// Horizontal padding applied on each side of a top-level menu item's text. Larger values
+    /// increase the visual gap between adjacent menu items.
+    /// </summary>
+    private const int ItemHPadding = 10;
+
     private int GetItemWidth(ToolStripMenuItem item, Font font)
     {
         float zoom = EffectiveZoom;
         float scaledFontSize = font.Size * zoom;
-        return (item.DisplayText.Length) * (int)(scaledFontSize / 2) + 8;
+        return (item.DisplayText.Length) * (int)(scaledFontSize / 2) + ItemHPadding * 2;
     }
 
     private int GetDropDownWidth(ToolStripMenuItem item, Font font)

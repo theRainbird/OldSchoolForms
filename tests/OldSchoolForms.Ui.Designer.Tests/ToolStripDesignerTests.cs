@@ -179,7 +179,7 @@ public class ToolStripDesignerTests
     }
 
     [Fact]
-    public void Adapter_ClickAddButton_AppendsButtonWithUndo()
+    public void Adapter_ClickAddButton_OpensTypePickerPopup()
     {
         var surface = new DesignSurface { SnapToGrid = false };
         var strip = CreateStrip();
@@ -193,9 +193,36 @@ public class ToolStripDesignerTests
         adapter.OnMouseDown(new Point(addBounds.X + 2, addBounds.Y + 2),
             LeftMouseDown(addBounds.X + 2, addBounds.Y + 2));
 
+        // The plus button now opens a type-picker popup instead of adding a bare button.
+        Assert.Equal(3, strip.Items.Count);
+        Assert.True(adapter.IsInteracting);
+        Assert.True(adapter.TryGetAddPopup(out var popupBounds, out var labels, out _));
+        Assert.Equal(5, labels.Count);
+        Assert.True(popupBounds.Y > addBounds.Bottom);
+    }
+
+    [Fact]
+    public void Adapter_PopupSelectButton_AppendsButtonWithUndo()
+    {
+        var surface = new DesignSurface { SnapToGrid = false };
+        var strip = CreateStrip();
+        surface.AddControl(strip, new Point(0, 0));
+        surface.Selection.Select(surface.FindItem(strip)!);
+
+        var adapter = new ToolStripDesignAdapter(strip, surface);
+        var addBounds = strip.GetAddItemButtonBoundsPublic();
+        adapter.OnMouseDown(new Point(addBounds.X + 2, addBounds.Y + 2),
+            LeftMouseDown(addBounds.X + 2, addBounds.Y + 2));
+        adapter.TryGetAddPopup(out var popupBounds, out _, out _);
+
+        // Click the first popup row (Button).
+        adapter.OnMouseDown(new Point(popupBounds.X + 2, popupBounds.Y + 12),
+            LeftMouseDown(popupBounds.X + 2, popupBounds.Y + 12));
+
         Assert.Equal(4, strip.Items.Count);
         Assert.IsType<ToolStripButton>(strip.Items[3]);
         Assert.Same(strip.Items[3], adapter.SelectedItem);
+        Assert.False(adapter.IsInteracting);
 
         surface.Undo.Undo();
         Assert.Equal(3, strip.Items.Count);

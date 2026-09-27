@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using OldSchoolForms.Ui.Core;
 
 namespace OldSchoolForms.Ui.Designer;
@@ -107,4 +108,20 @@ public interface IControlDesignAdapter
     /// </summary>
     /// <returns>true if a selection was cleared; otherwise false.</returns>
     bool TryClearSelection() => false;
+
+    /// <summary>
+    /// Gets the in-surface "add item" type-picker popup so the design surface can draw it.
+    /// The bounds are expressed in the control's local coordinates.
+    /// </summary>
+    /// <param name="localBounds">Receives the popup bounds in the control's local coordinates.</param>
+    /// <param name="labels">Receives the popup row labels.</param>
+    /// <param name="hoveredIndex">Receives the hovered row index, or -1.</param>
+    /// <returns>true if the popup is open and should be drawn; otherwise false.</returns>
+    bool TryGetAddPopup(out Rectangle localBounds, out IReadOnlyList<string> labels, out int hoveredIndex)
+    {
+        localBounds = Rectangle.Empty;
+        labels = Array.Empty<string>();
+        hoveredIndex = -1;
+        return false;
+    }
 }

@@ -45,6 +45,8 @@ public class PropertyService
             ValueEditorRegistry.Register(new DataGridViewColumnsEditor());
             ValueEditorRegistry.Register(new ToolStripItemsEditor());
             ValueEditorRegistry.Register(new ToolStripItemImageEditor());
+            ValueEditorRegistry.Register(new MenuStripItemsEditor());
+            ValueEditorRegistry.Register(new StatusStripItemsEditor());
             _editorsRegistered = true;
         }
     }

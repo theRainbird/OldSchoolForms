@@ -60,6 +60,7 @@ public class FormParser
         { "ToolStripSeparator", typeof(ToolStripSeparator) },
         { "ToolStripTextBox", typeof(ToolStripTextBox) },
         { "ToolStripMenuItem", typeof(ToolStripMenuItem) },
+        { "ToolStripStatusLabel", typeof(ToolStripStatusLabel) },
     };
 
     private static readonly Dictionary<string, Color> _namedColors = new(StringComparer.OrdinalIgnoreCase)
@@ -168,14 +169,30 @@ public class FormParser
 
             foreach (var (parentFieldName, item) in ParseToolStripItemAdds(body))
             {
-                if (controlMap.TryGetValue(parentFieldName, out var parentControl) && parentControl is ToolStrip strip)
+                if (!controlMap.TryGetValue(parentFieldName, out var parentControl))
                 {
-                    strip.Items.Add(item);
+                    warnings.Add($"Warning: Could not resolve tool strip parent '{parentFieldName}' for item '{item.GetType().Name}'.");
+                    continue;
+                }
+
+                if (parentControl is ToolStrip strip && item is ToolStripItem tsItem)
+                {
+                    strip.Items.Add(tsItem);
                     warnings.Add($"Parsed tool strip item: {item.GetType().Name} on {parentFieldName}");
+                }
+                else if (parentControl is MenuStrip menuStrip && item is ToolStripMenuItem menuItem)
+                {
+                    menuStrip.Items.Add(menuItem);
+                    warnings.Add($"Parsed menu strip item: {item.GetType().Name} on {parentFieldName}");
+                }
+                else if (parentControl is StatusStrip statusStrip && item is ToolStripStatusLabel statusLabel)
+                {
+                    statusStrip.Items.Add(statusLabel);
+                    warnings.Add($"Parsed status strip item: {item.GetType().Name} on {parentFieldName}");
                 }
                 else
                 {
-                    warnings.Add($"Warning: Could not resolve tool strip parent '{parentFieldName}' for item '{item.GetType().Name}'.");
+                    warnings.Add($"Warning: Item type '{item.GetType().Name}' does not match parent '{parentFieldName}'.");
                 }
             }
 
@@ -333,9 +350,9 @@ public class FormParser
     /// </summary>
     /// <param name="body">The InitializeComponent method body.</param>
     /// <returns>A list of (parent field name, reconstructed item) pairs in source order.</returns>
-    private List<(string parentFieldName, ToolStripItem item)> ParseToolStripItemAdds(string body)
+    private List<(string parentFieldName, object item)> ParseToolStripItemAdds(string body)
     {
-        var result = new List<(string, ToolStripItem)>();
+        var result = new List<(string, object)>();
         var pattern = @"(\w+)\.Items\.Add\(\s*new\s+(\w+)";
         var matches = System.Text.RegularExpressions.Regex.Matches(body, pattern);
 
@@ -345,7 +362,7 @@ public class FormParser
             var typeName = match.Groups[2].Value;
 
             Type? itemType = ResolveControlType(typeName);
-            if (itemType == null || !typeof(ToolStripItem).IsAssignableFrom(itemType))
+            if (itemType == null || !IsStripItemType(itemType))
                 continue;
 
             int openParen = body.IndexOf('(', match.Index);
@@ -363,21 +380,31 @@ public class FormParser
     }
 
     /// <summary>
+    /// Determines whether a type can be added to a strip's <c>Items</c> collection:
+    /// either a <see cref="ToolStripItem"/> (tool strip / menu strip) or a
+    /// <see cref="ToolStripStatusLabel"/> (status strip).
+    /// </summary>
+    /// <param name="type">The type to test.</param>
+    /// <returns><see langword="true"/> when the type is a valid strip item type.</returns>
+    private static bool IsStripItemType(Type type)
+        => typeof(ToolStripItem).IsAssignableFrom(type) || typeof(ToolStripStatusLabel).IsAssignableFrom(type);
+
+    /// <summary>
     /// Parses a single item expression of the form <c>new Type</c>, <c>new Type()</c> or
     /// <c>new Type { Prop = value, Nested = { new Other { ... } } }</c> into a live item.
     /// </summary>
     /// <param name="expr">The expression text to parse.</param>
     /// <returns>The reconstructed item, or <c>null</c> when the expression is not a known item type.</returns>
-    private ToolStripItem? ParseItemExpression(string expr)
+    private object? ParseItemExpression(string expr)
     {
         var m = System.Text.RegularExpressions.Regex.Match(expr, @"^new\s+(\w+)");
         if (!m.Success) return null;
 
         Type? itemType = ResolveControlType(m.Groups[1].Value);
-        if (itemType == null || !typeof(ToolStripItem).IsAssignableFrom(itemType))
+        if (itemType == null || !IsStripItemType(itemType))
             return null;
 
-        var item = (ToolStripItem)Activator.CreateInstance(itemType)!;
+        var item = Activator.CreateInstance(itemType)!;
 
         string rest = expr.Substring(m.Index + m.Length).Trim();
         if (!rest.StartsWith("{")) return item;

@@ -63,7 +63,6 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             var btnAddLabel = MakeToolButton("ToolStripItemsDialog_AddLabel", null, () => AddItem(new ToolStripLabel(LangRes.GetString("ToolStripItemsDialog_NewLabel"))));
             var btnAddSeparator = MakeToolButton("ToolStripItemsDialog_AddSeparator", null, () => AddItem(new ToolStripSeparator()));
             var btnAddTextBox = MakeToolButton("ToolStripItemsDialog_AddTextBox", null, () => AddItem(new ToolStripTextBox()));
-            var btnAddMenuItem = MakeToolButton("ToolStripItemsDialog_AddMenuItem", null, () => AddItem(new ToolStripMenuItem(LangRes.GetString("ToolStripItemsDialog_NewMenuItem"))));
 
             var btnDelete = MakeToolButton("ToolStripItemsDialog_Delete", Icons.Trash, DeleteSelectedItem);
             var btnMoveUp = MakeToolButton("ToolStripItemsDialog_MoveUp", null, () => MoveSelected(-1));
@@ -76,7 +75,6 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             toolbar.Items.Add(btnAddLabel);
             toolbar.Items.Add(btnAddSeparator);
             toolbar.Items.Add(btnAddTextBox);
-            toolbar.Items.Add(btnAddMenuItem);
             toolbar.Items.Add(new ToolStripSeparator());
             toolbar.Items.Add(btnDelete);
             toolbar.Items.Add(btnMoveUp);

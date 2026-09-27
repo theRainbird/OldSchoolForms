@@ -1071,6 +1071,78 @@ public class StatusStrip : ContainerControl
     }
 
     /// <summary>
+    /// Gets the collection of status labels displayed in the strip.
+    /// </summary>
+    [EditorButton("…")]
+    public List<ToolStripStatusLabel> Items => _items;
+
+    /// <summary>
+    /// Hit-tests a point (in status strip coordinates) against the visible status labels.
+    /// Used by the designer to select labels in situ.
+    /// </summary>
+    /// <param name="point">The point to test, in this control's local coordinates.</param>
+    /// <returns>The status label under the point, or <see langword="null"/> if none.</returns>
+    public ToolStripStatusLabel? HitTestItemPublic(Point point)
+    {
+        if (point.Y < 0 || point.Y > Height) return null;
+        int x = 4;
+        foreach (var label in _items)
+        {
+            if (!label.Visible) continue;
+            int w = GetLabelWidth(label);
+            if (point.X >= x && point.X < x + w) return label;
+            x += w;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the bounding rectangle of a status label in this control's local coordinates.
+    /// Used by the designer to draw the selection highlight.
+    /// </summary>
+    /// <param name="label">The status label to measure.</param>
+    /// <returns>The label bounds, or <see cref="Rectangle.Empty"/> if the label is not present.</returns>
+    public Rectangle GetItemBoundsPublic(ToolStripStatusLabel label)
+    {
+        int index = _items.IndexOf(label);
+        if (index < 0) return Rectangle.Empty;
+        int x = GetLabelX(index);
+        int w = GetLabelWidth(label);
+        return new Rectangle(x, 0, w, Height);
+    }
+
+    /// <summary>
+    /// Gets the bounds of the designer "add item" button that appears after the last status label.
+    /// </summary>
+    /// <returns>The add-button bounds in this control's local coordinates.</returns>
+    public Rectangle GetAddItemButtonBoundsPublic()
+    {
+        int x = GetLabelX(_items.Count) + 2;
+        return new Rectangle(x, 2, 18, Math.Max(4, Height - 4));
+    }
+
+    private Font GetLabelFont(ToolStripStatusLabel label) => label.Font ?? EffectiveFont;
+
+    private int GetLabelWidth(ToolStripStatusLabel label)
+    {
+        var font = GetLabelFont(label);
+        float zoom = EffectiveZoom;
+        float scaledFontSize = font.Size * zoom;
+        return label.Text.Length * (int)(scaledFontSize / 2) + 8;
+    }
+
+    private int GetLabelX(int index)
+    {
+        int x = 4;
+        for (int i = 0; i < index && i < _items.Count; i++)
+        {
+            if (_items[i].Visible)
+                x += GetLabelWidth(_items[i]);
+        }
+        return x;
+    }
+
+    /// <summary>
     /// Called when the theme changes. Updates statusstrip-specific colors.
     /// </summary>
     /// <param name="newTheme">The new theme that was activated.</param>
@@ -1096,6 +1168,17 @@ public class StatusStrip : ContainerControl
         g.FillRectangle(BackColor, 0, 0, Width, Height);
         g.DrawLine(theme.StatusStripTopLine, 0, 0, Width, 0, 1);
 
+        int x = 4;
+        foreach (var label in _items)
+        {
+            if (!label.Visible) continue;
+            var labelFont = GetLabelFont(label);
+            int w = GetLabelWidth(label);
+            int textY = (int)CoordinateTransform.CenterVertically(Height, labelFont, EffectiveZoom);
+            g.DrawString(label.Text, labelFont, label.ForeColor, x + 4, textY);
+            x += w;
+        }
+
         base.Render(g);
     }
 }
@@ -1108,6 +1191,7 @@ public class ToolStripStatusLabel : Component
     private string _text = string.Empty;
     private Color _foreColor = ThemeManager.CurrentTheme.ControlText;
     private Font? _font;
+    private bool _visible = true;
 
     /// <summary>
     /// Gets or sets the text of the status label.
@@ -1116,6 +1200,15 @@ public class ToolStripStatusLabel : Component
     {
         get => _text;
         set => _text = value;
+    }
+
+    /// <summary>
+    /// Gets or sets whether the status label is shown in the strip.
+    /// </summary>
+    public bool Visible
+    {
+        get => _visible;
+        set => _visible = value;
     }
 
     /// <summary>

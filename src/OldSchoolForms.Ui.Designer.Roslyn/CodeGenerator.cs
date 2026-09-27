@@ -142,6 +142,12 @@ public class CodeGenerator
 
             if (control is ToolStrip toolStrip)
                 GenerateToolStripItems(sb, bodyIndent, toolStrip, fieldName);
+
+            if (control is MenuStrip menuStrip)
+                GenerateMenuStripItems(sb, bodyIndent, menuStrip, fieldName);
+
+            if (control is StatusStrip statusStrip)
+                GenerateStatusStripItems(sb, bodyIndent, statusStrip, fieldName);
         }
 
         // Controls.Add hierarchy
@@ -323,6 +329,57 @@ public class CodeGenerator
 
         string typeName = item.GetType().Name;
         return parts.Count == 0 ? $"new {typeName}()" : $"new {typeName} {{ {string.Join(", ", parts)} }}";
+    }
+
+    /// <summary>
+    /// Emits <c>fieldName.Items.Add(...)</c> calls for each top-level menu item of a
+    /// <see cref="MenuStrip"/>, reusing the tool strip item initializer formatter so
+    /// nested <c>DropDownItems</c> are serialized as collection initializers.
+    /// </summary>
+    /// <param name="sb">The target builder.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="menuStrip">The menu strip whose items are serialized.</param>
+    /// <param name="fieldName">The generated field name of the menu strip.</param>
+    private static void GenerateMenuStripItems(StringBuilder sb, string indent, MenuStrip menuStrip, string fieldName)
+    {
+        if (menuStrip.Items.Count == 0) return;
+
+        foreach (var item in menuStrip.Items)
+            sb.AppendLine($"{indent}{fieldName}.Items.Add({FormatToolStripItemInitializer(item)});");
+    }
+
+    /// <summary>
+    /// Emits <c>fieldName.Items.Add(...)</c> calls for each status label of a
+    /// <see cref="StatusStrip"/>.
+    /// </summary>
+    /// <param name="sb">The target builder.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="statusStrip">The status strip whose labels are serialized.</param>
+    /// <param name="fieldName">The generated field name of the status strip.</param>
+    private static void GenerateStatusStripItems(StringBuilder sb, string indent, StatusStrip statusStrip, string fieldName)
+    {
+        if (statusStrip.Items.Count == 0) return;
+
+        foreach (var label in statusStrip.Items)
+            sb.AppendLine($"{indent}{fieldName}.Items.Add({FormatStatusLabelInitializer(label)});");
+    }
+
+    /// <summary>
+    /// Formats a <see cref="ToolStripStatusLabel"/> as an inline object-initializer
+    /// expression, emitting only properties that differ from a freshly created label.
+    /// </summary>
+    /// <param name="label">The status label to serialize.</param>
+    /// <returns>A C# object-initializer expression for the label.</returns>
+    private static string FormatStatusLabelInitializer(ToolStripStatusLabel label)
+    {
+        var defaults = new ToolStripStatusLabel();
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(label.Text)) parts.Add($"Text = {Quote(label.Text)}");
+        if (!label.Visible) parts.Add("Visible = false");
+        if (label.ForeColor != defaults.ForeColor) parts.Add($"ForeColor = {FormatColor(label.ForeColor)}");
+
+        return parts.Count == 0 ? "new ToolStripStatusLabel()" : $"new ToolStripStatusLabel {{ {string.Join(", ", parts)} }}";
     }
 
     /// <summary>

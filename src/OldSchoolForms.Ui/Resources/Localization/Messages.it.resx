@@ -97,4 +97,76 @@
   <data name="ImagePickerDialog_FilterImages">
     <value>File immagine (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.svg|Tutti i file (*.*)|*.*</value>
   </data>
+  <data name="MenuStripItemsDialog_Title" xml:space="preserve">
+    <value>Modifica elementi menu</value>
+  </data>
+  <data name="MenuStripItemsDialog_AddMenuItem" xml:space="preserve">
+    <value>Voce di menu</value>
+  </data>
+  <data name="MenuStripItemsDialog_NewMenuItem" xml:space="preserve">
+    <value>VoceDiMenu</value>
+  </data>
+  <data name="MenuStripItemsDialog_Delete" xml:space="preserve">
+    <value>Elimina</value>
+  </data>
+  <data name="MenuStripItemsDialog_MoveUp" xml:space="preserve">
+    <value>Su</value>
+  </data>
+  <data name="MenuStripItemsDialog_MoveDown" xml:space="preserve">
+    <value>Giù</value>
+  </data>
+  <data name="MenuStripItemsDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="MenuStripItemsDialog_Cancel" xml:space="preserve">
+    <value>Annulla</value>
+  </data>
+  <data name="MenuStripItemsDialog_ColType" xml:space="preserve">
+    <value>Tipo</value>
+  </data>
+  <data name="MenuStripItemsDialog_ColText" xml:space="preserve">
+    <value>Testo</value>
+  </data>
+  <data name="StatusStripItemsDialog_Title" xml:space="preserve">
+    <value>Modifica elementi di stato</value>
+  </data>
+  <data name="StatusStripItemsDialog_AddLabel" xml:space="preserve">
+    <value>Etichetta</value>
+  </data>
+  <data name="StatusStripItemsDialog_NewLabel" xml:space="preserve">
+    <value>Etichetta</value>
+  </data>
+  <data name="StatusStripItemsDialog_Delete" xml:space="preserve">
+    <value>Elimina</value>
+  </data>
+  <data name="StatusStripItemsDialog_MoveUp" xml:space="preserve">
+    <value>Su</value>
+  </data>
+  <data name="StatusStripItemsDialog_MoveDown" xml:space="preserve">
+    <value>Giù</value>
+  </data>
+  <data name="StatusStripItemsDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="StatusStripItemsDialog_Cancel" xml:space="preserve">
+    <value>Annulla</value>
+  </data>
+  <data name="StatusStripItemsDialog_ColType" xml:space="preserve">
+    <value>Tipo</value>
+  </data>
+  <data name="StatusStripItemsDialog_ColText" xml:space="preserve">
+    <value>Testo</value>
+  </data>
+  <data name="MenuStripItemsDialog_AddSubItem" xml:space="preserve">
+    <value>Sottovocale</value>
+  </data>
+  <data name="MenuStripItemsDialog_NewSubItem" xml:space="preserve">
+    <value>Sottovocale</value>
+  </data>
+  <data name="MenuStripItemsDialog_TypeTop" xml:space="preserve">
+    <value>Menu</value>
+  </data>
+  <data name="MenuStripItemsDialog_TypeSub" xml:space="preserve">
+    <value>Sottovocale</value>
+  </data>
 </root>
