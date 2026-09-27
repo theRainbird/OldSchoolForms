@@ -8,7 +8,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// <summary>
 /// A control that displays tab pages that can be selected by the user.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_apps_list_20_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_tabcontrol.svg")]
 public class TabControl : ContainerControl
 {
     private readonly List<TabPage> _tabPages = new();
@@ -1054,7 +1054,7 @@ public class TabPage : ContainerControl
 /// <summary>
 /// A status strip that displays information at the bottom of a form.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_megaphone_loud_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_statusstrip.svg")]
 public class StatusStrip : ContainerControl
 {
     private string _text = string.Empty;

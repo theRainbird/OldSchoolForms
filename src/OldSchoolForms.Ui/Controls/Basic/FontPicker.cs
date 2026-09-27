@@ -11,7 +11,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// Font enumeration uses SKFontManager (lazy, memory-efficient) instead of
 /// filesystem scanning.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_paint_brush_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_fontpicker.svg")]
 public class FontPicker : Control
 {
     private string[] _filteredFonts = Array.Empty<string>();

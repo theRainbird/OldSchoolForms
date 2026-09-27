@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that allows the user to enter text.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_edit_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_textbox.svg")]
 public class TextBox : Control
 {
     private readonly TextEditorEngine _engine = new();

@@ -26,6 +26,7 @@
     <EmbeddedResource Include="Resources/Icons/*.svg" />
     <EmbeddedResource Include="Resources/Icons/FluentColor/*.svg" />
     <EmbeddedResource Include="Resources/Icons/SvgRepo/*.svg" />
+    <EmbeddedResource Include="Resources/Icons/Controls/*.svg" />
   </ItemGroup>
 
   <ItemGroup>

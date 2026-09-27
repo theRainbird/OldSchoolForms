@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that can be clicked to perform an action.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_apps_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_button.svg")]
 public class Button : Control
 {
     /// <summary>

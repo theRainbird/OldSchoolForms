@@ -8,7 +8,7 @@ using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
 namespace OldSchoolForms.Ui.Controls.Advanced;
 
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.data-sheet.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_datagrid.svg")]
 public class DataGridView : ContainerControl
 {
     private readonly DataGridViewColumnCollection _columns;

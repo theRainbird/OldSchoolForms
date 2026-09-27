@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that allows selecting one option from a group of options.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_checkmark_circle_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_radiobutton.svg")]
 public class RadioButton : Control
 {
     private bool _checked;

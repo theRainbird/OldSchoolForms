@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that displays a visual indicator of progress.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_gauge_20_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_progressbar.svg")]
 public class ProgressBar : Control
 {
     private int _minimum;

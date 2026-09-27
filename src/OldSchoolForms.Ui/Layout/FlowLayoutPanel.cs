@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Layout;
 /// <summary>
 /// A layout panel that arranges child controls in a flow direction (left-to-right or top-down).
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.flow-chart.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_flowlayout.svg")]
 public class FlowLayoutPanel : ContainerControl
 {
     private FlowDirection _flowDirection = FlowDirection.LeftToRight;

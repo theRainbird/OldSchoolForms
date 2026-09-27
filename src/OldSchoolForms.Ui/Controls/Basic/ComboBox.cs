@@ -10,7 +10,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// A control that presents a drop-down list of items with configurable <see cref="DropDownStyle"/>.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_options_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_combobox.svg")]
 public class ComboBox : Control
 {
     private readonly List<object> _items = new();

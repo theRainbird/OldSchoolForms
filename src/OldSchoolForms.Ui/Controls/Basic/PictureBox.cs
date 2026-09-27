@@ -34,7 +34,7 @@ public enum PictureBoxSizeMode
 /// Displays an image in a Windows Forms-style picture box control.
 /// Supports both vector (SVG) and raster images with various sizing modes.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_image_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_picturebox.svg")]
 public class PictureBox : Control
 {
     private IGraphicsImage? _image;

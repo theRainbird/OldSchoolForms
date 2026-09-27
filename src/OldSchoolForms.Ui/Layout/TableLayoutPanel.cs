@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Layout;
 /// <summary>
 /// A layout panel that arranges child controls in rows and columns.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_table_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_tablelayout.svg")]
 public class TableLayoutPanel : ContainerControl
 {
     private int _rowCount = 2;

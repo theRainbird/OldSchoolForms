@@ -12,7 +12,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// line charts, area charts, and gauge displays. Supports multiple series,
 /// axes with scales, trend lines, legends, data binding, and zoom/pan.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.SvgRepo.workflow.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_diagram.svg")]
 public class DiagramView : ContainerControl
 {
     private DiagramType _chartType = DiagramType.Bar;

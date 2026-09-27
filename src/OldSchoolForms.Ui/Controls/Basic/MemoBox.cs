@@ -7,7 +7,7 @@ namespace OldSchoolForms.Ui.Controls.Basic;
 /// <summary>
 /// Provides a multi-line text editing control with word wrap and auto-show scrollbars.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_notebook_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_memo.svg")]
 public class MemoBox : Control
 {
     private readonly MultiLineTextEditorEngine _engine = new();

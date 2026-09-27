@@ -11,7 +11,7 @@ namespace OldSchoolForms.Ui.Controls.Advanced;
 /// or both, depending on the <see cref="Format"/> property.
 /// Supports data binding via the <see cref="Value"/> and <see cref="Checked"/> properties.
 /// </summary>
-[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_calendar_clock_16_color.svg")]
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_datetimepicker.svg")]
 public class DateTimePicker : Control
 {
     #region Constants

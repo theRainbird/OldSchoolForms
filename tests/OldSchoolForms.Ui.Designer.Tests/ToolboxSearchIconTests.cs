@@ -18,7 +18,7 @@ public class ToolboxSearchIconTests
     {
         var item = new ToolboxItem("Button", "Basic", typeof(Button), new Size(120, 40));
 
-        Assert.Equal("OldSchoolForms.Ui.Resources.Icons.FluentColor.ic_fluent_apps_16_color.svg",
+        Assert.Equal("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_button.svg",
             item.IconResourceName);
     }
 
