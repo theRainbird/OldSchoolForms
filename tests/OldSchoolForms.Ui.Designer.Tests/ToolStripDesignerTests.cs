@@ -194,10 +194,11 @@ public class ToolStripDesignerTests
             LeftMouseDown(addBounds.X + 2, addBounds.Y + 2));
 
         // The plus button now opens a type-picker popup instead of adding a bare button.
+        // Menu items are intentionally NOT offered on a ToolStrip (they belong to MenuStrip).
         Assert.Equal(3, strip.Items.Count);
         Assert.True(adapter.IsInteracting);
         Assert.True(adapter.TryGetAddPopup(out var popupBounds, out var labels, out _));
-        Assert.Equal(5, labels.Count);
+        Assert.Equal(4, labels.Count);
         Assert.True(popupBounds.Y > addBounds.Bottom);
     }
 

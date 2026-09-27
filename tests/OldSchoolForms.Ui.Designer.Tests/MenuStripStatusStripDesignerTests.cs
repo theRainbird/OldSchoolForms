@@ -262,4 +262,49 @@ public class MenuStripStatusStripDesignerTests
         Assert.False(clone.Visible);
         Assert.NotSame(source, clone);
     }
+
+    [Fact]
+    public void BuildTree_FlatTopLevel_AllDepthZero()
+    {
+        var file = new ToolStripMenuItem("File");
+        var edit = new ToolStripMenuItem("Edit");
+        var rows = MenuStripItemsEditorDialog.BuildTree(new[] { file, edit });
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, r => Assert.Equal(0, r.Depth));
+        Assert.All(rows, r => Assert.Null(r.Parent));
+    }
+
+    [Fact]
+    public void BuildTree_NestedSubItems_TracksDepthAndParent()
+    {
+        var file = new ToolStripMenuItem("File");
+        var open = new ToolStripMenuItem("Open");
+        var save = new ToolStripMenuItem("Save");
+        file.DropDownItems.Add(open);
+        file.DropDownItems.Add(save);
+        var rows = MenuStripItemsEditorDialog.BuildTree(new[] { file });
+        Assert.Equal(3, rows.Count);
+        Assert.Equal(0, rows[0].Depth);
+        Assert.Same(file, rows[0].Item);
+        Assert.Equal(1, rows[1].Depth);
+        Assert.Same(open, rows[1].Item);
+        Assert.Same(file, rows[1].Parent);
+        Assert.Equal(1, rows[2].Depth);
+        Assert.Same(save, rows[2].Item);
+        Assert.Same(file, rows[2].Parent);
+    }
+
+    [Fact]
+    public void BuildTree_DeepNesting_PreservesHierarchy()
+    {
+        var file = new ToolStripMenuItem("File");
+        var recent = new ToolStripMenuItem("Recent");
+        var doc = new ToolStripMenuItem("Doc");
+        file.DropDownItems.Add(recent);
+        recent.DropDownItems.Add(doc);
+        var rows = MenuStripItemsEditorDialog.BuildTree(new[] { file });
+        Assert.Equal(3, rows.Count);
+        Assert.Equal(2, rows[2].Depth);
+        Assert.Same(recent, rows[2].Parent);
+    }
 }

@@ -27,7 +27,7 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
         /// so the grid can render indentation and the edit operations can target the correct
         /// sibling collection.
         /// </summary>
-        private sealed class MenuRow
+        internal sealed class MenuRow
         {
             public MenuRow(ToolStripMenuItem item, ToolStripMenuItem? parent, int depth)
             {
@@ -39,6 +39,31 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             public ToolStripMenuItem Item { get; }
             public ToolStripMenuItem? Parent { get; }
             public int Depth { get; }
+        }
+
+        /// <summary>
+        /// Builds the flattened tree of <see cref="MenuRow"/> entries for a set of top-level
+        /// menu items by walking each item's <see cref="ToolStripMenuItem.DropDownItems"/>
+        /// recursively in depth-first order. Exposed for testing the nesting/parentage logic.
+        /// </summary>
+        /// <param name="topLevel">The top-level menu items to walk.</param>
+        /// <returns>The flattened rows with depth and parent information.</returns>
+        internal static List<MenuRow> BuildTree(IEnumerable<ToolStripMenuItem> topLevel)
+        {
+            var rows = new List<MenuRow>();
+            void Walk(ToolStripMenuItem item, ToolStripMenuItem? parent, int depth)
+            {
+                rows.Add(new MenuRow(item, parent, depth));
+                foreach (var child in item.DropDownItems)
+                {
+                    Walk(child, item, depth + 1);
+                }
+            }
+            foreach (var top in topLevel)
+            {
+                Walk(top, null, 0);
+            }
+            return rows;
         }
 
         private readonly MenuStrip _target;
@@ -186,19 +211,7 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
         private void RebuildRows()
         {
             _rows.Clear();
-            foreach (var top in _working)
-            {
-                Walk(top, null, 0);
-            }
-
-            void Walk(ToolStripMenuItem item, ToolStripMenuItem? parent, int depth)
-            {
-                _rows.Add(new MenuRow(item, parent, depth));
-                foreach (var child in item.DropDownItems)
-                {
-                    Walk(child, item, depth + 1);
-                }
-            }
+            _rows.AddRange(BuildTree(_working));
         }
 
         private void PopulateGrid()
