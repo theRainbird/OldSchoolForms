@@ -66,7 +66,8 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             return rows;
         }
 
-        private readonly MenuStrip _target;
+        private readonly List<ToolStripMenuItem> _targetItems;
+        private readonly Control? _invalidateOwner;
         private readonly List<ToolStripMenuItem> _working = new();
         private readonly List<MenuRow> _rows = new();
         private ToolStripMenuItem? _selectedItem;
@@ -85,7 +86,7 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
         {
             if (menuStrip == null) throw new ArgumentNullException(nameof(menuStrip));
 
-            var dialog = new MenuStripItemsEditorDialog(menuStrip)
+            var dialog = new MenuStripItemsEditorDialog(menuStrip.Items, menuStrip)
             {
                 Text = LangRes.GetString("MenuStripItemsDialog_Title")
             };
@@ -93,9 +94,31 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
             return dialog.ShowDialog(owner);
         }
 
-        internal MenuStripItemsEditorDialog(MenuStrip menuStrip)
+        /// <summary>
+        /// Opens the menu items editor for a single <see cref="ToolStripMenuItem"/>'s
+        /// <see cref="ToolStripMenuItem.DropDownItems"/>, letting the user edit the submenu
+        /// commands of that item (and their nested children) as an indented tree.
+        /// </summary>
+        /// <param name="item">The menu item whose dropdown items are edited.</param>
+        /// <param name="owner">The owner form, or null.</param>
+        /// <returns><see cref="DialogResult.OK"/> if confirmed, otherwise <see cref="DialogResult.Cancel"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
+        public static DialogResult ShowDialog(ToolStripMenuItem item, Form? owner = null)
         {
-            _target = menuStrip;
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            var dialog = new MenuStripItemsEditorDialog(item.DropDownItems, item.OwnerControl)
+            {
+                Text = LangRes.GetString("MenuStripItemsDialog_Title")
+            };
+
+            return dialog.ShowDialog(owner);
+        }
+
+        internal MenuStripItemsEditorDialog(List<ToolStripMenuItem> targetItems, Control? invalidateOwner)
+        {
+            _targetItems = targetItems;
+            _invalidateOwner = invalidateOwner;
 
             Size = new Size(860, 520);
             FormBorderStyle = FormBorderStyle.Sizable;
@@ -198,7 +221,7 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
         private void PopulateWorking()
         {
             _working.Clear();
-            foreach (var item in _target.Items)
+            foreach (var item in _targetItems)
             {
                 _working.Add((ToolStripMenuItem)ToolStripItemsEditorDialog.CloneItem(item));
             }
@@ -388,19 +411,20 @@ namespace OldSchoolForms.Ui.Designer.Dialogs
         }
 
         /// <summary>
-        /// Pushes the working copy of the items onto the target <see cref="MenuStrip"/>,
-        /// replacing its existing item set with the edited clones (including nested dropdowns).
+        /// Pushes the working copy of the items onto the target collection, replacing its
+        /// existing item set with the edited clones (including nested dropdowns), then
+        /// invalidates the owning control so the change is repainted.
         /// </summary>
         private void ApplyChanges()
         {
-            _target.Items.Clear();
+            _targetItems.Clear();
             foreach (var item in _working)
             {
-                _target.Items.Add(item);
+                _targetItems.Add(item);
             }
 
-            _target.Invalidate();
-            _target.PerformLayout();
+            _invalidateOwner?.Invalidate();
+            _invalidateOwner?.PerformLayout();
         }
 
         /// <summary>

@@ -959,6 +959,16 @@ public class PropertyGrid : ContainerControl
                     break;
             }
         }
+
+        // While a text value is being edited in a row, consume all remaining key
+        // events (except Ctrl combinations, which must still reach the form for
+        // clipboard shortcuts) so that plain characters do not bubble up and
+        // trigger menu mnemonics or other form-level shortcuts. Printable
+        // characters are delivered independently via OnTextInput and are
+        // therefore unaffected by this.
+        if (_editingRow != null && !e.Handled && !e.Modifiers.HasFlag(ModifierKeys.Control))
+            e.Handled = true;
+
         base.OnKeyDown(e);
     }
 

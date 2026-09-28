@@ -1,4 +1,5 @@
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Design;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -51,6 +52,7 @@ public class ToolStripMenuItem : ToolStripItem
     /// <summary>
     /// Gets the collection of dropdown items.
     /// </summary>
+    [EditorButton("…")]
     public List<ToolStripMenuItem> DropDownItems => _dropDownItems;
 
     /// <summary>

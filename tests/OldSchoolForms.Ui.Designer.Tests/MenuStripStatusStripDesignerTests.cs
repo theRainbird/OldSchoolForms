@@ -307,4 +307,17 @@ public class MenuStripStatusStripDesignerTests
         Assert.Equal(2, rows[2].Depth);
         Assert.Same(recent, rows[2].Parent);
     }
+
+    [Fact]
+    public void ToolStripMenuItemDropDownItemsEditor_Handles_DropDownItems()
+    {
+        var editor = new ToolStripMenuItemDropDownItemsEditor();
+        var dropDownProp = typeof(ToolStripMenuItem).GetProperty(nameof(ToolStripMenuItem.DropDownItems));
+        var textProp = typeof(ToolStripMenuItem).GetProperty(nameof(ToolStripMenuItem.Text));
+
+        Assert.NotNull(dropDownProp);
+        Assert.NotNull(textProp);
+        Assert.True(editor.Handles(dropDownProp!));
+        Assert.False(editor.Handles(textProp!));
+    }
 }
