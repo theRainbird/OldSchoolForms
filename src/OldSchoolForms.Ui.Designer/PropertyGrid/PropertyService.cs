@@ -48,6 +48,7 @@ public class PropertyService
             ValueEditorRegistry.Register(new MenuStripItemsEditor());
             ValueEditorRegistry.Register(new StatusStripItemsEditor());
             ValueEditorRegistry.Register(new ToolStripMenuItemDropDownItemsEditor());
+            ValueEditorRegistry.Register(new PaddingEditor());
             _editorsRegistered = true;
         }
     }

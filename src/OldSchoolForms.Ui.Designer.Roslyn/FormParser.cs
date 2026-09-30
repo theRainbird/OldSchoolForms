@@ -611,6 +611,20 @@ public class FormParser
             }
         }
 
+        // new Padding(...)
+        if (rawValue.StartsWith("new Padding("))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(rawValue, @"new\s+Padding\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)");
+            if (m.Success)
+            {
+                return new Core.Padding(
+                    int.Parse(m.Groups[1].Value),
+                    int.Parse(m.Groups[2].Value),
+                    int.Parse(m.Groups[3].Value),
+                    int.Parse(m.Groups[4].Value));
+            }
+        }
+
         // Color.FromArgb(...)
         if (rawValue.StartsWith("Color.FromArgb("))
         {

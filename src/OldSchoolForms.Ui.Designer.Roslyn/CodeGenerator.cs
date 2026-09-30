@@ -40,7 +40,7 @@ public class CodeGenerator
     // inherited property and break the generated assignments.
     private static readonly HashSet<string> ReservedPropertyNames = new(StringComparer.Ordinal)
     {
-        "Location", "Size", "Text", "Name", "BackColor", "TabIndex", "TabStop", "Enabled", "Visible"
+        "Location", "Size", "Text", "Name", "BackColor", "TabIndex", "TabStop", "Enabled", "Visible", "Padding"
     };
 
     /// <summary>
@@ -179,6 +179,7 @@ public class CodeGenerator
             ("TabStop", () => control.TabStop.ToLowerString()),
             ("Enabled", () => control.Enabled.ToLowerString()),
             ("Visible", () => control.Visible.ToLowerString()),
+            ("Padding", () => FormatPadding(control.Padding)),
         };
 
         foreach (var (propName, valueFn) in props)
@@ -565,6 +566,11 @@ public class CodeGenerator
 
     private static string FormatPoint(Point p) => $"new Point({p.X}, {p.Y})";
     private static string FormatSize(Size s) => $"new Size({s.Width}, {s.Height})";
+
+    private static string FormatPadding(Padding p)
+        => p.Left == 0 && p.Top == 0 && p.Right == 0 && p.Bottom == 0
+            ? string.Empty
+            : $"new Padding({p.Left}, {p.Top}, {p.Right}, {p.Bottom})";
     private static string FormatColor(Color c)
     {
         // Emit named color references when they match known colors

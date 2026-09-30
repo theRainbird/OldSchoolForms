@@ -355,4 +355,25 @@
   <data name="MenuStripItemsDialog_TypeSub" xml:space="preserve">
     <value>Unterpunkt</value>
   </data>
+  <data name="PaddingDialog_Title" xml:space="preserve">
+    <value>Padding bearbeiten</value>
+  </data>
+  <data name="PaddingDialog_Left" xml:space="preserve">
+    <value>Links</value>
+  </data>
+  <data name="PaddingDialog_Top" xml:space="preserve">
+    <value>Oben</value>
+  </data>
+  <data name="PaddingDialog_Right" xml:space="preserve">
+    <value>Rechts</value>
+  </data>
+  <data name="PaddingDialog_Bottom" xml:space="preserve">
+    <value>Unten</value>
+  </data>
+  <data name="PaddingDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PaddingDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
 </root>

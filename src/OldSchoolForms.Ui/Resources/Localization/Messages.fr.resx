@@ -169,4 +169,25 @@
   <data name="MenuStripItemsDialog_TypeSub" xml:space="preserve">
     <value>Sous-élément</value>
   </data>
+  <data name="PaddingDialog_Title" xml:space="preserve">
+    <value>Modifier le remplissage</value>
+  </data>
+  <data name="PaddingDialog_Left" xml:space="preserve">
+    <value>Gauche</value>
+  </data>
+  <data name="PaddingDialog_Top" xml:space="preserve">
+    <value>Haut</value>
+  </data>
+  <data name="PaddingDialog_Right" xml:space="preserve">
+    <value>Droite</value>
+  </data>
+  <data name="PaddingDialog_Bottom" xml:space="preserve">
+    <value>Bas</value>
+  </data>
+  <data name="PaddingDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PaddingDialog_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
 </root>

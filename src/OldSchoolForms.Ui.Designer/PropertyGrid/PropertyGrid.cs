@@ -892,6 +892,36 @@ public class PropertyGrid : ContainerControl
         }
         else if (_editingRow != null)
         {
+            bool ctrl = e.Modifiers.HasFlag(ModifierKeys.Control);
+            if (ctrl)
+            {
+                switch (e.KeyCode)
+                {
+                    case Keys.A:
+                        _editingRow.SelectAll();
+                        Invalidate();
+                        e.Handled = true;
+                        return;
+
+                    case Keys.C:
+                        _editingRow.CopySelectedToClipboard();
+                        e.Handled = true;
+                        return;
+
+                    case Keys.X:
+                        _editingRow.CutSelectedToClipboard();
+                        Invalidate();
+                        e.Handled = true;
+                        return;
+
+                    case Keys.V:
+                        _editingRow.PasteFromClipboard();
+                        Invalidate();
+                        e.Handled = true;
+                        return;
+                }
+            }
+
             bool extend = (e.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
 
             switch (e.KeyCode)
@@ -961,12 +991,16 @@ public class PropertyGrid : ContainerControl
         }
 
         // While a text value is being edited in a row, consume all remaining key
-        // events (except Ctrl combinations, which must still reach the form for
-        // clipboard shortcuts) so that plain characters do not bubble up and
-        // trigger menu mnemonics or other form-level shortcuts. Printable
-        // characters are delivered independently via OnTextInput and are
-        // therefore unaffected by this.
-        if (_editingRow != null && !e.Handled && !e.Modifiers.HasFlag(ModifierKeys.Control))
+        // events so that plain characters do not bubble up and trigger menu
+        // mnemonics or other form-level shortcuts. Printable characters are
+        // delivered independently via OnTextInput and are therefore unaffected.
+        // Ctrl combinations (clipboard) and Alt combinations (menu mnemonics /
+        // accelerator keys) are deliberately excluded so they still reach the
+        // form: Alt+letter must keep opening menus even while a text value is
+        // being edited, exactly like classic WinForms.
+        if (_editingRow != null && !e.Handled
+            && !e.Modifiers.HasFlag(ModifierKeys.Control)
+            && !e.Modifiers.HasFlag(ModifierKeys.Alt))
             e.Handled = true;
 
         base.OnKeyDown(e);

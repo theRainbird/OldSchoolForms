@@ -130,7 +130,7 @@ public class PropertyGridRow
 
         if (mouseX >= valueColumnX + valueColumnWidth - EllipsisButtonWidth)
         {
-            _descriptor.Editor.Open(_descriptor.Target);
+            _descriptor.Editor.Open(_descriptor.Target, _descriptor);
             return true;
         }
 
@@ -197,21 +197,36 @@ public class PropertyGridRow
             // Draw editing field
             g.FillRectangle(Color.White, x, y, width, height);
 
-            // Draw selection highlight
+            int textX = x + 4;
+            int textY = y + 5;
+
+            // Draw selection highlight and segmented text so the selected glyphs use the
+            // high-contrast selection color instead of the normal control text color.
             if (_anchor != _caretPos)
             {
                 int selStart = Math.Min(_anchor, _caretPos);
                 int selEnd = Math.Max(_anchor, _caretPos);
-                int startX = x + 4 + g.MeasureString(_editBuffer[..selStart], theme.DefaultFont).width;
-                int endX = x + 4 + g.MeasureString(_editBuffer[..selEnd], theme.DefaultFont).width;
+                selStart = Math.Min(selStart, _editBuffer.Length);
+                selEnd = Math.Min(selEnd, _editBuffer.Length);
+                int startX = textX + g.MeasureString(_editBuffer[..selStart], theme.DefaultFont).width;
+                int endX = textX + g.MeasureString(_editBuffer[..selEnd], theme.DefaultFont).width;
                 g.FillRectangle(theme.Highlight, startX, y + 2, endX - startX, height - 4);
-            }
 
-            g.DrawString(_editBuffer, theme.DefaultFont, theme.ControlText, x + 4, y + 5);
+                string before = _editBuffer[..selStart];
+                string selected = _editBuffer[selStart..selEnd];
+                string after = _editBuffer[selEnd..];
+                g.DrawString(before, theme.DefaultFont, theme.ControlText, textX, textY);
+                g.DrawString(selected, theme.DefaultFont, theme.HighlightText, startX, textY);
+                g.DrawString(after, theme.DefaultFont, theme.ControlText, endX, textY);
+            }
+            else
+            {
+                g.DrawString(_editBuffer, theme.DefaultFont, theme.ControlText, textX, textY);
+            }
 
             // Draw caret using actual measured width
             int caretWidth = g.MeasureString(_editBuffer[..Math.Min(_caretPos, _editBuffer.Length)], theme.DefaultFont).width;
-            g.DrawLine(theme.ControlText, x + 4 + caretWidth, y + 4, x + 4 + caretWidth, y + height - 4);
+            g.DrawLine(theme.ControlText, textX + caretWidth, y + 4, textX + caretWidth, y + height - 4);
             return;
         }
 
@@ -1185,6 +1200,62 @@ public class PropertyGridRow
 
         _caretPos = start;
         _anchor = start;
+    }
+
+    /// <summary>
+    /// Copies the current selection to the system clipboard. When nothing is selected,
+    /// the entire edit buffer is copied.
+    /// </summary>
+    public void CopySelectedToClipboard()
+    {
+        if (!_isEditing) return;
+
+        string text = HasSelection ? GetSelectedText() : _editBuffer;
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
+    }
+
+    /// <summary>
+    /// Copies the current selection to the system clipboard and removes it from the edit buffer.
+    /// Does nothing when there is no selection.
+    /// </summary>
+    public void CutSelectedToClipboard()
+    {
+        if (!_isEditing || !HasSelection) return;
+
+        string text = GetSelectedText();
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
+        DeleteSelection();
+    }
+
+    /// <summary>
+    /// Inserts the current clipboard text at the caret, replacing any active selection.
+    /// Does nothing when the clipboard holds no text.
+    /// </summary>
+    public void PasteFromClipboard()
+    {
+        if (!_isEditing) return;
+
+        string? text = Clipboard.GetText();
+        if (string.IsNullOrEmpty(text)) return;
+
+        if (HasSelection) DeleteSelection();
+
+        _editBuffer = _editBuffer.Insert(_caretPos, text);
+        _caretPos += text.Length;
+        _anchor = _caretPos;
+    }
+
+    /// <summary>
+    /// Selects the entire contents of the edit buffer.
+    /// </summary>
+    public void SelectAll()
+    {
+        if (!_isEditing) return;
+
+        _anchor = 0;
+        _caretPos = _editBuffer.Length;
     }
 
     /// <summary>

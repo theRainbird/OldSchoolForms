@@ -492,6 +492,16 @@ public struct Padding
     public int Vertical => Top + Bottom;
 
     /// <summary>
+    /// Returns a string representation of the padding in the form
+    /// <c>{Left=X, Top=Y, Right=Z, Bottom=W}</c>.
+    /// </summary>
+    /// <returns>A string describing the four padding values.</returns>
+    public override string ToString()
+    {
+        return $"{{Left={Left}, Top={Top}, Right={Right}, Bottom={Bottom}}}";
+    }
+
+    /// <summary>
     /// Represents a Padding with all values set to zero.
     /// </summary>
     public static readonly Padding Empty = new Padding(0);

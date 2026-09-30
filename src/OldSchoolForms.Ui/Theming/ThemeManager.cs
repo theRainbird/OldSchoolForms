@@ -11,6 +11,7 @@ public static class ThemeManager
 {
     private static Theme _currentTheme = new LightTheme();
     private static readonly List<WeakReference<IThemeChangeSubscriber>> _subscribers = new();
+    private static readonly object _lock = new();
 
     /// <summary>
     /// Gets the currently active theme.
@@ -49,8 +50,11 @@ public static class ThemeManager
         if (subscriber == null)
             return;
 
-        CleanDeadReferences();
-        _subscribers.Add(new WeakReference<IThemeChangeSubscriber>(subscriber));
+        lock (_lock)
+        {
+            CleanDeadReferences();
+            _subscribers.Add(new WeakReference<IThemeChangeSubscriber>(subscriber));
+        }
     }
 
     /// <summary>
@@ -62,31 +66,40 @@ public static class ThemeManager
         if (subscriber == null)
             return;
 
-        for (int i = _subscribers.Count - 1; i >= 0; i--)
+        lock (_lock)
         {
-            if (_subscribers[i].TryGetTarget(out var target) && target == subscriber)
+            for (int i = _subscribers.Count - 1; i >= 0; i--)
             {
-                _subscribers.RemoveAt(i);
+                if (_subscribers[i].TryGetTarget(out var target) && target == subscriber)
+                {
+                    _subscribers.RemoveAt(i);
+                }
             }
         }
     }
 
     private static void NotifySubscribers(Theme theme)
     {
-        CleanDeadReferences();
-
-        for (int i = _subscribers.Count - 1; i >= 0; i--)
+        IThemeChangeSubscriber[] snapshot;
+        lock (_lock)
         {
-            if (_subscribers[i].TryGetTarget(out var subscriber))
+            CleanDeadReferences();
+            snapshot = new IThemeChangeSubscriber[_subscribers.Count];
+            for (int i = 0; i < _subscribers.Count; i++)
             {
-                try
-                {
-                    subscriber.OnThemeChanged(theme);
-                }
-                catch
-                {
-                    // Ignore exceptions in subscriber notifications
-                }
+                _subscribers[i].TryGetTarget(out snapshot[i]);
+            }
+        }
+
+        foreach (var subscriber in snapshot)
+        {
+            try
+            {
+                subscriber.OnThemeChanged(theme);
+            }
+            catch
+            {
+                // Ignore exceptions in subscriber notifications
             }
         }
     }

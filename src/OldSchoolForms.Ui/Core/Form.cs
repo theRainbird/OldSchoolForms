@@ -535,6 +535,19 @@ public class Form : ContainerControl, INativeWindow
     {
         if (!Enabled) return;
         var args = e as MouseEventArgs;
+
+        // Dismiss a sticky keyboard menu mode when the user clicks a non-menu control
+        // (e.g. into the PropertyGrid to edit a value) while no dropdown is open.
+        // When a dropdown IS open the menu holds mouse capture and closes itself.
+        if (args != null)
+        {
+            foreach (Control c in Controls)
+            {
+                if (c is MenuStrip ms && ms.MenuMode && !ms.IsDropDownOpenPublic && !ms.Bounds.Contains(args.X, args.Y))
+                    ms.MenuMode = false;
+            }
+        }
+
         if (args != null && _captureControl != null)
         {
             var controlOrigin = _captureControl.GetFormRelativePosition();
@@ -947,6 +960,25 @@ public class Form : ContainerControl, INativeWindow
                 return;
             }
 
+            // Route keyboard input to an open menu first, so menu navigation works
+            // regardless of which control currently holds focus (e.g. the design surface,
+            // whose arrow-key nudge would otherwise consume the keys before the menu sees them).
+            MenuStrip? activeMenu = null;
+            foreach (Control control in Controls)
+            {
+                if (control is MenuStrip ms && (ms.MenuMode || ms.IsDropDownOpenPublic))
+                {
+                    activeMenu = ms;
+                    break;
+                }
+            }
+
+            if (activeMenu != null)
+            {
+                activeMenu.OnKeyDown(e);
+                if (e.Handled) return;
+            }
+
             if (ActiveControl != null && ActiveControl.Enabled)
             {
                 ActiveControl.OnKeyDown(e);
@@ -983,22 +1015,6 @@ public class Form : ContainerControl, INativeWindow
 
                         return;
                 }
-            }
-
-            MenuStrip? activeMenu = null;
-            foreach (Control control in Controls)
-            {
-                if (control is MenuStrip ms && ms.MenuMode)
-                {
-                    activeMenu = ms;
-                    break;
-                }
-            }
-
-            if (activeMenu != null)
-            {
-                activeMenu.OnKeyDown(e);
-                if (e.Handled) return;
             }
 
             if (e.KeyCode == Keys.Tab)

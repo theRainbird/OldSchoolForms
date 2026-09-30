@@ -51,6 +51,17 @@ public class MenuStrip : ContainerControl
     public List<ToolStripMenuItem> Items => _items;
 
     /// <summary>
+    /// Gets a value indicating whether a dropdown menu is currently open on this menu strip.
+    /// Used by the form to route keyboard input to the open menu regardless of focus.
+    /// </summary>
+    public bool IsDropDownOpenPublic => _dropDownVisible;
+
+    /// <summary>
+    /// Gets a value indicating whether this menu strip is in menu mode (navigating via keyboard).
+    /// </summary>
+    public bool IsMenuModePublic => _menuMode;
+
+    /// <summary>
     /// Hit-tests a point (in menu strip coordinates) against the top-level menu items.
     /// Used by the designer to select items in situ.
     /// </summary>
@@ -255,6 +266,8 @@ public class MenuStrip : ContainerControl
         _openItem = null;
         _hoverDropDownItem = null;
         _selectedDropDownIndex = -1;
+        MenuMode = false;
+        Invalidate();
     }
 
     /// <summary>
@@ -265,6 +278,10 @@ public class MenuStrip : ContainerControl
     {
         if (e is MouseEventArgs args)
         {
+            var previousHoverItem = _hoverItem;
+            var previousHoverDropDownItem = _hoverDropDownItem;
+            var previousSelectedDropDownIndex = _selectedDropDownIndex;
+
             _hoverItem = HitTestTopItem(args.X, args.Y);
 
             if (_dropDownVisible && _openItem != null)
@@ -287,6 +304,13 @@ public class MenuStrip : ContainerControl
                     }
                 }
             }
+
+            if (_hoverItem != previousHoverItem
+                || _hoverDropDownItem != previousHoverDropDownItem
+                || _selectedDropDownIndex != previousSelectedDropDownIndex)
+            {
+                Invalidate();
+            }
         }
 
         base.OnMouseMove(e);
@@ -299,6 +323,7 @@ public class MenuStrip : ContainerControl
     {
         _hoverItem = null;
         _hoverDropDownItem = null;
+        Invalidate();
         base.OnMouseLeave(e);
     }
 
@@ -382,6 +407,7 @@ public class MenuStrip : ContainerControl
                     _hoverDropDownItem = _selectedDropDownIndex >= 0
                         ? _openItem.DropDownItems[_selectedDropDownIndex]
                         : null;
+                    Invalidate();
                     e.Handled = true;
                     return;
 
@@ -393,6 +419,7 @@ public class MenuStrip : ContainerControl
                     _hoverDropDownItem = _selectedDropDownIndex >= 0
                         ? _openItem.DropDownItems[_selectedDropDownIndex]
                         : null;
+                    Invalidate();
                     e.Handled = true;
                     return;
 
@@ -449,6 +476,7 @@ public class MenuStrip : ContainerControl
                             _selectedTopLevelIndex--;
                         else
                             _selectedTopLevelIndex = _items.Count - 1;
+                        Invalidate();
                         e.Handled = true;
                         return;
                     }
@@ -463,6 +491,7 @@ public class MenuStrip : ContainerControl
                             _selectedTopLevelIndex++;
                         else
                             _selectedTopLevelIndex = 0;
+                        Invalidate();
                         e.Handled = true;
                         return;
                     }
@@ -477,9 +506,10 @@ public class MenuStrip : ContainerControl
                             OpenDropDown(item);
                         else
                         {
-                    item.PerformClick();
+                            item.PerformClick();
                             MenuMode = false;
                             _selectedTopLevelIndex = -1;
+                            Invalidate();
                         }
                         e.Handled = true;
                         return;
@@ -491,6 +521,7 @@ public class MenuStrip : ContainerControl
                     {
                         if (_selectedTopLevelIndex < 0)
                             _selectedTopLevelIndex = _items.Count - 1;
+                        Invalidate();
                         e.Handled = true;
                         return;
                     }
@@ -650,6 +681,7 @@ public class MenuStrip : ContainerControl
         _hoverDropDownItem = null;
         _menuMode = true;
         CapturingMouse = true;
+        Invalidate();
     }
 
     private void CloseDropDown()
@@ -659,5 +691,6 @@ public class MenuStrip : ContainerControl
         _hoverDropDownItem = null;
         _selectedDropDownIndex = -1;
         CapturingMouse = false;
+        Invalidate();
     }
 }
