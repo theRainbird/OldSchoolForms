@@ -20,6 +20,8 @@ public class DesignerForm : Form
     private readonly DesignSurface _designSurface;
     private readonly PropertyGrid.PropertyGrid _propertyGrid;
     private readonly IDesignDocumentService _documentService;
+    private readonly IJsonLayoutService _jsonService;
+    private string? _currentFilePath;
     private ToolboxControl _toolbox = null!;
     private Panel _toolboxPanel = null!;
     private StatusStripPanel _statusPanel = null!;
@@ -38,11 +40,16 @@ public class DesignerForm : Form
     /// <summary>
     /// Initializes a new instance of the <see cref="DesignerForm"/> class.
     /// </summary>
-    /// <param name="documentService">The service used to load and save designed forms.</param>
+    /// <param name="documentService">The service used to load and save designed forms as C# source.</param>
+    /// <param name="jsonService">
+    /// The optional service used to load and save designed layouts as JSON documents.
+    /// When <see langword="null"/>, a default <see cref="Serialization.JsonDocumentService"/> is created.
+    /// </param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="documentService"/> is null.</exception>
-    public DesignerForm(IDesignDocumentService documentService)
+    public DesignerForm(IDesignDocumentService documentService, IJsonLayoutService? jsonService = null)
     {
         _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
+        _jsonService = jsonService ?? new Serialization.JsonDocumentService();
 
         Text = "OldSchoolForms Form Designer";
         Width = 1400;
@@ -286,14 +293,19 @@ public class DesignerForm : Form
         var dialog = new OpenFileDialog
         {
             Title = "Formular öffnen",
-            Filter = "C# Dateien (*.cs)|*.cs|Alle Dateien (*.*)|*.*"
+            Filter = "Formulare (*.cs;*.json)|*.cs;*.json|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Alle Dateien (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             try
             {
                 _designSurface.ClearAll();
-                _documentService.Load(File.ReadAllText(dialog.FileName), _designSurface);
+                if (IsJsonPath(dialog.FileName))
+                    _jsonService.LoadFromFile(_designSurface, dialog.FileName);
+                else
+                    _documentService.Load(File.ReadAllText(dialog.FileName), _designSurface);
+
+                _currentFilePath = dialog.FileName;
                 _statusLabel.Text = $"Geöffnet: {dialog.FileName}";
                 Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
             }
@@ -307,7 +319,22 @@ public class DesignerForm : Form
 
     private void SaveForm()
     {
-        string code = _documentService.Save(_designSurface, "OldSchoolForms.Ui.Demo", "MainForm");
+        if (_currentFilePath != null && IsJsonPath(_currentFilePath))
+        {
+            try
+            {
+                _jsonService.SaveToFile(_designSurface, _currentFilePath);
+                _statusLabel.Text = $"Gespeichert: {_currentFilePath}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return;
+        }
+
+        string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName);
         _statusLabel.Text = "Gespeichert (Vorschau generiert)";
     }
 
@@ -316,16 +343,36 @@ public class DesignerForm : Form
         var dialog = new SaveFileDialog
         {
             Title = "Formular speichern",
-            Filter = "C# Dateien (*.cs)|*.cs|Alle Dateien (*.*)|*.*"
+            Filter = "Formulare (*.cs;*.json)|*.cs;*.json|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Alle Dateien (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            string code = _documentService.Save(_designSurface, "OldSchoolForms.Ui.Demo", "MainForm");
-            File.WriteAllText(dialog.FileName, code);
-            _statusLabel.Text = $"Gespeichert: {dialog.FileName}";
-            Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+            try
+            {
+                if (IsJsonPath(dialog.FileName))
+                {
+                    _jsonService.SaveToFile(_designSurface, dialog.FileName);
+                }
+                else
+                {
+                    string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName);
+                    File.WriteAllText(dialog.FileName, code);
+                }
+
+                _currentFilePath = dialog.FileName;
+                _statusLabel.Text = $"Gespeichert: {dialog.FileName}";
+                Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
+
+    private static bool IsJsonPath(string path)
+        => Path.GetExtension(path).Equals(".json", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -360,6 +360,63 @@ Manages the pair of source files for a designed form:
 
 The file manager automatically derives the designer file path: `MainForm.cs` → `MainForm.Designer.cs`.
 
+### JSON Layout Persistence
+
+In addition to the C# source round-trip, the designer can save and load the layout as a platform-neutral JSON document (`OldSchoolForms.Layout` format). This is useful for storing layouts without generated code, exchanging them between tools, or hand-editing them. Implemented with `System.Text.Json` (no extra dependency) in `OldSchoolForms.Ui.Designer.Serialization`.
+
+**Service:** `JsonDocumentService` implements `IJsonLayoutService` and works with strings, streams and files:
+
+```csharp
+var service = new JsonDocumentService("MyApp", "MainForm");
+
+// Save
+string json = service.SaveToJson(surface);
+service.Save(surface, stream);          // UTF-8, stream not closed
+service.SaveToFile(surface, "layout.json");
+
+// Load (returns warnings for unknown types/properties)
+var warnings = service.LoadFromJson(surface, json);
+warnings = service.Load(surface, stream);
+warnings = service.LoadFromFile(surface, "layout.json");
+```
+
+The `Namespace` and `ClassName` properties are written on save and restored on load, so C# code can still be regenerated from a JSON-loaded surface via `CodeGenerator`.
+
+**Document format (v1):**
+
+```json
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "namespace": "MyApp",
+  "className": "MainForm",
+  "rootSize": { "width": 800, "height": 600 },
+  "controls": [
+    {
+      "type": "Panel",
+      "name": "panel1",
+      "props": { "location": { "x": 29, "y": 9 }, "size": { "width": 220, "height": 200 } },
+      "children": [
+        { "type": "Button", "name": "okButton", "props": { "text": "OK", "backColor": { "r": 200, "g": 50, "b": 50, "a": 255 } } }
+      ],
+      "columns": [ { "name": "id", "headerText": "ID", "width": 80, "valueType": "int" } ],
+      "items": [ { "type": "ToolStripButton", "props": { "text": "Oeffnen" }, "dropDownItems": [ ... ] } ]
+    }
+  ]
+}
+```
+
+**Serialization rules:**
+
+- Only properties that differ from a freshly created instance of the same type are written (keeps documents small).
+- Supported value types: `string`, `bool`, `int`, `float`, `double`, `decimal`, `Color` (`{r,g,b,a}`), `Point`/`Size`/`Padding`, `Font` (`{name,size,style}`), enums (by name, flags comma-separated), `SvgImage`/`RasterImage` (resource name or base64 + size).
+- Special collections: `TabPages` (via `AddTabPage`), `columns` (DataGridView), `items` (ToolStrip/MenuStrip/StatusStrip) with nested `dropDownItems`.
+- Unknown types and properties are skipped with a warning instead of failing the load.
+- The root type (`Form` vs `UserControl`) selects `BeginDesignForm()` / `BeginDesignUserControl()`.
+
+**Standalone integration:** `DesignerForm` dispatches by file extension — `.json` uses the JSON service, `.cs` uses the C# `IDesignDocumentService`. The open/save dialogs offer both filters.
+
 ## Standalone Application
 
 ### DesignerForm

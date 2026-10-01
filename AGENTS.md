@@ -50,6 +50,11 @@ dotnet run --project samples/OldSchoolForms.Ui.Demo  # Run demo (requires X11/di
 - MenuStrip with dropdown menus, keyboard navigation, Alt+mnemonic activation
 - ToolStripMenuItem with mnemonic support (`&File` → Alt+F opens File menu)
 
+**Designer Persistence:**
+- C# code round-trip (CodeGenerator + FormParser via RoslynDocumentService)
+- JSON layout save/load (`OldSchoolForms.Layout` format, System.Text.Json) via `IJsonLayoutService` / `JsonDocumentService` — strings, streams and files; preserves hierarchy, properties, TabPages, DataGridView columns, ToolStrip/Menu/StatusStrip items, root type, namespace/class name
+- Standalone DesignerForm dispatches by file extension (`*.cs` → C#, `*.json` → JSON)
+
 ## Important Context
 
 **Platform layer uses Silk.NET** - Windowing, input, and OpenGL context are managed via Silk.NET:
