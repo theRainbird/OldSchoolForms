@@ -1,0 +1,7 @@
+{
+  "id": "dialogs",
+  "title": "Dialoge",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 4
+}

@@ -1,0 +1,13 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "controls": [
+    { "type": "Label", "name": "clockLabel", "props": { "text": "--:--:--", "location": { "x": 24, "y": 24 }, "size": { "width": 320, "height": 40 } } },
+    { "type": "Label", "name": "dateLabel", "props": { "text": "----/--/--", "location": { "x": 24, "y": 72 }, "size": { "width": 320, "height": 28 } } },
+    { "type": "Label", "name": "infoLabel", "props": { "text": "Willkommen im Dashboard. Die Uhr läuft automatisch, solange dieser Tab aktiv ist. Nutze die Buttons oder die Navigation links, um andere Module zu öffnen.", "location": { "x": 24, "y": 116 }, "size": { "width": 560, "height": 60 } } },
+    { "type": "Button", "name": "openCounter", "props": { "text": "Zähler öffnen", "location": { "x": 24, "y": 200 }, "size": { "width": 170, "height": 38 } } },
+    { "type": "Button", "name": "openNotes", "props": { "text": "Notizen öffnen", "location": { "x": 210, "y": 200 }, "size": { "width": 170, "height": 38 } } },
+    { "type": "Button", "name": "openDialogs", "props": { "text": "Dialoge öffnen", "location": { "x": 396, "y": 200 }, "size": { "width": 170, "height": 38 } } }
+  ]
+}

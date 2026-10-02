@@ -1,0 +1,7 @@
+{
+  "id": "notes",
+  "title": "Notizen",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 3
+}

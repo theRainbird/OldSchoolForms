@@ -1,0 +1,12 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "controls": [
+    { "type": "Button", "name": "btnOk", "props": { "text": "OK", "location": { "x": 24, "y": 24 }, "size": { "width": 180, "height": 38 } } },
+    { "type": "Button", "name": "btnOkCancel", "props": { "text": "OK / Abbrechen", "location": { "x": 220, "y": 24 }, "size": { "width": 180, "height": 38 } } },
+    { "type": "Button", "name": "btnYesNo", "props": { "text": "Ja / Nein", "location": { "x": 24, "y": 76 }, "size": { "width": 180, "height": 38 } } },
+    { "type": "Button", "name": "btnYesNoCancel", "props": { "text": "Ja / Nein / Abbrechen", "location": { "x": 220, "y": 76 }, "size": { "width": 180, "height": 38 } } },
+    { "type": "Label", "name": "resultLabel", "props": { "text": "Noch keine Auswahl", "location": { "x": 24, "y": 140 }, "size": { "width": 400, "height": 28 } } }
+  ]
+}

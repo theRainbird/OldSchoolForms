@@ -1,0 +1,7 @@
+{
+  "id": "counter",
+  "title": "Zähler",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 2
+}

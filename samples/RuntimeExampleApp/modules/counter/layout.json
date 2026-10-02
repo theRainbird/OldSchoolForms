@@ -1,0 +1,13 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "controls": [
+    { "type": "Label", "name": "countLabel", "props": { "text": "0", "location": { "x": 24, "y": 24 }, "size": { "width": 120, "height": 48 } } },
+    { "type": "Button", "name": "btnMinus", "props": { "text": "-", "location": { "x": 160, "y": 24 }, "size": { "width": 60, "height": 44 } } },
+    { "type": "Button", "name": "btnPlus", "props": { "text": "+", "location": { "x": 228, "y": 24 }, "size": { "width": 60, "height": 44 } } },
+    { "type": "Button", "name": "btnReset", "props": { "text": "Reset", "location": { "x": 296, "y": 24 }, "size": { "width": 96, "height": 44 } } },
+    { "type": "Label", "name": "stepLabel", "props": { "text": "Schrittweite", "location": { "x": 24, "y": 96 }, "size": { "width": 90, "height": 24 } } },
+    { "type": "TextBox", "name": "stepBox", "props": { "text": "1", "location": { "x": 120, "y": 94 }, "size": { "width": 80, "height": 26 } } }
+  ]
+}

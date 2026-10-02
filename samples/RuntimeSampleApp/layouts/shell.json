@@ -1,0 +1,68 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "rootSize": { "width": 1000, "height": 700 },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "name": "menuStrip",
+      "props": { "dock": "Top" },
+      "items": [
+        {
+          "type": "ToolStripMenuItem",
+          "props": { "text": "&Datei" },
+          "dropDownItems": [
+            { "type": "ToolStripMenuItem", "props": { "text": "Kunden öffnen" } },
+            { "type": "ToolStripMenuItem", "props": { "text": "Aufträge öffnen" } },
+            { "type": "ToolStripSeparator", "props": {} },
+            { "type": "ToolStripMenuItem", "props": { "text": "Beenden" } }
+          ]
+        },
+        {
+          "type": "ToolStripMenuItem",
+          "props": { "text": "&Hilfe" },
+          "dropDownItems": [
+            { "type": "ToolStripMenuItem", "props": { "text": "Über" } }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ToolStrip",
+      "name": "toolStrip",
+      "props": { "dock": "Top" },
+      "items": [
+        { "type": "ToolStripButton", "props": { "text": "Kunden" } },
+        { "type": "ToolStripButton", "props": { "text": "Aufträge" } },
+        { "type": "ToolStripSeparator", "props": {} },
+        { "type": "ToolStripLabel", "props": { "text": "Sample-App" } }
+      ]
+    },
+    {
+      "type": "StatusStrip",
+      "name": "statusStrip",
+      "props": { "dock": "Bottom" },
+      "items": [
+        { "type": "ToolStripStatusLabel", "props": { "text": "Bereit" } }
+      ]
+    },
+    {
+      "type": "Panel",
+      "name": "sidebar",
+      "props": { "dock": "Left", "size": { "width": 220, "height": 600 } },
+      "children": [
+        {
+          "type": "TreeView",
+          "name": "navTree",
+          "props": { "dock": "Fill" }
+        }
+      ]
+    },
+    {
+      "type": "TabControl",
+      "name": "contentTabs",
+      "props": { "dock": "Fill" }
+    }
+  ]
+}

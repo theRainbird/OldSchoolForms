@@ -1,0 +1,60 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "rootSize": { "width": 1100, "height": 720 },
+  "controls": [
+    {
+      "type": "MenuStrip",
+      "name": "menuStrip",
+      "props": { "dock": "Top" },
+      "items": [
+        {
+          "type": "ToolStripMenuItem",
+          "props": { "text": "&Datei" },
+          "dropDownItems": [
+            { "type": "ToolStripMenuItem", "props": { "text": "Beenden" } }
+          ]
+        },
+        {
+          "type": "ToolStripMenuItem",
+          "props": { "text": "&Hilfe" },
+          "dropDownItems": [
+            { "type": "ToolStripMenuItem", "props": { "text": "Über" } }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ToolStrip",
+      "name": "toolStrip",
+      "props": { "dock": "Top" },
+      "items": [
+        { "type": "ToolStripButton", "props": { "text": "Start" } },
+        { "type": "ToolStripSeparator" },
+        { "type": "ToolStripLabel", "props": { "text": "OldSchoolForms JS-Beispiel" } }
+      ]
+    },
+    {
+      "type": "StatusStrip",
+      "name": "statusStrip",
+      "props": { "dock": "Bottom" },
+      "items": [
+        { "type": "ToolStripStatusLabel", "props": { "text": "Bereit" } }
+      ]
+    },
+    {
+      "type": "Panel",
+      "name": "sidebar",
+      "props": { "dock": "Left", "size": { "width": 220, "height": 600 } },
+      "children": [
+        { "type": "TreeView", "name": "navTree", "props": { "dock": "Fill" } }
+      ]
+    },
+    {
+      "type": "TabControl",
+      "name": "contentTabs",
+      "props": { "dock": "Fill" }
+    }
+  ]
+}

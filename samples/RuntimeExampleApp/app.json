@@ -1,0 +1,12 @@
+{
+  "name": "Beispiel-App",
+  "version": "1.0.0",
+  "shell": "layouts/shell.json",
+  "entry": "app.js",
+  "modules": [
+    "modules/dashboard",
+    "modules/counter",
+    "modules/notes",
+    "modules/dialogs"
+  ]
+}

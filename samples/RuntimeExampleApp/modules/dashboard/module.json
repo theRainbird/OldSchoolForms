@@ -1,0 +1,7 @@
+{
+  "id": "dashboard",
+  "title": "Dashboard",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 1
+}

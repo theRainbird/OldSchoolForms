@@ -1,0 +1,23 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "rootSize": { "width": 600, "height": 400 },
+  "controls": [
+    {
+      "type": "Label",
+      "name": "infoLabel",
+      "props": { "text": "Auftragsübersicht", "location": { "x": 12, "y": 12 } }
+    },
+    {
+      "type": "ProgressBar",
+      "name": "progress",
+      "props": { "location": { "x": 12, "y": 48 }, "size": { "width": 560, "height": 20 } }
+    },
+    {
+      "type": "Button",
+      "name": "refreshButton",
+      "props": { "text": "Aktualisieren", "location": { "x": 12, "y": 84 }, "size": { "width": 120, "height": 28 } }
+    }
+  ]
+}
