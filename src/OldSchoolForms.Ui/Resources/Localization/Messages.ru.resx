@@ -190,4 +190,148 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Отмена</value>
   </data>
+  <data name="Runtime_AppManifestMissing" xml:space="preserve">
+    <value>Отсутствует манифест приложения: {0}</value>
+  </data>
+  <data name="Runtime_ModuleManifestMissing" xml:space="preserve">
+    <value>Отсутствует манифест модуля: {0}</value>
+  </data>
+  <data name="Runtime_JsonRootMustBeObject" xml:space="preserve">
+    <value>Корень JSON должен быть объектом.</value>
+  </data>
+  <data name="Runtime_JsonRootNotObjectInFile" xml:space="preserve">
+    <value>Корень JSON в '{0}' не является объектом.</value>
+  </data>
+  <data name="Runtime_InvalidJsonDocument" xml:space="preserve">
+    <value>Недопустимый JSON-документ: {0}</value>
+  </data>
+  <data name="Runtime_InvalidJsonInFile" xml:space="preserve">
+    <value>Недопустимый JSON в '{0}': {1}</value>
+  </data>
+  <data name="Runtime_ShellLayoutMissing" xml:space="preserve">
+    <value>Отсутствует разметка оболочки: {0}</value>
+  </data>
+  <data name="Runtime_ShellMissingContentTabs" xml:space="preserve">
+    <value>Разметка оболочки не содержит TabControl с именем 'contentTabs'.</value>
+  </data>
+  <data name="Runtime_UnknownModule" xml:space="preserve">
+    <value>Неизвестный модуль: {0}</value>
+  </data>
+  <data name="Runtime_UnknownEvent" xml:space="preserve">
+    <value>Неизвестное событие: {0}</value>
+  </data>
+  <data name="Runtime_CallbackMustBeFunction" xml:space="preserve">
+    <value>Callback должен быть функцией.</value>
+  </data>
+  <data name="Runtime_ValueNotFunction" xml:space="preserve">
+    <value>Вызываемое значение не является функцией.</value>
+  </data>
+  <data name="Runtime_TimerCallbackMustBeFunction" xml:space="preserve">
+    <value>Первый аргумент setTimeout/setInterval должен быть функцией.</value>
+  </data>
+  <data name="Runtime_ModuleResolveFailed" xml:space="preserve">
+    <value>Не удалось разрешить модуль: {0}</value>
+  </data>
+  <data name="Runtime_ModuleFileMissing" xml:space="preserve">
+    <value>Файл модуля отсутствует в пакете: {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEmpty" xml:space="preserve">
+    <value>Путь модуля не должен быть пустым.</value>
+  </data>
+  <data name="Runtime_PathEmpty" xml:space="preserve">
+    <value>Путь не должен быть пустым.</value>
+  </data>
+  <data name="Runtime_SandboxPathViolation" xml:space="preserve">
+    <value>Нарушение пути sandbox: {0}</value>
+  </data>
+  <data name="Runtime_PathEscapesPackage" xml:space="preserve">
+    <value>Путь выходит за корень пакета: {0}</value>
+  </data>
+  <data name="Runtime_FileMissingInPackage" xml:space="preserve">
+    <value>Файл отсутствует в пакете: {0}</value>
+  </data>
+  <data name="Runtime_RootDirectoryEmpty" xml:space="preserve">
+    <value>Корневой каталог не должен быть пустым.</value>
+  </data>
+  <data name="Runtime_DirectoryMissing" xml:space="preserve">
+    <value>Каталог отсутствует.</value>
+  </data>
+  <data name="Runtime_AppDirectoryNotFound" xml:space="preserve">
+    <value>Каталог приложения не найден: {0}</value>
+  </data>
+  <data name="Runtime_UriMissing" xml:space="preserve">
+    <value>URI отсутствует.</value>
+  </data>
+  <data name="Runtime_PackageNotSynced" xml:space="preserve">
+    <value>Пакет приложения ещё не синхронизирован. Сначала вызовите SyncAsync.</value>
+  </data>
+  <data name="Runtime_ServerManifestUnreachable" xml:space="preserve">
+    <value>Манифест сервера недоступен: {0} ({1})</value>
+  </data>
+  <data name="Runtime_ServerManifestRootNotObject" xml:space="preserve">
+    <value>Корень манифеста сервера не является объектом.</value>
+  </data>
+  <data name="Runtime_InvalidServerManifest" xml:space="preserve">
+    <value>Недопустимый манифест сервера: {0}</value>
+  </data>
+  <data name="Runtime_BundleUnreachable" xml:space="preserve">
+    <value>Бандл недоступен: {0} ({1})</value>
+  </data>
+  <data name="Runtime_Sha256CheckFailed" xml:space="preserve">
+    <value>Проверка SHA-256 не пройдена для {0}.</value>
+  </data>
+  <data name="Runtime_TypeNameMissing" xml:space="preserve">
+    <value>Отсутствует имя типа.</value>
+  </data>
+  <data name="Runtime_Cli_Title" xml:space="preserve">
+    <value>OldSchoolForms.Ui.Runtime - среда выполнения JavaScript</value>
+  </data>
+  <data name="Runtime_Cli_Usage" xml:space="preserve">
+    <value>Использование:</value>
+  </data>
+  <data name="Runtime_Cli_UsageLine" xml:space="preserve">
+    <value>  OldSchoolForms.Ui.Runtime [путь] [опции]</value>
+  </data>
+  <data name="Runtime_Cli_Arguments" xml:space="preserve">
+    <value>Аргументы:</value>
+  </data>
+  <data name="Runtime_Cli_ArgPath" xml:space="preserve">
+    <value>  путь              Путь к пакету приложения (каталог с app.json).</value>
+  </data>
+  <data name="Runtime_Cli_Options" xml:space="preserve">
+    <value>Опции:</value>
+  </data>
+  <data name="Runtime_Cli_OptSource" xml:space="preserve">
+    <value>  --source &lt;uri&gt;    Загрузить приложение из сетевого источника (https://...).</value>
+  </data>
+  <data name="Runtime_Cli_OptDev" xml:space="preserve">
+    <value>  --dev             Режим разработки: без кэша, полные трассировки, hot reload.</value>
+  </data>
+  <data name="Runtime_Cli_OptHelp" xml:space="preserve">
+    <value>  -h, --help        Показать эту справку.</value>
+  </data>
+  <data name="Runtime_Cli_Examples" xml:space="preserve">
+    <value>Примеры:</value>
+  </data>
+  <data name="Runtime_ModuleManifestWithoutId" xml:space="preserve">
+    <value>Манифест модуля без 'id'.</value>
+  </data>
+  <data name="Runtime_DescriptorWithoutId" xml:space="preserve">
+    <value>Дескриптор модуля без ID.</value>
+  </data>
+  <data name="Runtime_UnknownControlType" xml:space="preserve">
+    <value>Неизвестный тип элемента управления: {0}</value>
+  </data>
+  <data name="Runtime_NoLayoutFound" xml:space="preserve">
+    <value>Разметка не найдена: {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEscapesRoot" xml:space="preserve">
+    <value>Путь модуля выходит за корень пакета: {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEmptyAfterNormalize" xml:space="preserve">
+    <value>Путь модуля пуст после нормализации: {0}</value>
+  </data>
+  <data name="Runtime_NotAContainer" xml:space="preserve">
+    <value>Элемент управления '{0}' не является контейнером.</value>
+  </data>
 </root>

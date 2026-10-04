@@ -1,54 +1,54 @@
 namespace OldSchoolForms.Ui.Runtime.Sources;
 
 /// <summary>
-/// Abstraktion über den Ort, aus dem ein OldSchoolForms-App-Paket (Manifest, Layouts,
-/// JavaScript-Module) gelesen wird. Alle Pfade sind relativ zur Paketwurzel und
-/// verwenden Vorwärtsschrägstriche (<c>/</c>).
+/// Abstraction over the location from which an OldSchoolForms app package (manifest, layouts,
+/// JavaScript modules) is read. All paths are relative to the package root and
+/// use forward slashes (<c>/</c>).
 /// </summary>
 public interface IAppSource
 {
     /// <summary>
-    /// Prüft, ob die angegebene relative Datei im Paket existiert.
+    /// Checks whether the specified relative file exists in the package.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel, z. B. <c>modules/customers/index.js</c>.</param>
-    /// <returns><see langword="true"/>, wenn die Datei vorhanden ist.</returns>
+    /// <param name="relativePath">Relative path to the package root, e.g. <c>modules/customers/index.js</c>.</param>
+    /// <returns><see langword="true"/> if the file is present.</returns>
     bool Exists(string relativePath);
 
     /// <summary>
-    /// Liest den Inhalt einer Datei als Bytefolge.
+    /// Reads the content of a file as a byte array.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns>Der Dateiinhalt.</returns>
-    /// <exception cref="FileNotFoundException">Die Datei existiert nicht im Paket.</exception>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns>The file content.</returns>
+    /// <exception cref="FileNotFoundException">The file does not exist in the package.</exception>
     byte[] ReadBytes(string relativePath);
 
     /// <summary>
-    /// Liest den Inhalt einer Datei als UTF-8-Text.
+    /// Reads the content of a file as UTF-8 text.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns>Der Dateiinhalt als Text.</returns>
-    /// <exception cref="FileNotFoundException">Die Datei existiert nicht im Paket.</exception>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns>The file content as text.</returns>
+    /// <exception cref="FileNotFoundException">The file does not exist in the package.</exception>
     string ReadText(string relativePath);
 
     /// <summary>
-    /// Liefert eine Versionsmarke (ETag) für die angegebene Datei, sofern die Quelle
-    /// solche Informationen anbietet.
+    /// Provides a version marker (ETag) for the specified file, if the source
+    /// offers such information.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns>Die Versionsmarke oder <see langword="null"/>.</returns>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns>The version marker or <see langword="null"/>.</returns>
     string? GetETag(string relativePath);
 
     /// <summary>
-    /// Aktualisiert das Paket aus der fernen Quelle (z. B. Server-Abgleich).
-    /// Lokale Quellen implementieren dies als No-op.
+    /// Updates the package from the remote source (e.g. server synchronization).
+    /// Local sources implement this as a no-op.
     /// </summary>
-    /// <param name="progress">Optionaler Fortschrittsbericht.</param>
-    /// <param name="cancellationToken">Abbruchtoken.</param>
-    /// <returns>Eine Aufgabe, die den Abgleich abschließt.</returns>
+    /// <param name="progress">Optional progress report.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task that completes the synchronization.</returns>
     Task SyncAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Menschenlesbare Beschreibung der Quelle für Logging und Statusanzeigen.
+    /// Human-readable description of the source for logging and status displays.
     /// </summary>
     string Describe { get; }
 }

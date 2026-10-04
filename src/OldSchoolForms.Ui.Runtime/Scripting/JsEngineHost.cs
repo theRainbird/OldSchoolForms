@@ -1,14 +1,15 @@
 using Jint;
 using Jint.Native;
 using Jint.Native.Object;
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Sources;
 
 namespace OldSchoolForms.Ui.Runtime.Scripting;
 
 /// <summary>
-/// Zentrale Jint-Engine-Instanz für die JavaScript-Laufzeit. Konfiguriert die
-/// Engine mit dem <see cref="AppSourceModuleLoader"/>, stellt Browser-ähnliche
-/// Globals (<c>setTimeout</c>, <c>console</c>) bereit und marshallt Aufrufe.
+/// Central Jint engine instance for the JavaScript runtime. Configures the
+/// engine with the <see cref="AppSourceModuleLoader"/>, provides browser-like
+/// globals (<c>setTimeout</c>, <c>console</c>) and marshalls calls.
 /// </summary>
 public sealed class JsEngineHost : IDisposable
 {
@@ -16,10 +17,10 @@ public sealed class JsEngineHost : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Erzeugt die JS-Engine für eine Paketquelle.
+    /// Creates the JS engine for a package source.
     /// </summary>
-    /// <param name="source">Die Paketquelle für Modul-Importe.</param>
-    /// <param name="devMode">Im Dev-Modus: längere Timeouts und detaillierte Fehler.</param>
+    /// <param name="source">The package source for module imports.</param>
+    /// <param name="devMode">In dev mode: longer timeouts and detailed errors.</param>
     public JsEngineHost(IAppSource source, bool devMode = false)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -34,8 +35,8 @@ public sealed class JsEngineHost : IDisposable
             options.Modules.ModuleLoader = new AppSourceModuleLoader(source);
             options.Modules.RegisterRequire = false;
 
-            // camelCase-Fallback: JS greift mit Kleinbuchstaben zu, die CLR-Fassade
-            // expose PascalCase-Mitglieder.
+            // camelCase fallback: JS accesses with lowercase names while the CLR facade
+            // exposes PascalCase members.
             var innerAccessor = options.Interop.MemberAccessor;
             options.Interop.MemberAccessor = (engine, target, member) =>
             {
@@ -55,25 +56,65 @@ public sealed class JsEngineHost : IDisposable
         InstallGlobals();
     }
 
-    /// <summary>Die zugrunde liegende Jint-Engine.</summary>
+    /// <summary>The underlying Jint engine.</summary>
     public Engine Engine { get; }
 
-    /// <summary>Der Zeitgeber-Scheduler (wird pro Frame gepumpt).</summary>
+    /// <summary>The timer scheduler (pumped once per frame).</summary>
     public TimerScheduler Timers { get; }
 
-    /// <summary><see langword="true"/>, wenn im Entwicklungsmodus gestartet.</summary>
+    /// <summary><see langword="true"/> when started in development mode.</summary>
     public bool DevMode { get; }
 
     /// <summary>
-    /// Fehler aus der JS-Ausführung (Kontext + Nachricht).
+    /// The ID of the module whose code is currently executing (set via
+    /// <see cref="UseModule"/>). Timers created while this is set become owned by
+    /// that module and are cleared when the module closes.
+    /// </summary>
+    public string? CurrentModuleId { get; private set; }
+
+    /// <summary>
+    /// Marks the current synchronous execution scope as belonging to the given
+    /// module. Dispose the returned token to restore the previous scope, so nested
+    /// module activations (e.g. a module opening another module) stay correct.
+    /// </summary>
+    /// <param name="moduleId">The module ID, or <see langword="null"/> for no owner.</param>
+    /// <returns>A token that restores the previous module scope on dispose.</returns>
+    public IDisposable UseModule(string? moduleId)
+    {
+        var previous = CurrentModuleId;
+        CurrentModuleId = moduleId;
+        return new ModuleScope(this, previous);
+    }
+
+    private sealed class ModuleScope : IDisposable
+    {
+        private JsEngineHost? _host;
+        private readonly string? _previous;
+
+        public ModuleScope(JsEngineHost host, string? previous)
+        {
+            _host = host;
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            if (_host == null) return;
+            _host.CurrentModuleId = _previous;
+            _host = null;
+        }
+    }
+
+    /// <summary>
+    /// Errors from JS execution (context + message).
     /// </summary>
     public event Action<string, Exception>? Error;
 
     /// <summary>
-    /// Importiert ein ES-Modul aus dem Paket.
+    /// Imports an ES module from the package.
     /// </summary>
-    /// <param name="specifier">Der Modul-Spezifizierer (z. B. <c>app.js</c> oder <c>modules/customers/index.js</c>).</param>
-    /// <returns>Das Modul-Namespace-Objekt.</returns>
+    /// <param name="specifier">The module specifier (e.g. <c>app.js</c> or <c>modules/customers/index.js</c>).</param>
+    /// <returns>The module namespace object.</returns>
     public ObjectInstance ImportModule(string specifier)
     {
         var key = ModulePath.Normalize(specifier);
@@ -81,35 +122,35 @@ public sealed class JsEngineHost : IDisposable
     }
 
     /// <summary>
-    /// Ruft eine JavaScript-Funktion mit der übergebenen <c>this</c>-Referenz auf.
+    /// Calls a JavaScript function with the given <c>this</c> reference.
     /// </summary>
-    /// <param name="function">Der Funktionswert.</param>
-    /// <param name="thisArg">Das <c>this</c>-Argument (oder <see cref="JsValue.Undefined"/>).</param>
-    /// <param name="args">Die Argumente.</param>
-    /// <returns>Der Rückgabewert.</returns>
+    /// <param name="function">The function value.</param>
+    /// <param name="thisArg">The <c>this</c> argument (or <see cref="JsValue.Undefined"/>).</param>
+    /// <param name="args">The arguments.</param>
+    /// <returns>The return value.</returns>
     public JsValue CallFunction(JsValue function, JsValue thisArg, params JsValue[] args)
     {
         if (function is not Jint.Native.Function.Function)
-            throw new InvalidOperationException("Aufgerufener Wert ist keine Funktion.");
+            throw new InvalidOperationException(LangRes.GetString("Runtime_ValueNotFunction"));
         return Engine.Call(function, thisArg, args);
     }
 
     /// <summary>
-    /// Ruft eine Funktion ohne spezifisches <c>this</c> auf.
+    /// Calls a function without a specific <c>this</c>.
     /// </summary>
-    /// <param name="function">Der Funktionswert.</param>
-    /// <param name="args">Die Argumente.</param>
-    /// <returns>Der Rückgabewert.</returns>
+    /// <param name="function">The function value.</param>
+    /// <param name="args">The arguments.</param>
+    /// <returns>The return value.</returns>
     public JsValue CallFunction(JsValue function, params JsValue[] args)
         => CallFunction(function, JsValue.Undefined, args);
 
     /// <summary>
-    /// Ruft einen Export eines Modul-Namespace auf, falls vorhanden.
+    /// Calls an export of a module namespace, if present.
     /// </summary>
-    /// <param name="moduleNamespace">Der Namespace des Moduls.</param>
-    /// <param name="exportName">Der Exportname (z. B. <c>init</c>).</param>
-    /// <param name="args">Die Argumente als CLR-Werte.</param>
-    /// <returns>Der Rückgabewert oder <see cref="JsValue.Undefined"/>.</returns>
+    /// <param name="moduleNamespace">The namespace of the module.</param>
+    /// <param name="exportName">The export name (e.g. <c>init</c>).</param>
+    /// <param name="args">The arguments as CLR values.</param>
+    /// <returns>The return value or <see cref="JsValue.Undefined"/>.</returns>
     public JsValue CallExport(ObjectInstance moduleNamespace, string exportName, params object?[] args)
     {
         var value = moduleNamespace.Get(exportName);
@@ -132,23 +173,23 @@ public sealed class JsEngineHost : IDisposable
     }
 
     /// <summary>
-    /// Erzeugt ein leeres JS-Objekt.
+    /// Creates an empty JS object.
     /// </summary>
-    /// <returns>Ein neues <see cref="ObjectInstance"/>.</returns>
+    /// <returns>A new <see cref="ObjectInstance"/>.</returns>
     public ObjectInstance NewObject() => Engine.Intrinsics.Object.Construct(new JsValue[0]);
 
     /// <summary>
-    /// Meldet einen Fehler aus der JS-Ausführung.
+    /// Reports an error from JS execution.
     /// </summary>
-    /// <param name="context">Beschreibung des Fehlerkontexts.</param>
-    /// <param name="ex">Die Ausnahme.</param>
+    /// <param name="context">Description of the error context.</param>
+    /// <param name="ex">The exception.</param>
     public void ReportError(string context, Exception ex)
     {
         Error?.Invoke(context, ex);
     }
 
     /// <summary>
-    /// Pumpt die Zeitgeber (einmal pro Frame aufrufen).
+    /// Pumps the timers (call once per frame).
     /// </summary>
     public void PumpTimers()
     {
@@ -158,13 +199,13 @@ public sealed class JsEngineHost : IDisposable
 
     private void InstallGlobals()
     {
-        Engine.SetValue("setTimeout", (Func<JsValue, double, int>)((cb, ms) => Timers.SetTimeout(cb, ms)));
-        Engine.SetValue("setInterval", (Func<JsValue, double, int>)((cb, ms) => Timers.SetInterval(cb, ms)));
+        Engine.SetValue("setTimeout", (Func<JsValue, double, int>)((cb, ms) => Timers.SetTimeout(cb, ms, CurrentModuleId)));
+        Engine.SetValue("setInterval", (Func<JsValue, double, int>)((cb, ms) => Timers.SetInterval(cb, ms, CurrentModuleId)));
         Engine.SetValue("clearTimeout", (Action<int>)Timers.Clear);
         Engine.SetValue("clearInterval", (Action<int>)Timers.Clear);
 
-        // Jint packt keine params-Delegates; daher ein echtes JS-Array via Rest-Parameter
-        // an eine CLR-Funktion mit JsValue[]-Parameter weiterreichen.
+        // Jint does not wrap params delegates; therefore pass a real JS array via a rest parameter
+        // to a CLR function with a JsValue[] parameter.
         Engine.SetValue("__jsConsole", (Action<string, JsValue[]>)((level, msgs) => WriteConsole(level, msgs)));
         Engine.Evaluate(
             "var console = {" +
@@ -173,6 +214,71 @@ public sealed class JsEngineHost : IDisposable
             "  warn: function (...a) { __jsConsole('warn', a); }," +
             "  error: function (...a) { __jsConsole('error', a); }" +
             "};");
+
+        InstallFormBase();
+    }
+
+    /// <summary>
+    /// Injects the global base class <c>FormBase</c> that form/module classes
+    /// can inherit from. The constructor receives the context (<c>ctx</c>) and provides
+    /// access to controls, host services, form, tab and app.
+    /// The constructor serves as initialization; <c>activate</c>/<c>deactivate</c>/
+    /// <c>dispose</c> are called by the host during the lifecycle.
+    /// </summary>
+    private void InstallFormBase()
+    {
+        Engine.Evaluate(
+            "globalThis.FormBase = class FormBase {" +
+            "  constructor(ctx) {" +
+            "    this.ctx = ctx;" +
+            "    this.__loadLayout = ctx ? ctx.__loadLayout : undefined;" +
+            "    this.__createControl = ctx ? ctx.__createControl : undefined;" +
+            "    this.controls = ctx ? ctx.controls : undefined;" +
+            "    this.host = ctx ? ctx.host : undefined;" +
+            "    this.form = ctx ? ctx.form : undefined;" +
+            "    this.tab = ctx ? ctx.tab : undefined;" +
+            "    this.app = ctx ? ctx.app : undefined;" +
+            "  }" +
+            "  loadLayout(path) {" +
+            "    if (!this.__loadLayout) throw new Error('loadLayout is not available here.');" +
+            "    var c = this.__loadLayout(path);" +
+            "    this.controls = c;" +
+            "    return c;" +
+            "  }" +
+            "  createControl(typeName, props) {" +
+            "    if (!this.__createControl) throw new Error('createControl is not available here.');" +
+            "    var c = this.__createControl(typeName, props || {});" +
+            "    if (props && props.name) this.controls[props.name] = c;" +
+            "    return c;" +
+            "  }" +
+            "  find(name) { return this.controls ? this.controls[name] : null; }" +
+            "  setStatus(text) { if (this.host) this.host.setStatus(text); }" +
+            "  openModule(id) { if (this.host) this.host.openModule(id); }" +
+            "  closeModule(id) { if (this.host) this.host.closeModule(id); }" +
+            "  activate() { }" +
+            "  deactivate() { }" +
+            "  dispose() { }" +
+            "};");
+    }
+
+    /// <summary>
+    /// Tries to instantiate a module's <c>default</c> export as an ES6 class.
+    /// </summary>
+    /// <param name="moduleNamespace">The module namespace.</param>
+    /// <param name="context">The context passed to the constructor.</param>
+    /// <param name="instance">The created class instance, if successful.</param>
+    /// <returns><see langword="true"/> if the <c>default</c> export is a constructible class.</returns>
+    public bool TryConstructDefault(ObjectInstance moduleNamespace, JsValue context, out ObjectInstance instance)
+    {
+        instance = null!;
+        var def = moduleNamespace.Get("default");
+        if (def is Jint.Native.Function.Function f && f.IsConstructor())
+        {
+            instance = Engine.Construct(f, new JsValue[] { context });
+            return true;
+        }
+
+        return false;
     }
 
     private void WriteConsole(string level, JsValue[] messages)

@@ -129,6 +129,8 @@ public class DarkTheme : Theme
 
     /// <inheritdoc />
     public override Color TabSelectedBorder => Color.FromArgb(80, 80, 83);
+    public override Color TabCloseGlyph => Color.FromArgb(154, 160, 166);
+    public override Color TabCloseGlyphHover => Color.FromArgb(232, 234, 237);
 
     /// <inheritdoc />
     public override Color TabContentBackground => Color.FromArgb(50, 50, 53);

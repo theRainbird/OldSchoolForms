@@ -152,7 +152,7 @@ public class RuntimeLayoutLoaderTests
     {
         const string json = """{ "format": "Something.Else", "version": 1, "controls": [] }""";
         var result = new RuntimeLayoutLoader().LoadInto(new Panel(), json);
-        Assert.Contains(result.Warnings, w => w.Contains("Unerwartetes Dokumentformat"));
+        Assert.Contains(result.Warnings, w => w.Contains("Unexpected document format"));
     }
 
     [Fact]

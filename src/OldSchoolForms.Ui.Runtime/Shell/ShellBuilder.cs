@@ -11,48 +11,48 @@ using OldSchoolForms.Ui.Runtime.Sources;
 namespace OldSchoolForms.Ui.Runtime.Shell;
 
 /// <summary>
-/// Ergebnis des Shell-Aufbaus: das Hauptfenster und die referenzierten
-/// Shell-Steuerelemente.
+/// Result of the shell construction: the main window and the referenced
+/// shell controls.
 /// </summary>
 public sealed class ShellResult
 {
-    /// <summary>Das Hauptfenster.</summary>
+    /// <summary>The main window.</summary>
     public required Form Form { get; init; }
 
-    /// <summary>Der Content-TabControl.</summary>
+    /// <summary>The content TabControl.</summary>
     public required TabControl ContentTabs { get; init; }
 
-    /// <summary>Die Navigations-Sidebar (TreeView), optional.</summary>
+    /// <summary>The navigation sidebar (TreeView), optional.</summary>
     public TreeView? NavTree { get; init; }
 
-    /// <summary>Die Statusleisten-Label, optional.</summary>
+    /// <summary>The status bar label, optional.</summary>
     public ToolStripStatusLabel? StatusLabel { get; init; }
 
-    /// <summary>Die MenuStrip, optional.</summary>
+    /// <summary>The MenuStrip, optional.</summary>
     public MenuStrip? Menu { get; init; }
 
-    /// <summary>Die ToolStrip, optional.</summary>
+    /// <summary>The ToolStrip, optional.</summary>
     public ToolStrip? Toolbar { get; init; }
 }
 
 /// <summary>
-/// Baut das Hauptfenster (Shell) aus dem Shell-Layout: Menü, Toolbar,
-/// Navigations-Sidebar und Content-Tabbereich. Die Sidebar wird aus der
-/// Modul-Registry bestückt.
+/// Builds the main window (shell) from the shell layout: menu, toolbar,
+/// navigation sidebar and content tab area. The sidebar is populated from
+/// the module registry.
 /// </summary>
 public static class ShellBuilder
 {
     /// <summary>
-    /// Baut die Shell.
+    /// Builds the shell.
     /// </summary>
-    /// <param name="source">Die Paketquelle.</param>
-    /// <param name="manifest">Das App-Manifest.</param>
-    /// <param name="engine">Die JS-Engine.</param>
-    /// <param name="loader">Der Layout-Loader.</param>
-    /// <param name="registry">Die Modul-Registry.</param>
-    /// <param name="host">Die Host-Services.</param>
-    /// <returns>Das Shell-Ergebnis.</returns>
-    /// <exception cref="InvalidOperationException">Shell-Layout fehlt oder Content-TabControl fehlt.</exception>
+    /// <param name="source">The package source.</param>
+    /// <param name="manifest">The app manifest.</param>
+    /// <param name="engine">The JS engine.</param>
+    /// <param name="loader">The layout loader.</param>
+    /// <param name="registry">The module registry.</param>
+    /// <param name="host">The host services.</param>
+    /// <returns>The shell result.</returns>
+    /// <exception cref="InvalidOperationException">The shell layout or the content TabControl is missing.</exception>
     public static ShellResult Build(
         IAppSource source,
         AppManifest manifest,
@@ -69,15 +69,15 @@ public static class ShellBuilder
         ArgumentNullException.ThrowIfNull(host);
 
         if (!source.Exists(manifest.Shell))
-            throw new InvalidOperationException($"Shell-Layout fehlt: {manifest.Shell}");
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ShellLayoutMissing"), manifest.Shell));
 
         var form = new Form { Text = manifest.Name };
         var result = loader.LoadInto(form, source.ReadText(manifest.Shell));
         foreach (var warning in result.Warnings)
-            Console.WriteLine($"[shell] Warnung: {warning}");
+            Console.WriteLine($"[shell] Warning: {warning}");
 
         var contentTabs = result.Find("contentTabs") as TabControl
-            ?? throw new InvalidOperationException("Shell-Layout enthält keinen TabControl namens 'contentTabs'.");
+            ?? throw new InvalidOperationException(LangRes.GetString("Runtime_ShellMissingContentTabs"));
 
         var navTree = result.Find("navTree") as TreeView;
         var statusStrip = result.Find("statusStrip") as StatusStrip ?? FindFirst<StatusStrip>(form);
@@ -100,10 +100,10 @@ public static class ShellBuilder
     }
 
     /// <summary>
-    /// Verknüppt die Navigations-Sidebar mit dem Modul-Host.
+    /// Wires the navigation sidebar to the module host.
     /// </summary>
-    /// <param name="navTree">Die Navigations-TreeView.</param>
-    /// <param name="moduleHost">Der Modul-Host.</param>
+    /// <param name="navTree">The navigation TreeView.</param>
+    /// <param name="moduleHost">The module host.</param>
     public static void WireNavTree(TreeView navTree, ModuleHost moduleHost)
     {
         ArgumentNullException.ThrowIfNull(navTree);

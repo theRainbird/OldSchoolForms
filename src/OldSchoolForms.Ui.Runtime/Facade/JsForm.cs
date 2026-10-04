@@ -5,9 +5,8 @@ using OldSchoolForms.Ui.Runtime.Scripting;
 namespace OldSchoolForms.Ui.Runtime.Facade;
 
 /// <summary>
-/// JS-freundliche Hülle um das Haupt-<see cref="Form"/>. Erlaubt JavaScript
-/// Fensteroperationen und das Auffinden von Steuerelementen, ohne die rohe
-/// CLR-Oberfläche freizugeben.
+/// JS-friendly wrapper around the main <see cref="Form"/>. Allows JavaScript
+/// window operations and finding controls without exposing the raw CLR surface.
 /// </summary>
 public sealed class JsForm
 {
@@ -15,10 +14,10 @@ public sealed class JsForm
     private readonly List<Delegate> _wired = new();
 
     /// <summary>
-    /// Erzeugt die Fassade um ein Formular.
+    /// Creates the facade around a form.
     /// </summary>
-    /// <param name="host">Die JS-Engine für Callbacks.</param>
-    /// <param name="form">Das umhüllte Formular.</param>
+    /// <param name="host">The JS engine for callbacks.</param>
+    /// <param name="form">The wrapped form.</param>
     public JsForm(JsEngineHost host, Form form)
     {
         ArgumentNullException.ThrowIfNull(host);
@@ -27,24 +26,24 @@ public sealed class JsForm
         Form = form;
     }
 
-    /// <summary>Das umhüllte Formular.</summary>
+    /// <summary>The wrapped form.</summary>
     public Form Form { get; }
 
-    /// <summary>Fenstertitel.</summary>
+    /// <summary>Window title.</summary>
     public string Title
     {
         get => Form.Text;
         set => Form.Text = value ?? string.Empty;
     }
 
-    /// <summary>Fensterbreite.</summary>
+    /// <summary>Window width.</summary>
     public int Width
     {
         get => Form.Width;
         set => Form.Width = value;
     }
 
-    /// <summary>Fensterhöhe.</summary>
+    /// <summary>Window height.</summary>
     public int Height
     {
         get => Form.Height;
@@ -52,24 +51,24 @@ public sealed class JsForm
     }
 
     /// <summary>
-    /// Schließt das Fenster.
+    /// Closes the window.
     /// </summary>
     public void Close() => Form.Close();
 
-    /// <summary>Minimiert das Fenster.</summary>
+    /// <summary>Minimizes the window.</summary>
     public void Minimize() => Form.Minimize();
 
-    /// <summary>Maximiert das Fenster.</summary>
+    /// <summary>Maximizes the window.</summary>
     public void Maximize() => Form.Maximize();
 
-    /// <summary>Stellt das Fenster wieder her.</summary>
+    /// <summary>Restores the window.</summary>
     public void Restore() => Form.Restore();
 
     /// <summary>
-    /// Sucht ein Steuerelement im Fenster nach Namen.
+    /// Finds a control in the window by name.
     /// </summary>
-    /// <param name="name">Der Steuername.</param>
-    /// <returns>Die Fassade oder <c>null</c>.</returns>
+    /// <param name="name">The control name.</param>
+    /// <returns>The facade or <c>null</c>.</returns>
     public JsControl? Find(string name)
     {
         var found = Form.Controls.FindControl(name, true);
@@ -77,14 +76,27 @@ public sealed class JsForm
     }
 
     /// <summary>
-    /// Registriert einen Callback für das Schließen des Fensters. Setzt der
-    /// Callback <c>handled = true</c>, wird das Schließen abgebrochen.
+    /// Adds a control directly to the form. Used for building layouts
+    /// programmatically from JavaScript.
     /// </summary>
-    /// <param name="callback">Die JavaScript-Funktion.</param>
+    /// <param name="child">The control facade to add.</param>
+    /// <returns>The added child facade (for chaining).</returns>
+    public JsControl Add(JsControl child)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        Form.Controls.Add(child.Control);
+        return child;
+    }
+
+    /// <summary>
+    /// Registers a callback for the window closing. If the callback sets
+    /// <c>handled = true</c>, the close is canceled.
+    /// </summary>
+    /// <param name="callback">The JavaScript function.</param>
     public void OnClosing(JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
-            throw new ArgumentException("Callback muss eine Funktion sein.", nameof(callback));
+            throw new ArgumentException(LangRes.GetString("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var handler = new EventHandler((s, e) =>
         {
@@ -106,7 +118,7 @@ public sealed class JsForm
     }
 
     /// <summary>
-    /// Entfernt alle registrierten Callbacks.
+    /// Removes all registered callbacks.
     /// </summary>
     public void OffAll()
     {

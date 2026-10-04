@@ -129,6 +129,8 @@ public class LightTheme : Theme
 
     /// <inheritdoc />
     public override Color TabSelectedBorder => Color.FromArgb(180, 180, 180);
+    public override Color TabCloseGlyph => Color.FromArgb(95, 99, 104);
+    public override Color TabCloseGlyphHover => Color.FromArgb(32, 33, 36);
 
     /// <inheritdoc />
     public override Color TabContentBackground => Color.FromArgb(255, 255, 255);

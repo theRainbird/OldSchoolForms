@@ -1,37 +1,36 @@
-// Dashboard-Modul: Live-Uhr via setInterval, Navigation zu anderen Modulen.
+// Dashboard-Modul (Klassenform): Live-Uhr via setInterval, Navigation zu anderen Modulen.
 import { formatClock, formatDate } from "@app/shared/util.js";
 
-let ctxRef = null;
-let timerId = 0;
+export default class DashboardForm extends FormBase {
+    constructor(ctx) {
+        super(ctx);
+        this.loadLayout(); // lädt layout.json und füllt this.controls
+        this.timerId = 0;
+        this.controls.openCounter.on("click", () => this.openModule("counter"));
+        this.controls.openNotes.on("click", () => this.openModule("notes"));
+        this.controls.openDialogs.on("click", () => this.openModule("dialogs"));
+        this.tick();
+        console.log("Dashboard initialisiert");
+    }
 
-function tick() {
-    if (!ctxRef) return;
-    const now = new Date();
-    ctxRef.controls.clockLabel.text = formatClock(now);
-    ctxRef.controls.dateLabel.text = formatDate(now);
-}
+    tick() {
+        const now = new Date();
+        this.controls.clockLabel.text = formatClock(now);
+        this.controls.dateLabel.text = formatDate(now);
+    }
 
-export function init(ctx) {
-    ctxRef = ctx;
-    ctx.controls.openCounter.on("click", () => ctx.host.openModule("counter"));
-    ctx.controls.openNotes.on("click", () => ctx.host.openModule("notes"));
-    ctx.controls.openDialogs.on("click", () => ctx.host.openModule("dialogs"));
-    tick();
-    console.log("Dashboard initialisiert");
-}
+    activate() {
+        if (this.timerId) clearInterval(this.timerId);
+        this.timerId = setInterval(() => this.tick(), 1000);
+        this.setStatus("Dashboard aktiv");
+    }
 
-export function activate() {
-    if (timerId) clearInterval(timerId);
-    timerId = setInterval(tick, 1000);
-    if (ctxRef) ctxRef.host.setStatus("Dashboard aktiv");
-}
+    deactivate() {
+        if (this.timerId) { clearInterval(this.timerId); this.timerId = 0; }
+        this.setStatus("Dashboard verlassen");
+    }
 
-export function deactivate() {
-    if (timerId) { clearInterval(timerId); timerId = 0; }
-    if (ctxRef) ctxRef.host.setStatus("Dashboard verlassen");
-}
-
-export function dispose() {
-    if (timerId) { clearInterval(timerId); timerId = 0; }
-    ctxRef = null;
+    dispose() {
+        if (this.timerId) { clearInterval(this.timerId); this.timerId = 0; }
+    }
 }

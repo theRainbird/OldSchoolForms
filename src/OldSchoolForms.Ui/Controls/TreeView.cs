@@ -87,6 +87,12 @@ public class TreeView : Control
     public int Indent { get; set; } = DefaultIndent;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the dotted lines connecting root nodes are displayed.
+    /// Root lines are only drawn between adjacent root nodes that both have children.
+    /// </summary>
+    public bool ShowRootLines { get; set; } = true;
+
+    /// <summary>
     /// Occurs after the selected node changes.
     /// </summary>
     public event EventHandler? AfterSelect;
@@ -218,25 +224,25 @@ public class TreeView : Control
             }
         }
 
-        // Pass 2c: draw root-level vertical line connecting all root nodes
-        if (_rootNodes.Count > 1)
+        // Pass 2c: draw root-level vertical line segments between adjacent root nodes that both have children
+        if (ShowRootLines)
         {
-            int firstIdx = -1, lastIdx = -1;
+            int lineX = LeftMargin + GlyphSize / 2;
+            int prevRootIdx = -1;
+            TreeNode? prevRoot = null;
             for (int j = 0; j < visible.Count; j++)
             {
-                if (GetDepth(visible[j]) == 0)
-                {
-                    if (firstIdx < 0) firstIdx = j;
-                    lastIdx = j;
-                }
-            }
+                if (GetDepth(visible[j]) != 0) continue;
 
-            if (firstIdx >= 0 && lastIdx > firstIdx)
-            {
-                int startY = firstIdx * ItemHeight + ItemHeight / 2;
-                int endY = lastIdx * ItemHeight + ItemHeight / 2;
-                int lineX = LeftMargin + GlyphSize / 2;
-                DrawDottedLine(g, theme.ControlDark, lineX, startY, lineX, endY, 2, 2);
+                if (prevRoot != null && prevRoot.Children.Any() && visible[j].Children.Any())
+                {
+                    int startY = prevRootIdx * ItemHeight + ItemHeight / 2;
+                    int endY = j * ItemHeight + ItemHeight / 2;
+                    DrawDottedLine(g, theme.ControlDark, lineX, startY, lineX, endY, 2, 2);
+                }
+
+                prevRoot = visible[j];
+                prevRootIdx = j;
             }
         }
 

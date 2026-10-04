@@ -3,58 +3,58 @@ using OldSchoolForms.Ui.Core;
 namespace OldSchoolForms.Ui.Runtime.Facade;
 
 /// <summary>
-/// JS-freundliche Repräsentation eines Steuerereignisses. Wird an JavaScript-
-/// Callbacks übergeben und kapselt Maus-, Tastatur- und Textereignisse.
+/// JS-friendly representation of a control event. Passed to JavaScript
+/// callbacks; encapsulates mouse, keyboard, and text events.
 /// </summary>
 public sealed class JsEvent
 {
     /// <summary>
-    /// Erzeugt ein Ereignis mit Typ und Ziel.
+    /// Creates an event with a type and target.
     /// </summary>
-    /// <param name="type">Der Ereignistyp (z. B. <c>click</c>).</param>
-    /// <param name="target">Die Ziel-Fassade.</param>
+    /// <param name="type">The event type (e.g. <c>click</c>).</param>
+    /// <param name="target">The target facade.</param>
     public JsEvent(string type, JsControl target)
     {
         Type = type;
         Target = target;
     }
 
-    /// <summary>Der Ereignistyp.</summary>
+    /// <summary>The event type.</summary>
     public string Type { get; }
 
-    /// <summary>Das auslösende Steuerelement.</summary>
+    /// <summary>The control that raised the event.</summary>
     public JsControl Target { get; }
 
-    /// <summary>X-Koordinate (Maus).</summary>
+    /// <summary>X coordinate (mouse).</summary>
     public int X { get; set; }
 
-    /// <summary>Y-Koordinate (Maus).</summary>
+    /// <summary>Y coordinate (mouse).</summary>
     public int Y { get; set; }
 
-    /// <summary>Gedrückte Maustaste als String.</summary>
+    /// <summary>Pressed mouse button as a string.</summary>
     public string Button { get; set; } = "none";
 
-    /// <summary>Mausrad-Delta.</summary>
+    /// <summary>Mouse wheel delta.</summary>
     public double Delta { get; set; }
 
-    /// <summary>Tastencode als String (Tastatur).</summary>
+    /// <summary>Key code as a string (keyboard).</summary>
     public string KeyCode { get; set; } = string.Empty;
 
-    /// <summary>Gedrücktes Zeichen (Keypress).</summary>
+    /// <summary>Pressed character (keypress).</summary>
     public string KeyChar { get; set; } = string.Empty;
 
-    /// <summary>Shift-Taste gedrückt.</summary>
+    /// <summary>Shift key pressed.</summary>
     public bool Shift { get; set; }
 
-    /// <summary>Strg-Taste gedrückt.</summary>
+    /// <summary>Ctrl key pressed.</summary>
     public bool Control { get; set; }
 
-    /// <summary>Alt-Taste gedrückt.</summary>
+    /// <summary>Alt key pressed.</summary>
     public bool Alt { get; set; }
 
     /// <summary>
-    /// Vom Callback auf <see langword="true"/> gesetzt, um die weitere Verarbeitung
-    /// zu verhindern (bei Tastaturereignissen).
+    /// Set to <see langword="true"/> by the callback to prevent further
+    /// processing (for keyboard events).
     /// </summary>
     public bool Handled { get; set; }
 

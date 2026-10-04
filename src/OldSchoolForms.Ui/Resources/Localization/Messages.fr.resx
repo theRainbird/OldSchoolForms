@@ -190,4 +190,148 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Annuler</value>
   </data>
+  <data name="Runtime_AppManifestMissing" xml:space="preserve">
+    <value>Manifeste de l'application manquant : {0}</value>
+  </data>
+  <data name="Runtime_ModuleManifestMissing" xml:space="preserve">
+    <value>Manifeste du module manquant : {0}</value>
+  </data>
+  <data name="Runtime_JsonRootMustBeObject" xml:space="preserve">
+    <value>La racine JSON doit être un objet.</value>
+  </data>
+  <data name="Runtime_JsonRootNotObjectInFile" xml:space="preserve">
+    <value>La racine JSON dans '{0}' n'est pas un objet.</value>
+  </data>
+  <data name="Runtime_InvalidJsonDocument" xml:space="preserve">
+    <value>Document JSON invalide : {0}</value>
+  </data>
+  <data name="Runtime_InvalidJsonInFile" xml:space="preserve">
+    <value>JSON invalide dans '{0}' : {1}</value>
+  </data>
+  <data name="Runtime_ShellLayoutMissing" xml:space="preserve">
+    <value>Disposition de la shell manquante : {0}</value>
+  </data>
+  <data name="Runtime_ShellMissingContentTabs" xml:space="preserve">
+    <value>La disposition de la shell ne contient pas de TabControl nommé 'contentTabs'.</value>
+  </data>
+  <data name="Runtime_UnknownModule" xml:space="preserve">
+    <value>Module inconnu : {0}</value>
+  </data>
+  <data name="Runtime_UnknownEvent" xml:space="preserve">
+    <value>Événement inconnu : {0}</value>
+  </data>
+  <data name="Runtime_CallbackMustBeFunction" xml:space="preserve">
+    <value>Le callback doit être une fonction.</value>
+  </data>
+  <data name="Runtime_ValueNotFunction" xml:space="preserve">
+    <value>La valeur appelée n'est pas une fonction.</value>
+  </data>
+  <data name="Runtime_TimerCallbackMustBeFunction" xml:space="preserve">
+    <value>Le premier argument de setTimeout/setInterval doit être une fonction.</value>
+  </data>
+  <data name="Runtime_ModuleResolveFailed" xml:space="preserve">
+    <value>Impossible de résoudre le module : {0}</value>
+  </data>
+  <data name="Runtime_ModuleFileMissing" xml:space="preserve">
+    <value>Fichier du module manquant dans le paquet : {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEmpty" xml:space="preserve">
+    <value>Le chemin du module ne doit pas être vide.</value>
+  </data>
+  <data name="Runtime_PathEmpty" xml:space="preserve">
+    <value>Le chemin ne doit pas être vide.</value>
+  </data>
+  <data name="Runtime_SandboxPathViolation" xml:space="preserve">
+    <value>Violation du chemin sandbox : {0}</value>
+  </data>
+  <data name="Runtime_PathEscapesPackage" xml:space="preserve">
+    <value>Le chemin dépasse la racine du paquet : {0}</value>
+  </data>
+  <data name="Runtime_FileMissingInPackage" xml:space="preserve">
+    <value>Fichier manquant dans le paquet : {0}</value>
+  </data>
+  <data name="Runtime_RootDirectoryEmpty" xml:space="preserve">
+    <value>Le répertoire racine ne doit pas être vide.</value>
+  </data>
+  <data name="Runtime_DirectoryMissing" xml:space="preserve">
+    <value>Répertoire manquant.</value>
+  </data>
+  <data name="Runtime_AppDirectoryNotFound" xml:space="preserve">
+    <value>Répertoire de l'application introuvable : {0}</value>
+  </data>
+  <data name="Runtime_UriMissing" xml:space="preserve">
+    <value>URI manquant.</value>
+  </data>
+  <data name="Runtime_PackageNotSynced" xml:space="preserve">
+    <value>Le paquet de l'application n'a pas encore été synchronisé. Appelez d'abord SyncAsync.</value>
+  </data>
+  <data name="Runtime_ServerManifestUnreachable" xml:space="preserve">
+    <value>Manifeste du serveur inaccessible : {0} ({1})</value>
+  </data>
+  <data name="Runtime_ServerManifestRootNotObject" xml:space="preserve">
+    <value>La racine du manifeste du serveur n'est pas un objet.</value>
+  </data>
+  <data name="Runtime_InvalidServerManifest" xml:space="preserve">
+    <value>Manifeste du serveur invalide : {0}</value>
+  </data>
+  <data name="Runtime_BundleUnreachable" xml:space="preserve">
+    <value>Bundle inaccessible : {0} ({1})</value>
+  </data>
+  <data name="Runtime_Sha256CheckFailed" xml:space="preserve">
+    <value>La vérification SHA-256 a échoué pour {0}.</value>
+  </data>
+  <data name="Runtime_TypeNameMissing" xml:space="preserve">
+    <value>Nom de type manquant.</value>
+  </data>
+  <data name="Runtime_Cli_Title" xml:space="preserve">
+    <value>OldSchoolForms.Ui.Runtime - Environnement d'exécution JavaScript</value>
+  </data>
+  <data name="Runtime_Cli_Usage" xml:space="preserve">
+    <value>Utilisation :</value>
+  </data>
+  <data name="Runtime_Cli_UsageLine" xml:space="preserve">
+    <value>  OldSchoolForms.Ui.Runtime [chemin] [options]</value>
+  </data>
+  <data name="Runtime_Cli_Arguments" xml:space="preserve">
+    <value>Arguments :</value>
+  </data>
+  <data name="Runtime_Cli_ArgPath" xml:space="preserve">
+    <value>  chemin            Chemin vers le paquet d'application (répertoire avec app.json).</value>
+  </data>
+  <data name="Runtime_Cli_Options" xml:space="preserve">
+    <value>Options :</value>
+  </data>
+  <data name="Runtime_Cli_OptSource" xml:space="preserve">
+    <value>  --source &lt;uri&gt;    Charger l'application depuis une source réseau (https://...).</value>
+  </data>
+  <data name="Runtime_Cli_OptDev" xml:space="preserve">
+    <value>  --dev             Mode dev : pas de cache, traces complètes, hot reload.</value>
+  </data>
+  <data name="Runtime_Cli_OptHelp" xml:space="preserve">
+    <value>  -h, --help        Afficher cette aide.</value>
+  </data>
+  <data name="Runtime_Cli_Examples" xml:space="preserve">
+    <value>Exemples :</value>
+  </data>
+  <data name="Runtime_ModuleManifestWithoutId" xml:space="preserve">
+    <value>Manifeste du module sans 'id'.</value>
+  </data>
+  <data name="Runtime_DescriptorWithoutId" xml:space="preserve">
+    <value>Descripteur de module sans ID.</value>
+  </data>
+  <data name="Runtime_UnknownControlType" xml:space="preserve">
+    <value>Type de contrôle inconnu : {0}</value>
+  </data>
+  <data name="Runtime_NoLayoutFound" xml:space="preserve">
+    <value>Aucune disposition trouvée : {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEscapesRoot" xml:space="preserve">
+    <value>Le chemin du module dépasse la racine du paquet : {0}</value>
+  </data>
+  <data name="Runtime_ModulePathEmptyAfterNormalize" xml:space="preserve">
+    <value>Le chemin du module est vide après normalisation : {0}</value>
+  </data>
+  <data name="Runtime_NotAContainer" xml:space="preserve">
+    <value>Le contrôle '{0}' n'est pas un conteneur.</value>
+  </data>
 </root>

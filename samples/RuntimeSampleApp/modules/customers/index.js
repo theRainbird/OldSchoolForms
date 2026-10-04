@@ -1,39 +1,38 @@
-// Kunden-Modul.
+// Kunden-Modul (Klassenform).
 // ctx = { form, controls, host, tab, app }
 import { greet, formatCurrency } from "@app/shared/util.js";
 
-let ctxRef = null;
+export default class KundenForm extends FormBase {
+    constructor(ctx) {
+        super(ctx);
+        this.loadLayout(); // lädt layout.json und füllt this.controls
 
-export function init(ctx) {
-    ctxRef = ctx;
-    const c = ctx.controls;
+        this.controls.addButton.on("click", () => {
+            const result = this.host.showMessageBox(
+                "Neuen Kunden anlegen?",
+                "Kunden",
+                "yesno",
+                "question"
+            );
+            this.setStatus("Dialog-Ergebnis: " + result);
+        });
 
-    c.addButton.on("click", () => {
-        const result = ctx.host.showMessageBox(
-            "Neuen Kunden anlegen?",
-            "Kunden",
-            "yesno",
-            "question"
-        );
-        ctx.host.setStatus("Dialog-Ergebnis: " + result);
-    });
+        this.controls.searchBox.on("textchanged", (e) => {
+            this.setStatus("Suche nach: " + e.target.text);
+        });
 
-    c.searchBox.on("textchanged", (e) => {
-        ctx.host.setStatus("Suche nach: " + e.target.text);
-    });
+        console.log(greet("Kunden-Modul"));
+    }
 
-    console.log(greet("Kunden-Modul"));
-}
+    activate() {
+        this.setStatus("Kunden-Modul aktiv");
+    }
 
-export function activate() {
-    if (ctxRef) ctxRef.host.setStatus("Kunden-Modul aktiv");
-}
+    deactivate() {
+        this.setStatus("Kunden-Modul verlassen");
+    }
 
-export function deactivate() {
-    if (ctxRef) ctxRef.host.setStatus("Kunden-Modul verlassen");
-}
-
-export function dispose() {
-    console.log("Kunden-Modul disposed");
-    ctxRef = null;
+    dispose() {
+        console.log("Kunden-Modul disposed");
+    }
 }

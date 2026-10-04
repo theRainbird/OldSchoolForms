@@ -1,39 +1,36 @@
-// Notizen-Modul: Speichern/Laden über die Host-Sandbox.
-let ctxRef = null;
-const FILE = "notizen.txt";
+// Notizen-Modul (Klassenform): Speichern/Laden über die Host-Sandbox.
+export default class NotesForm extends FormBase {
+    constructor(ctx) {
+        super(ctx);
+        this.loadLayout(); // lädt layout.json und füllt this.controls
+        this.file = "notizen.txt";
 
-export function init(ctx) {
-    ctxRef = ctx;
+        this.controls.btnSave.on("click", () => {
+            this.host.writeText(this.file, this.controls.memo.text);
+            this.controls.noteStatus.text = "Gespeichert.";
+            this.setStatus("Notiz gespeichert");
+        });
 
-    ctx.controls.btnSave.on("click", () => {
-        ctx.host.writeText(FILE, ctx.controls.memo.text);
-        ctx.controls.noteStatus.text = "Gespeichert.";
-        ctx.host.setStatus("Notiz gespeichert");
-    });
+        this.controls.btnLoad.on("click", () => {
+            const content = this.host.readSandboxText(this.file);
+            if (content === null || content === undefined) {
+                this.controls.noteStatus.text = "Keine gespeicherte Notiz.";
+                this.setStatus("Keine Notiz gefunden");
+            } else {
+                this.controls.memo.text = content;
+                this.controls.noteStatus.text = "Geladen.";
+                this.setStatus("Notiz geladen");
+            }
+        });
 
-    ctx.controls.btnLoad.on("click", () => {
-        const content = ctx.host.readSandboxText(FILE);
-        if (content === null || content === undefined) {
-            ctx.controls.noteStatus.text = "Keine gespeicherte Notiz.";
-            ctx.host.setStatus("Keine Notiz gefunden");
-        } else {
-            ctx.controls.memo.text = content;
-            ctx.controls.noteStatus.text = "Geladen.";
-            ctx.host.setStatus("Notiz geladen");
-        }
-    });
+        console.log("Notizen initialisiert");
+    }
 
-    console.log("Notizen initialisiert");
-}
+    activate() {
+        this.setStatus("Notizen aktiv");
+    }
 
-export function activate() {
-    if (ctxRef) ctxRef.host.setStatus("Notizen aktiv");
-}
-
-export function deactivate() {
-    if (ctxRef) ctxRef.host.setStatus("Notizen verlassen");
-}
-
-export function dispose() {
-    ctxRef = null;
+    deactivate() {
+        this.setStatus("Notizen verlassen");
+    }
 }

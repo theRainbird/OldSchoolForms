@@ -5,11 +5,10 @@ using OldSchoolForms.Ui.Runtime.Scripting;
 namespace OldSchoolForms.Ui.Runtime.Facade;
 
 /// <summary>
-/// JS-freundliche Hülle um ein <see cref="Control"/>. Stellt eine kuratierte,
-/// stabile API bereit, damit JavaScript nicht direkt auf die rohe CLR-Oberfläche
-/// zugreift. Eigenschaften sind in PascalCase geschrieben; über den
-/// camelCase-Fallback der Engine sind sie aus JS als <c>text</c>, <c>visible</c>
-/// usw. erreichbar.
+/// JS-friendly wrapper around a <see cref="Control"/>. Provides a curated,
+/// stable API so that JavaScript does not access the raw CLR surface directly.
+/// Properties are written in PascalCase; thanks to the engine's camelCase
+/// fallback they are reachable from JS as <c>text</c>, <c>visible</c>, etc.
 /// </summary>
 public sealed class JsControl
 {
@@ -17,10 +16,10 @@ public sealed class JsControl
     private readonly List<(string Event, Delegate Handler)> _wired = new();
 
     /// <summary>
-    /// Erzeugt eine Fassade um ein Steuerelement.
+    /// Creates a facade around a control.
     /// </summary>
-    /// <param name="host">Die JS-Engine für Callbacks.</param>
-    /// <param name="control">Das umhüllte Steuerelement.</param>
+    /// <param name="host">The JS engine for callbacks.</param>
+    /// <param name="control">The wrapped control.</param>
     public JsControl(JsEngineHost host, Control control)
     {
         ArgumentNullException.ThrowIfNull(host);
@@ -29,59 +28,65 @@ public sealed class JsControl
         Control = control;
     }
 
-    /// <summary>Das umhüllte Steuerelement.</summary>
+    /// <summary>The wrapped control.</summary>
     public Control Control { get; }
 
-    /// <summary>Der Name des Steuerelements.</summary>
+    /// <summary>
+    /// The ID of the module that owns this facade. Event callbacks run within this
+    /// module's scope, so timers created in handlers are cleared when the module closes.
+    /// </summary>
+    public string? OwnerModuleId { get; set; }
+
+    /// <summary>The name of the control.</summary>
     public string Name
     {
         get => Control.Name;
         set => Control.Name = value ?? string.Empty;
     }
 
-    /// <summary>Der Text des Steuerelements.</summary>
+    /// <summary>The text of the control.</summary>
     public string Text
     {
         get => Control.Text;
         set => Control.Text = value ?? string.Empty;
     }
 
-    /// <summary>Sichtbarkeit des Steuerelements.</summary>
+    /// <summary>Visibility of the control.</summary>
     public bool Visible
     {
         get => Control.Visible;
         set => Control.Visible = value;
     }
 
-    /// <summary>Aktivierung des Steuerelements.</summary>
+    /// <summary>Enabled state of the control.</summary>
     public bool Enabled
     {
         get => Control.Enabled;
         set => Control.Enabled = value;
     }
 
-    /// <summary>X-Position.</summary>
+    /// <summary>X position.</summary>
     public int X
     {
         get => Control.X;
         set => Control.X = value;
     }
 
-    /// <summary>Y-Position.</summary>
+    /// <summary>Y position.</summary>
     public int Y
     {
         get => Control.Y;
         set => Control.Y = value;
     }
 
-    /// <summary>Breite.</summary>
+    /// <summary>Width.</summary>
     public int Width
     {
         get => Control.Width;
         set => Control.Width = value;
     }
 
-    /// <summary>Höhe.</summary>
+    /// <summary>Height.</summary>
     public int Height
     {
         get => Control.Height;
@@ -89,7 +94,7 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Dock-Verhalten als String (None, Left, Right, Top, Bottom, Fill).
+    /// Docking behavior as a string (None, Left, Right, Top, Bottom, Fill).
     /// </summary>
     public string Dock
     {
@@ -102,10 +107,10 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Sucht ein Kind-Steuerelement rekursiv nach Namen.
+    /// Recursively searches for a child control by name.
     /// </summary>
-    /// <param name="name">Der Name des Kind-Steuerelements.</param>
-    /// <returns>Die Fassade oder <c>null</c>.</returns>
+    /// <param name="name">The name of the child control.</param>
+    /// <returns>The facade or <c>null</c>.</returns>
     public JsControl? Find(string name)
     {
         var found = Control.Controls.FindControl(name, true);
@@ -113,9 +118,9 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Die direkten Kinder dieses Steuerelements.
+    /// The direct children of this control.
     /// </summary>
-    /// <returns>Eine Liste der Kind-Fassaden.</returns>
+    /// <returns>A list of child facades.</returns>
     public JsControl[] Children()
     {
         var list = new List<JsControl>();
@@ -125,7 +130,24 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Fokussiert das Steuerelement, indem der enthaltende Container aktiviert wird.
+    /// Adds a child control to this control (which must be a container).
+    /// Used for building layouts programmatically from JavaScript.
+    /// </summary>
+    /// <param name="child">The child facade to add.</param>
+    /// <returns>The added child facade (for chaining).</returns>
+    /// <exception cref="InvalidOperationException">This control is not a container.</exception>
+    public JsControl Add(JsControl child)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        if (Control is ContainerControl container)
+            container.Controls.Add(child.Control);
+        else
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_NotAContainer"), Control.GetType().Name));
+        return child;
+    }
+
+    /// <summary>
+    /// Focuses the control by activating its containing container.
     /// </summary>
     public void Focus()
     {
@@ -134,22 +156,22 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Markiert das Steuerelement als neu zu zeichnen.
+    /// Marks the control as needing to be redrawn.
     /// </summary>
     public void Invalidate() => Control.Invalidate();
 
     /// <summary>
-    /// Registriert einen JavaScript-Callback für ein Ereignis.
-    /// Unterstützt: click, dblclick, mousedown, mouseup, mousemove, mousewheel,
+    /// Registers a JavaScript callback for an event.
+    /// Supported: click, dblclick, mousedown, mouseup, mousemove, mousewheel,
     /// keydown, keyup, keypress, textchanged, gotfocus, lostfocus.
     /// </summary>
-    /// <param name="eventName">Der Ereignisname (case-insensitive).</param>
-    /// <param name="callback">Die JavaScript-Funktion.</param>
-    /// <exception cref="ArgumentException">Unbekanntes Ereignis oder Callback keine Funktion.</exception>
+    /// <param name="eventName">The event name (case-insensitive).</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <exception cref="ArgumentException">Unknown event or callback is not a function.</exception>
     public void On(string eventName, JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
-            throw new ArgumentException("Callback muss eine Funktion sein.", nameof(callback));
+            throw new ArgumentException(LangRes.GetString("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var normalized = (eventName ?? string.Empty).Trim().ToLowerInvariant();
         Delegate handler = normalized switch
@@ -170,7 +192,7 @@ public sealed class JsControl
             }),
             "gotfocus" => new EventHandler((s, e) => Raise("gotfocus", callback, e)),
             "lostfocus" => new EventHandler((s, e) => Raise("lostfocus", callback, e)),
-            _ => throw new ArgumentException($"Unbekanntes Ereignis: {eventName}", nameof(eventName))
+            _ => throw new ArgumentException(string.Format(LangRes.GetString("Runtime_UnknownEvent"), eventName), nameof(eventName))
         };
 
         Wire(normalized, handler);
@@ -178,7 +200,7 @@ public sealed class JsControl
     }
 
     /// <summary>
-    /// Entfernt alle registrierten Callbacks (beim Modul-Teardown).
+    /// Removes all registered callbacks (on module teardown).
     /// </summary>
     public void OffAll()
     {
@@ -192,11 +214,12 @@ public sealed class JsControl
         var jsEvent = BuildEvent(type, e);
         try
         {
-            _host.CallFunction(callback, Jint.Native.JsValue.FromObject(_host.Engine, jsEvent));
+            using (_host.UseModule(OwnerModuleId))
+                _host.CallFunction(callback, Jint.Native.JsValue.FromObject(_host.Engine, jsEvent));
         }
         catch (Exception ex)
         {
-            _host.ReportError($"Event '{type}' auf '{Control.Name}'", ex);
+            _host.ReportError($"Event '{type}' on '{Control.Name}'", ex);
         }
         finally
         {

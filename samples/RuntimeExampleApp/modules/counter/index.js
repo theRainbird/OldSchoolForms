@@ -1,38 +1,34 @@
-// Zähler-Modul: Plus/Minus/Reset mit einstellbarer Schrittweite.
-let ctxRef = null;
-let count = 0;
+// Zähler-Modul (Klassenform): Plus/Minus/Reset mit einstellbarer Schrittweite.
+export default class CounterForm extends FormBase {
+    constructor(ctx) {
+        super(ctx);
+        this.loadLayout(); // lädt layout.json und füllt this.controls
+        this.count = 0;
+        this.controls.btnPlus.on("click", () => { this.count += this.stepValue(); this.render(); });
+        this.controls.btnMinus.on("click", () => { this.count -= this.stepValue(); this.render(); });
+        this.controls.btnReset.on("click", () => {
+            this.count = 0;
+            this.render();
+            this.setStatus("Zähler zurückgesetzt");
+        });
+        this.render();
+        console.log("Zähler initialisiert");
+    }
 
-function stepValue() {
-    if (!ctxRef) return 1;
-    const raw = parseInt(ctxRef.controls.stepBox.text, 10);
-    return isNaN(raw) || raw === 0 ? 1 : raw;
-}
+    stepValue() {
+        const raw = parseInt(this.controls.stepBox.text, 10);
+        return isNaN(raw) || raw === 0 ? 1 : raw;
+    }
 
-function render() {
-    if (ctxRef) ctxRef.controls.countLabel.text = String(count);
-}
+    render() {
+        this.controls.countLabel.text = String(this.count);
+    }
 
-export function init(ctx) {
-    ctxRef = ctx;
-    ctx.controls.btnPlus.on("click", () => { count += stepValue(); render(); });
-    ctx.controls.btnMinus.on("click", () => { count -= stepValue(); render(); });
-    ctx.controls.btnReset.on("click", () => {
-        count = 0;
-        render();
-        ctx.host.setStatus("Zähler zurückgesetzt");
-    });
-    render();
-    console.log("Zähler initialisiert");
-}
+    activate() {
+        this.setStatus("Zähler aktiv");
+    }
 
-export function activate() {
-    if (ctxRef) ctxRef.host.setStatus("Zähler aktiv");
-}
-
-export function deactivate() {
-    if (ctxRef) ctxRef.host.setStatus("Zähler verlassen");
-}
-
-export function dispose() {
-    ctxRef = null;
+    deactivate() {
+        this.setStatus("Zähler verlassen");
+    }
 }

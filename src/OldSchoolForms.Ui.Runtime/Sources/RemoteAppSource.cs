@@ -1,13 +1,14 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using OldSchoolForms.Ui.Core;
 
 namespace OldSchoolForms.Ui.Runtime.Sources;
 
 /// <summary>
-/// Netzwerkquelle: liest das Server-Manifest und lädt Modul-Bundles (ZIP) von
-/// einem zentralen OldSchoolForms-Server. Wird typischerweise von
-/// <see cref="CachedAppSource"/> für Offline-Fähigkeit umschlossen.
+/// Network source: reads the server manifest and downloads module bundles (ZIP) from
+/// a central OldSchoolForms server. Typically wrapped by
+/// <see cref="CachedAppSource"/> for offline capability.
 /// </summary>
 public sealed class RemoteAppSource : IDisposable
 {
@@ -15,10 +16,10 @@ public sealed class RemoteAppSource : IDisposable
     private readonly HttpClient _http;
 
     /// <summary>
-    /// Erzeugt eine Netzwerkquelle.
+    /// Creates a network source.
     /// </summary>
-    /// <param name="baseUri">Basis-URL des App-Servers (z. B. <c>https://host/app</c>).</param>
-    /// <param name="http">Optionaler HttpClient.</param>
+    /// <param name="baseUri">Base URL of the app server (e.g. <c>https://host/app</c>).</param>
+    /// <param name="http">Optional HttpClient.</param>
     public RemoteAppSource(Uri baseUri, HttpClient? http = null)
     {
         ArgumentNullException.ThrowIfNull(baseUri);
@@ -26,15 +27,15 @@ public sealed class RemoteAppSource : IDisposable
         _http = http ?? new HttpClient();
     }
 
-    /// <summary>Die Basis-URL.</summary>
+    /// <summary>The base URL.</summary>
     public Uri BaseUri => _baseUri;
 
     /// <summary>
-    /// Lädt das Server-Manifest (<c>manifest.json</c>).
+    /// Loads the server manifest (<c>manifest.json</c>).
     /// </summary>
-    /// <param name="cancellationToken">Abbruchtoken.</param>
-    /// <returns>Das Server-Manifest.</returns>
-    /// <exception cref="InvalidOperationException">Manifest fehlt oder ist ungültig.</exception>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The server manifest.</returns>
+    /// <exception cref="InvalidOperationException">Manifest is missing or invalid.</exception>
     public async Task<RemoteManifest> FetchManifestAsync(CancellationToken cancellationToken = default)
     {
         var url = Combine("manifest.json");
@@ -45,7 +46,7 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Server-Manifest nicht erreichbar: {url} ({ex.Message})", ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ServerManifestUnreachable"), url, ex.Message), ex);
         }
 
         try
@@ -54,16 +55,16 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException($"Ungültiges Server-Manifest: {ex.Message}", ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_InvalidServerManifest"), ex.Message), ex);
         }
     }
 
     /// <summary>
-    /// Lädt eine Bundle-Datei (ZIP) als Bytefolge.
+    /// Downloads a bundle file (ZIP) as a byte array.
     /// </summary>
-    /// <param name="url">Absolute oder relative URL des Bundles.</param>
-    /// <param name="cancellationToken">Abbruchtoken.</param>
-    /// <returns>Die Bundle-Bytes.</returns>
+    /// <param name="url">Absolute or relative URL of the bundle.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The bundle bytes.</returns>
     public async Task<byte[]> FetchBundleAsync(string url, CancellationToken cancellationToken = default)
     {
         var full = IsAbsolute(url) ? url : Combine(url);
@@ -73,7 +74,7 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Bundle nicht erreichbar: {full} ({ex.Message})", ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_BundleUnreachable"), full, ex.Message), ex);
         }
     }
 
@@ -92,34 +93,34 @@ public sealed class RemoteAppSource : IDisposable
 }
 
 /// <summary>
-/// Repräsentation des Server-Manifests (<c>manifest.json</c>).
+/// Representation of the server manifest (<c>manifest.json</c>).
 /// </summary>
 public sealed class RemoteManifest
 {
-    /// <summary>App-Name.</summary>
+    /// <summary>App name.</summary>
     public string Name { get; set; } = "OldSchoolForms App";
 
-    /// <summary>App-Version.</summary>
+    /// <summary>App version.</summary>
     public string Version { get; set; } = "0.0.0";
 
-    /// <summary>Shell-Bundle-Referenz.</summary>
+    /// <summary>Shell bundle reference.</summary>
     public RemoteBundleRef Shell { get; set; } = new();
 
-    /// <summary>Einstiegs-Skript (optional).</summary>
+    /// <summary>Entry script (optional).</summary>
     public string? Entry { get; set; }
 
-    /// <summary>Modul-Bundle-Referenzen.</summary>
+    /// <summary>Module bundle references.</summary>
     public List<RemoteModuleRef> Modules { get; } = new();
 
     /// <summary>
-    /// Parst ein Server-Manifest aus JSON.
+    /// Parses a server manifest from JSON.
     /// </summary>
-    /// <param name="json">Das JSON.</param>
-    /// <returns>Das geparste Manifest.</returns>
+    /// <param name="json">The JSON.</param>
+    /// <returns>The parsed manifest.</returns>
     public static RemoteManifest Parse(string json)
     {
         var doc = JsonNode.Parse(json) as JsonObject
-            ?? throw new InvalidOperationException("Server-Manifest-Wurzel ist kein Objekt.");
+            ?? throw new InvalidOperationException(LangRes.GetString("Runtime_ServerManifestRootNotObject"));
 
         var manifest = new RemoteManifest
         {
@@ -173,31 +174,31 @@ public sealed class RemoteManifest
 }
 
 /// <summary>
-/// Referenz auf ein Bundle (URL + Prüfsumme).
+/// Reference to a bundle (URL + checksum).
 /// </summary>
 public sealed class RemoteBundleRef
 {
-    /// <summary>URL des Bundles.</summary>
+    /// <summary>URL of the bundle.</summary>
     public string Url { get; set; } = string.Empty;
 
-    /// <summary>SHA-256-Prüfsumme (hex), optional.</summary>
+    /// <summary>SHA-256 checksum (hex), optional.</summary>
     public string? Sha256 { get; set; }
 }
 
 /// <summary>
-/// Referenz auf ein Modul-Bundle.
+/// Reference to a module bundle.
 /// </summary>
 public sealed class RemoteModuleRef
 {
-    /// <summary>Modul-ID.</summary>
+    /// <summary>Module ID.</summary>
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>Modul-Version.</summary>
+    /// <summary>Module version.</summary>
     public string? Version { get; set; }
 
-    /// <summary>URL des Modul-Bundles.</summary>
+    /// <summary>URL of the module bundle.</summary>
     public string Url { get; set; } = string.Empty;
 
-    /// <summary>SHA-256-Prüfsumme (hex), optional.</summary>
+    /// <summary>SHA-256 checksum (hex), optional.</summary>
     public string? Sha256 { get; set; }
 }

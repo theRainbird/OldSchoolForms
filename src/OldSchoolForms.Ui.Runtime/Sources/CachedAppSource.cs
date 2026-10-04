@@ -1,12 +1,13 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using OldSchoolForms.Ui.Core;
 
 namespace OldSchoolForms.Ui.Runtime.Sources;
 
 /// <summary>
-/// Offline-fähige Quelle: kapselt eine <see cref="RemoteAppSource"/> und spiegelt
-/// das App-Paket in einen lokalen Cache. Liest aus dem Cache; <see cref="SyncAsync"/>
-/// gleicht Versionen ab und lädt geänderte Bundles (mit SHA-256-Verifikation).
+/// Offline-capable source: wraps a <see cref="RemoteAppSource"/> and mirrors
+/// the app package into a local cache. Reads from the cache; <see cref="SyncAsync"/>
+/// compares versions and downloads changed bundles (with SHA-256 verification).
 /// </summary>
 public sealed class CachedAppSource : IAppSource, IDisposable
 {
@@ -15,9 +16,9 @@ public sealed class CachedAppSource : IAppSource, IDisposable
     private FileSystemAppSource? _local;
 
     /// <summary>
-    /// Erzeugt eine gecachte Netzwerkquelle.
-    /// <param name="remote">Die ferne Quelle.</param>
-    /// <param name="cacheRoot">Das Cache-Basisverzeichnis.</param>
+    /// Creates a cached network source.
+    /// <param name="remote">The remote source.</param>
+    /// <param name="cacheRoot">The cache base directory.</param>
     /// </summary>
     public CachedAppSource(RemoteAppSource remote, string cacheRoot)
     {
@@ -27,7 +28,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
         _cacheRoot = cacheRoot;
     }
 
-    /// <summary>Die aktuell gespiegelte App-Version (nach Sync).</summary>
+    /// <summary>The currently mirrored app version (after sync).</summary>
     public string? SyncedVersion { get; private set; }
 
     /// <inheritdoc />
@@ -51,12 +52,12 @@ public sealed class CachedAppSource : IAppSource, IDisposable
         RemoteManifest manifest;
         try
         {
-            progress?.Report("Server-Manifest wird geladen...");
+            progress?.Report("Loading server manifest...");
             manifest = await _remote.FetchManifestAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (_local != null)
         {
-            progress?.Report($"Offline: nutze Cache (Sync fehlgeschlagen: {ex.Message})");
+            progress?.Report($"Offline: using cache (sync failed: {ex.Message})");
             return;
         }
 
@@ -68,7 +69,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
         {
             _local = new FileSystemAppSource(targetDir);
             SyncedVersion = manifest.Version;
-            progress?.Report($"Cache aktuell (v{manifest.Version}).");
+            progress?.Report($"Cache up to date (v{manifest.Version}).");
             return;
         }
 
@@ -76,13 +77,13 @@ public sealed class CachedAppSource : IAppSource, IDisposable
             Directory.Delete(targetDir, true);
         Directory.CreateDirectory(targetDir);
 
-        progress?.Report($"Shell-Bundle wird geladen...");
+        progress?.Report("Loading shell bundle...");
         await ExtractBundleAsync(manifest.Shell.Url, manifest.Shell.Sha256, targetDir, cancellationToken).ConfigureAwait(false);
 
         foreach (var module in manifest.Modules)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report($"Modul '{module.Id}' wird geladen...");
+            progress?.Report($"Loading module '{module.Id}'...");
             var moduleDir = Path.Combine(targetDir, "modules", module.Id);
             await ExtractBundleAsync(module.Url, module.Sha256, moduleDir, cancellationToken).ConfigureAwait(false);
         }
@@ -92,7 +93,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
 
         _local = new FileSystemAppSource(targetDir);
         SyncedVersion = manifest.Version;
-        progress?.Report($"Sync abgeschlossen (v{manifest.Version}).");
+        progress?.Report($"Sync completed (v{manifest.Version}).");
     }
 
     private async Task ExtractBundleAsync(string url, string? sha256, string targetDir, CancellationToken ct)
@@ -103,7 +104,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
         {
             var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             if (!string.Equals(hash, sha256.Trim().ToLowerInvariant(), StringComparison.Ordinal))
-                throw new InvalidOperationException($"SHA-256-Prüfung fehlgeschlagen für {url}.");
+                throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_Sha256CheckFailed"), url));
         }
 
         using var ms = new MemoryStream(bytes);
@@ -140,7 +141,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
     private FileSystemAppSource EnsureLocal()
     {
         if (_local != null) return _local;
-        throw new InvalidOperationException("App-Paket wurde noch nicht synchronisiert. SyncAsync zuerst aufrufen.");
+        throw new InvalidOperationException(LangRes.GetString("Runtime_PackageNotSynced"));
     }
 
     private static string Sanitize(string name)
@@ -157,19 +158,19 @@ public sealed class CachedAppSource : IAppSource, IDisposable
 }
 
 /// <summary>
-/// Erzeugt anhand einer URI die passende <see cref="IAppSource"/>.
+/// Creates the appropriate <see cref="IAppSource"/> based on a URI.
 /// </summary>
 public static class RemoteAppSourceFactory
 {
     /// <summary>
-    /// Erstellt eine Quelle für die angegebene URI.
+    /// Creates a source for the given URI.
     /// </summary>
-    /// <param name="uri">Pfad, <c>file://</c>- oder <c>http(s)://</c>-URI.</param>
-    /// <returns>Die passende Quelle.</returns>
+    /// <param name="uri">Path, <c>file://</c> or <c>http(s)://</c> URI.</param>
+    /// <returns>The appropriate source.</returns>
     public static IAppSource Create(string uri)
     {
         if (string.IsNullOrWhiteSpace(uri))
-            throw new ArgumentException("URI fehlt.", nameof(uri));
+            throw new ArgumentException(LangRes.GetString("Runtime_UriMissing"), nameof(uri));
 
         if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))

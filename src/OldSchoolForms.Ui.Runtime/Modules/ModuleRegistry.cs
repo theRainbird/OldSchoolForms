@@ -1,7 +1,9 @@
+using OldSchoolForms.Ui.Core;
+
 namespace OldSchoolForms.Ui.Runtime.Modules;
 
 /// <summary>
-/// Registry aller Moduldeskriptoren eines Apps, lookup nach ID.
+/// Registry of all module descriptors of an app, lookup by ID.
 /// </summary>
 public sealed class ModuleRegistry
 {
@@ -9,9 +11,9 @@ public sealed class ModuleRegistry
     private readonly List<ModuleDescriptor> _all;
 
     /// <summary>
-    /// Erzeugt die Registry aus einer Liste von Deskriptoren.
+    /// Creates the registry from a list of descriptors.
     /// </summary>
-    /// <param name="modules">Die Moduldeskriptoren.</param>
+    /// <param name="modules">The module descriptors.</param>
     public ModuleRegistry(IEnumerable<ModuleDescriptor> modules)
     {
         ArgumentNullException.ThrowIfNull(modules);
@@ -19,19 +21,19 @@ public sealed class ModuleRegistry
         foreach (var module in _all)
         {
             if (string.IsNullOrEmpty(module.Id))
-                throw new InvalidOperationException("Moduldeskriptor ohne ID.");
+                throw new InvalidOperationException(LangRes.GetString("Runtime_DescriptorWithoutId"));
             _byId[module.Id] = module;
         }
     }
 
-    /// <summary>Alle Module in Sortierreihenfolge.</summary>
+    /// <summary>All modules in sort order.</summary>
     public IReadOnlyList<ModuleDescriptor> All => _all;
 
     /// <summary>
-    /// Sucht einen Deskriptor nach ID.
+    /// Finds a descriptor by ID.
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
-    /// <returns>Der Deskriptor oder <see langword="null"/>.</returns>
+    /// <param name="id">The module ID.</param>
+    /// <returns>The descriptor, or <see langword="null"/>.</returns>
     public ModuleDescriptor? Find(string id) =>
         !string.IsNullOrEmpty(id) && _byId.TryGetValue(id, out var m) ? m : null;
 }

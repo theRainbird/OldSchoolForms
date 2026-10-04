@@ -1,22 +1,23 @@
 using Jint;
 using Jint.Runtime.Modules;
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Sources;
 
 namespace OldSchoolForms.Ui.Runtime.Scripting;
 
 /// <summary>
-/// Jint-<see cref="IModuleLoader"/>, der ES-Module aus einer <see cref="IAppSource"/>
-/// lädt. Unterstützt relative Importe (<c>./</c>, <c>../</c>), absolute
-/// Paket-Importe (<c>@app/...</c>) und karge Spezifizierer (relativ zur Paketwurzel).
+/// Jint <see cref="IModuleLoader"/> that loads ES modules from an <see cref="IAppSource"/>.
+/// Supports relative imports (<c>./</c>, <c>../</c>), absolute
+/// package imports (<c>@app/...</c>) and bare specifiers (relative to the package root).
 /// </summary>
 public sealed class AppSourceModuleLoader : IModuleLoader
 {
     private readonly IAppSource _source;
 
     /// <summary>
-    /// Erzeugt einen Modul-Loader für die angegebene Paketquelle.
+    /// Creates a module loader for the given package source.
     /// </summary>
-    /// <param name="source">Die Quelle, aus der Moduldateien gelesen werden.</param>
+    /// <param name="source">The source from which module files are read.</param>
     public AppSourceModuleLoader(IAppSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -43,11 +44,11 @@ public sealed class AppSourceModuleLoader : IModuleLoader
     public Module LoadModule(Engine engine, ResolvedSpecifier resolved)
     {
         if (resolved.Type == SpecifierType.Error)
-            throw new InvalidOperationException($"Modul konnte nicht aufgelöst werden: {resolved.ModuleRequest.Specifier}");
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModuleResolveFailed"), resolved.ModuleRequest.Specifier));
 
         var key = resolved.Key;
         if (!_source.Exists(key))
-            throw new InvalidOperationException($"Moduldatei fehlt im Paket: {key}");
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModuleFileMissing"), key));
 
         var code = _source.ReadText(key);
         return ModuleFactory.BuildSourceTextModule(engine, resolved, code);

@@ -9,6 +9,12 @@ public class Component : IComponent
 {
     private ISite? _site;
     private EventHandlerList? _events;
+    private bool _disposed;
+
+    /// <summary>
+    /// Gets whether <see cref="Dispose"/> has already been called on this component.
+    /// </summary>
+    public bool IsDisposed => _disposed;
 
     /// <summary>
     /// Gets or sets the site associated with the component.
@@ -34,11 +40,16 @@ public class Component : IComponent
     protected EventHandlerList Events => _events ??= new EventHandlerList();
 
     /// <summary>
-    /// Releases all resources used by the component.
+    /// Releases all resources used by the component and raises the
+    /// <see cref="Disposed"/> event. Subsequent calls are no-ops.
     /// </summary>
     public virtual void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+        var disposedHandler = _events?[nameof(Disposed)] as EventHandler;
         Events?.Dispose();
+        disposedHandler?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

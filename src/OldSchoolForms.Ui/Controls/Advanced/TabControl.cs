@@ -1,5 +1,6 @@
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Design;
+using OldSchoolForms.Ui.Resources;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -16,6 +17,12 @@ public class TabControl : ContainerControl
     private int _tabHeight = 24;
 
     private const int OverflowButtonWidth = 17;
+    private const int CloseButtonHitWidth = 18;
+    private const int CloseHoverSize = 16;
+    private const float CloseGlyphArm = 4.5f;
+    private const float CloseGlyphThickness = 1.5f;
+    private const int CloseRightInset = 2;
+    private int _hoveredCloseTab = -1;
     private bool _showOverflowButton;
     private bool _overflowDroppedDown;
     private int _overflowHoveredIndex = -1;
@@ -86,6 +93,7 @@ public class TabControl : ContainerControl
         page.TabStop = false;
         _tabPages.Add(page);
         Controls.Add(page);
+        _hoveredCloseTab = -1;
         Invalidate();
     }
 
@@ -103,6 +111,7 @@ public class TabControl : ContainerControl
         Controls.Remove(page);
         if (_selectedIndex >= _tabPages.Count)
             _selectedIndex = Math.Max(0, _tabPages.Count - 1);
+        _hoveredCloseTab = -1;
         Invalidate();
         return true;
     }
@@ -122,6 +131,7 @@ public class TabControl : ContainerControl
         Controls.Remove(page);
         if (_selectedIndex >= _tabPages.Count)
             _selectedIndex = Math.Max(0, _tabPages.Count - 1);
+        _hoveredCloseTab = -1;
         Invalidate();
     }
 
@@ -143,6 +153,7 @@ public class TabControl : ContainerControl
         Controls.Insert(index, page);
         if (_selectedIndex >= index)
             _selectedIndex++;
+        _hoveredCloseTab = -1;
         Invalidate();
     }
 
@@ -191,6 +202,67 @@ public class TabControl : ContainerControl
     /// The designer adapter uses this to track design-mode interaction state.
     /// </summary>
     public bool OverflowDroppedDown => _overflowDroppedDown;
+
+    /// <summary>
+    /// Occurs when the user clicks the close (X) button of a tab. The tab is not
+    /// removed automatically; the subscriber decides how to close the page
+    /// (e.g. unloading the owning module before removal).
+    /// </summary>
+    public event EventHandler<TabPage>? TabCloseRequested;
+
+    /// <summary>
+    /// Computes the hit rectangle of the close button of the tab at the given index,
+    /// based on the supplied layout arrays.
+    /// </summary>
+    /// <param name="tabIndex">The zero-based index of the tab.</param>
+    /// <param name="tabPositions">The tab x positions from <see cref="CalculateTabLayout"/>.</param>
+    /// <param name="tabWidths">The tab widths from <see cref="CalculateTabLayout"/>.</param>
+    /// <returns>The close button hit rectangle in TabControl coordinates.</returns>
+    private Rectangle GetCloseButtonBounds(int tabIndex, int[] tabPositions, int[] tabWidths)
+    {
+        var x = tabPositions[tabIndex] + tabWidths[tabIndex] - CloseButtonHitWidth;
+        return new Rectangle(x, 0, CloseButtonHitWidth, TabHeaderHeight);
+    }
+
+    /// <summary>
+    /// Gets the current bounds of the close button of the tab at the given index,
+    /// in TabControl coordinates.
+    /// </summary>
+    /// <param name="tabIndex">The zero-based index of the tab.</param>
+    /// <returns>The close button bounds.</returns>
+    /// <exception cref="System.IndexOutOfRangeException">Thrown when the index is out of range.</exception>
+    public Rectangle GetTabCloseButtonBounds(int tabIndex)
+    {
+        var (positions, widths, _) = CalculateTabLayout();
+        return GetCloseButtonBounds(tabIndex, positions, widths);
+    }
+
+    /// <summary>
+    /// Tests whether the given point hits the close button of a visible tab.
+    /// </summary>
+    /// <param name="point">The point to test, in TabControl coordinates.</param>
+    /// <param name="tabIndex">The index of the tab whose close button was hit, or -1.</param>
+    /// <returns><see langword="true"/> if the point is over a tab's close button.</returns>
+    private bool TryHitCloseButton(Point point, out int tabIndex)
+    {
+        tabIndex = -1;
+        if (_tabPages.Count == 0)
+            return false;
+
+        var (tabPositions, tabWidths, visibleCount) = CalculateTabLayout();
+        for (int i = _firstVisibleTab; i < _firstVisibleTab + visibleCount; i++)
+        {
+            if (i < 0 || i >= tabPositions.Length)
+                continue;
+            if (GetCloseButtonBounds(i, tabPositions, tabWidths).Contains(point))
+            {
+                tabIndex = i;
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Tests whether the specified point lies within the tab header band of this control.
@@ -262,7 +334,7 @@ public class TabControl : ContainerControl
             var text = _tabPages[i].Text;
             var measured = CoordinateTransform.MeasureText(text, EffectiveFont, zoom);
             var textLogicalWidth = measured.width / Math.Max(zoom, 0.001f);
-            widths[i] = Math.Max((int)(textLogicalWidth + horizontalPadding), minTabWidth);
+            widths[i] = Math.Max((int)(textLogicalWidth + horizontalPadding + CloseButtonHitWidth), minTabWidth);
             totalAllWidth += widths[i];
         }
 
@@ -388,6 +460,29 @@ public class TabControl : ContainerControl
                 g.FillRectangle(theme.TabUnselectedBackground, x, 0, tabWidth, tabHeaderHeight);
                 g.DrawString(_tabPages[i].Text, font, unselectedTabTextColor, x + horizontalPadding / 2, CoordinateTransform.CenterVertically(0, tabHeaderHeight, font, EffectiveZoom));
             }
+
+            // Draw the close (X) button, right-aligned within the tab (browser-style:
+            // a plain dark-gray glyph without a circle base)
+            var closeBounds = GetCloseButtonBounds(i, tabPositions, tabWidths);
+            var glyphColor = i == _hoveredCloseTab ? theme.TabCloseGlyphHover : theme.TabCloseGlyph;
+            if (i == _hoveredCloseTab)
+            {
+                var hoverColor = Color.FromArgb(40, glyphColor.R, glyphColor.G, glyphColor.B);
+                var hoverX = closeBounds.X + (CloseButtonHitWidth - CloseHoverSize - CloseRightInset) / 2;
+                var hoverY = (tabHeaderHeight - CloseHoverSize) / 2;
+                g.FillEllipse(hoverColor, hoverX, hoverY, CloseHoverSize, CloseHoverSize);
+            }
+
+            var glyphCenterX = closeBounds.X + (CloseButtonHitWidth - CloseRightInset) / 2f;
+            var glyphCenterY = tabHeaderHeight / 2f;
+            g.DrawLine(glyphColor,
+                glyphCenterX - CloseGlyphArm, glyphCenterY - CloseGlyphArm,
+                glyphCenterX + CloseGlyphArm, glyphCenterY + CloseGlyphArm,
+                CloseGlyphThickness);
+            g.DrawLine(glyphColor,
+                glyphCenterX - CloseGlyphArm, glyphCenterY + CloseGlyphArm,
+                glyphCenterX + CloseGlyphArm, glyphCenterY - CloseGlyphArm,
+                CloseGlyphThickness);
 
             // Vertical separator between tabs (except after last tab)
             if (i < _firstVisibleTab + visibleCount - 1)
@@ -651,6 +746,13 @@ public class TabControl : ContainerControl
             return;
         }
 
+        // Handle close button clicks before tab selection so the selection stays untouched
+        if (TryHitCloseButton(new Point(args.X, args.Y), out int closeTabIndex) && closeTabIndex >= 0)
+        {
+            TabCloseRequested?.Invoke(this, _tabPages[closeTabIndex]);
+            return;
+        }
+
         // Handle tab header clicks
         if (TryHitTabHeaderArea(new Point(args.X, args.Y), out int tabIndex) && tabIndex >= 0)
         {
@@ -750,7 +852,33 @@ public class TabControl : ContainerControl
             return;
         }
 
+        // Track hover over the tab close buttons
+        var moveArgs = e as MouseEventArgs;
+        if (moveArgs != null)
+        {
+            var hovered = TryHitCloseButton(new Point(moveArgs.X, moveArgs.Y), out int closeIndex) ? closeIndex : -1;
+            if (hovered != _hoveredCloseTab)
+            {
+                _hoveredCloseTab = hovered;
+                Invalidate();
+            }
+        }
+
         base.OnMouseMove(e);
+    }
+
+    /// <summary>
+    /// Raises the MouseLeave event and clears the close-button hover state.
+    /// </summary>
+    /// <param name="e">The event arguments.</param>
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        if (_hoveredCloseTab != -1)
+        {
+            _hoveredCloseTab = -1;
+            Invalidate();
+        }
+        base.OnMouseLeave(e);
     }
 
     /// <summary>

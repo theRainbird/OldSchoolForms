@@ -29,11 +29,13 @@ public class JsEngineHostTests
     }
 
     [Fact]
-    public void ImportEntry_HasInitFunction()
+    public void ImportEntry_ExportsConstructibleClass()
     {
         using var engine = CreateSampleEngine();
         var ns = engine.ImportModule("app.js");
-        Assert.IsAssignableFrom<Jint.Native.Function.Function>(ns.Get("init"));
+        var def = ns.Get("default");
+        var ctor = Assert.IsAssignableFrom<Jint.Native.Function.Function>(def);
+        Assert.True(ctor.IsConstructor());
     }
 
     [Fact]

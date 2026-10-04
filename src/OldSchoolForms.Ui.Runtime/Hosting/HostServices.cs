@@ -7,8 +7,8 @@ using MessageBox = OldSchoolForms.Ui.MessageBox;
 namespace OldSchoolForms.Ui.Runtime.Hosting;
 
 /// <summary>
-/// Die von JavaScript aus aufrufbaren Host-Dienste (<c>ctx.host</c>): Dialoge,
-/// Statusleiste, Navigation und sandboxed Dateizugriff.
+/// Host services callable from JavaScript (<c>ctx.host</c>): dialogs,
+/// status bar, navigation, and sandboxed file access.
 /// </summary>
 public sealed class HostServices
 {
@@ -17,11 +17,11 @@ public sealed class HostServices
     private readonly string _sandboxDir;
 
     /// <summary>
-    /// Erzeugt die Host-Services.
+    /// Creates the host services.
     /// </summary>
-    /// <param name="source">Die Paketquelle (für Lesezugriff).</param>
-    /// <param name="appName">Der App-Name.</param>
-    /// <param name="appVersion">Die App-Version.</param>
+    /// <param name="source">The package source (for read access).</param>
+    /// <param name="appName">The app name.</param>
+    /// <param name="appVersion">The app version.</param>
     public HostServices(IAppSource source, string appName, string appVersion)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -34,29 +34,29 @@ public sealed class HostServices
             Sanitize(appName));
     }
 
-    /// <summary>Der App-Name.</summary>
+    /// <summary>The app name.</summary>
     public string AppName { get; }
 
-    /// <summary>Die App-Version.</summary>
+    /// <summary>The app version.</summary>
     public string AppVersion { get; }
 
-    /// <summary>Der Modul-Host für Navigation (wird nach der Konstruktion gesetzt).</summary>
+    /// <summary>The module host for navigation (set after construction).</summary>
     public ModuleHost? ModuleHost { get; set; }
 
     /// <summary>
-    /// Verknüpft das Statusleisten-Label.
+    /// Attaches the status bar label.
     /// </summary>
-    /// <param name="label">Das <see cref="ToolStripStatusLabel"/>.</param>
+    /// <param name="label">The <see cref="ToolStripStatusLabel"/>.</param>
     public void AttachStatusLabel(ToolStripStatusLabel? label) => _statusLabel = label;
 
     /// <summary>
-    /// Zeigt eine Messagebox und liefert das Ergebnis als String.
+    /// Shows a message box and returns the result as a string.
     /// </summary>
-    /// <param name="text">Die Meldung.</param>
-    /// <param name="caption">Der Titel (Standard: App-Name).</param>
+    /// <param name="text">The message.</param>
+    /// <param name="caption">The title (default: app name).</param>
     /// <param name="buttons">Buttons: <c>ok</c>, <c>okcancel</c>, <c>yesno</c>, <c>yesnocancel</c>.</param>
     /// <param name="icon">Icon: <c>none</c>, <c>info</c>, <c>warning</c>, <c>error</c>, <c>question</c>.</param>
-    /// <returns><c>"ok"</c>, <c>"cancel"</c>, <c>"yes"</c>, <c>"no"</c> o. ä.</returns>
+    /// <returns><c>"ok"</c>, <c>"cancel"</c>, <c>"yes"</c>, <c>"no"</c>, or similar.</returns>
     public string ShowMessageBox(string text, string? caption = null, string buttons = "ok", string icon = "none")
     {
         var msgButtons = buttons.ToLowerInvariant() switch
@@ -81,9 +81,9 @@ public sealed class HostServices
     }
 
     /// <summary>
-    /// Setzt den Text der Statusleiste.
+    /// Sets the status bar text.
     /// </summary>
-    /// <param name="text">Der neue Statustext.</param>
+    /// <param name="text">The new status text.</param>
     public void SetStatus(string text)
     {
         if (_statusLabel != null)
@@ -91,36 +91,36 @@ public sealed class HostServices
     }
 
     /// <summary>
-    /// Öffnet ein Modul (Navigation).
+    /// Opens a module (navigation).
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="id">The module ID.</param>
     public void OpenModule(string id) => ModuleHost?.OpenModule(id);
 
     /// <summary>
-    /// Schließt ein Modul.
+    /// Closes a module.
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="id">The module ID.</param>
     public void CloseModule(string id) => ModuleHost?.CloseModule(id);
 
     /// <summary>
-    /// Lädt eine Textdatei aus dem App-Paket.
+    /// Loads a text file from the app package.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns>Der Dateiinhalt.</returns>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns>The file content.</returns>
     public string ReadText(string relativePath) => _source.ReadText(relativePath);
 
     /// <summary>
-    /// Prüft, ob eine Datei im Paket existiert.
+    /// Checks whether a file exists in the package.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns><see langword="true"/>, wenn vorhanden.</returns>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns><see langword="true"/> if present.</returns>
     public bool FileExists(string relativePath) => _source.Exists(relativePath);
 
     /// <summary>
-    /// Schreibt eine Textdatei in den Sandbox-Datenordner der App.
+    /// Writes a text file to the app's sandbox data folder.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad innerhalb der Sandbox.</param>
-    /// <param name="content">Der Dateiinhalt.</param>
+    /// <param name="relativePath">Relative path within the sandbox.</param>
+    /// <param name="content">The file content.</param>
     public void WriteText(string relativePath, string content)
     {
         var full = ResolveSandbox(relativePath);
@@ -131,10 +131,10 @@ public sealed class HostServices
     }
 
     /// <summary>
-    /// Liest eine Textdatei aus der Sandbox.
+    /// Reads a text file from the sandbox.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad innerhalb der Sandbox.</param>
-    /// <returns>Der Inhalt oder <c>null</c>, wenn nicht vorhanden.</returns>
+    /// <param name="relativePath">Relative path within the sandbox.</param>
+    /// <returns>The content, or <c>null</c> if not present.</returns>
     public string? ReadSandboxText(string relativePath)
     {
         var full = ResolveSandbox(relativePath);
@@ -142,15 +142,15 @@ public sealed class HostServices
     }
 
     /// <summary>
-    /// Loggt eine Nachricht.
+    /// Logs a message.
     /// </summary>
-    /// <param name="message">Die Nachricht.</param>
+    /// <param name="message">The message.</param>
     public void Log(string message) => Console.WriteLine($"[host] {message}");
 
     private string ResolveSandbox(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
-            throw new ArgumentException("Pfad darf nicht leer sein.", nameof(relativePath));
+            throw new ArgumentException(LangRes.GetString("Runtime_PathEmpty"), nameof(relativePath));
 
         var normalized = relativePath.Replace('\\', '/').TrimStart('/');
         var full = Path.GetFullPath(Path.Combine(_sandboxDir, normalized));
@@ -159,7 +159,7 @@ public sealed class HostServices
             : _sandboxDir + Path.DirectorySeparatorChar;
 
         if (!full.StartsWith(rootWithSep, StringComparison.Ordinal))
-            throw new UnauthorizedAccessException($"Sandbox-Pfad verletzt: {relativePath}");
+            throw new UnauthorizedAccessException(string.Format(LangRes.GetString("Runtime_SandboxPathViolation"), relativePath));
 
         return full;
     }

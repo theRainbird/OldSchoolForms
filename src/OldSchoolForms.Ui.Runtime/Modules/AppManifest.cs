@@ -1,41 +1,42 @@
 using System.Text.Json.Nodes;
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Sources;
 
 namespace OldSchoolForms.Ui.Runtime.Modules;
 
 /// <summary>
-/// App-Manifest (<c>app.json</c>): Name, Version, Shell-Layout, Einstiegs-Skript
-/// und die Liste der Funktionsmodule.
+/// App manifest (<c>app.json</c>): name, version, shell layout, entry script,
+/// and the list of feature modules.
 /// </summary>
 public sealed class AppManifest
 {
-    /// <summary>Der Name der App.</summary>
+    /// <summary>The name of the app.</summary>
     public string Name { get; set; } = "OldSchoolForms App";
 
-    /// <summary>Die App-Version.</summary>
+    /// <summary>The app version.</summary>
     public string Version { get; set; } = "1.0.0";
 
-    /// <summary>Relativer Pfad des Shell-Layouts.</summary>
+    /// <summary>Relative path of the shell layout.</summary>
     public string Shell { get; set; } = "layouts/shell.json";
 
-    /// <summary>Relativer Pfad des Einstiegs-Skripts (optional).</summary>
+    /// <summary>Relative path of the entry script (optional).</summary>
     public string? Entry { get; set; }
 
-    /// <summary>Die Funktionsmodule, sortiert nach <see cref="ModuleDescriptor.Order"/>.</summary>
+    /// <summary>The feature modules, sorted by <see cref="ModuleDescriptor.Order"/>.</summary>
     public List<ModuleDescriptor> Modules { get; } = new();
 
     /// <summary>
-    /// Lädt das App-Manifest aus einer Paketquelle.
+    /// Loads the app manifest from a package source.
     /// </summary>
-    /// <param name="source">Die Paketquelle.</param>
-    /// <param name="path">Relativer Pfad zum Manifest (Standard: <c>app.json</c>).</param>
-    /// <returns>Das geparste Manifest.</returns>
-    /// <exception cref="InvalidOperationException">Das Manifest fehlt oder ist ungültig.</exception>
+    /// <param name="source">The package source.</param>
+    /// <param name="path">Relative path to the manifest (default: <c>app.json</c>).</param>
+    /// <returns>The parsed manifest.</returns>
+    /// <exception cref="InvalidOperationException">The manifest is missing or invalid.</exception>
     public static AppManifest Load(IAppSource source, string path = "app.json")
     {
         ArgumentNullException.ThrowIfNull(source);
         if (!source.Exists(path))
-            throw new InvalidOperationException($"App-Manifest fehlt: {path}");
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_AppManifestMissing"), path));
 
         var doc = ModuleDescriptor.ParseObject(source.ReadText(path), path);
         var manifest = new AppManifest

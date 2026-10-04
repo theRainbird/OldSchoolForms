@@ -1,43 +1,44 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Sources;
 
 namespace OldSchoolForms.Ui.Runtime.Modules;
 
 /// <summary>
-/// Beschreibt einen Funktionsbaustein (Modul) des Apps: Titel, Icon, Layout- und
-/// Skriptdatei sowie die Reihenfolge in der Navigation.
+/// Describes a functional unit (module) of the app: title, icon, layout and
+/// script file, and the order in the navigation.
 /// </summary>
 public sealed class ModuleDescriptor
 {
-    /// <summary>Eindeutige Modul-ID.</summary>
+    /// <summary>Unique module ID.</summary>
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>Anzeigename in der Navigation.</summary>
+    /// <summary>Display name in the navigation.</summary>
     public string Title { get; set; } = string.Empty;
 
-    /// <summary>Optionaler Icon-Referenzname.</summary>
+    /// <summary>Optional icon reference name.</summary>
     public string? Icon { get; set; }
 
-    /// <summary>Relativer Pfad des Layouts innerhalb des Modulverzeichnisses.</summary>
+    /// <summary>Relative path of the layout within the module directory.</summary>
     public string Layout { get; set; } = "layout.json";
 
-    /// <summary>Relativer Pfad des Skripts innerhalb des Modulverzeichnisses.</summary>
+    /// <summary>Relative path of the script within the module directory.</summary>
     public string Script { get; set; } = "index.js";
 
-    /// <summary>Sortierordnung in der Navigation.</summary>
+    /// <summary>Sort order in the navigation.</summary>
     public int Order { get; set; }
 
-    /// <summary>Relatives Verzeichnis des Moduls im Paket.</summary>
+    /// <summary>The module's relative directory in the package.</summary>
     public string Directory { get; set; } = string.Empty;
 
-    /// <summary>Optionale Versionsangabe (für Remote-Abgleich).</summary>
+    /// <summary>Optional version information (for remote synchronization).</summary>
     public string? Version { get; set; }
 
-    /// <summary>Absolute Paketpfad des Layouts.</summary>
+    /// <summary>Absolute package path of the layout.</summary>
     public string LayoutPath => Combine(Directory, Layout);
 
-    /// <summary>Absolute Paketpfad des Skripts.</summary>
+    /// <summary>Absolute package path of the script.</summary>
     public string ScriptPath => Combine(Directory, Script);
 
     private static string Combine(string dir, string file)
@@ -47,17 +48,17 @@ public sealed class ModuleDescriptor
     }
 
     /// <summary>
-    /// Liest einen Moduldeskriptor aus einer <c>module.json</c> im angegebenen Verzeichnis.
+    /// Reads a module descriptor from a <c>module.json</c> in the specified directory.
     /// </summary>
-    /// <param name="source">Die Paketquelle.</param>
-    /// <param name="directory">Das relative Modulverzeichnis.</param>
-    /// <returns>Der Deskriptor.</returns>
-    /// <exception cref="InvalidOperationException">Die <c>module.json</c> fehlt oder ist ungültig.</exception>
+    /// <param name="source">The package source.</param>
+    /// <param name="directory">The relative module directory.</param>
+    /// <returns>The descriptor.</returns>
+    /// <exception cref="InvalidOperationException">The <c>module.json</c> is missing or invalid.</exception>
     public static ModuleDescriptor FromDirectory(IAppSource source, string directory)
     {
         var manifestPath = Combine(directory, "module.json");
         if (!source.Exists(manifestPath))
-            throw new InvalidOperationException($"Modul-Manifest fehlt: {manifestPath}");
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModuleManifestMissing"), manifestPath));
 
         var node = ParseObject(source.ReadText(manifestPath), manifestPath);
         return FromNode(node, directory);
@@ -78,7 +79,7 @@ public sealed class ModuleDescriptor
         };
 
         if (string.IsNullOrEmpty(descriptor.Id))
-            throw new InvalidOperationException("Modul-Manifest ohne 'id'.");
+            throw new InvalidOperationException(LangRes.GetString("Runtime_ModuleManifestWithoutId"));
         if (string.IsNullOrEmpty(descriptor.Title))
             descriptor.Title = descriptor.Id;
 
@@ -93,10 +94,10 @@ public sealed class ModuleDescriptor
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException($"Ungültiges JSON in '{path}': {ex.Message}", ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_InvalidJsonInFile"), path, ex.Message), ex);
         }
 
-        throw new InvalidOperationException($"JSON-Wurzel in '{path}' ist kein Objekt.");
+        throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_JsonRootNotObjectInFile"), path));
     }
 
     internal static string? GetString(JsonObject obj, string key)

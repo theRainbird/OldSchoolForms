@@ -1,35 +1,37 @@
+using OldSchoolForms.Ui.Core;
+
 namespace OldSchoolForms.Ui.Runtime.Sources;
 
 /// <summary>
-/// <see cref="IAppSource"/>, der ein App-Paket aus einem lokalen Verzeichnis liest
-/// (z. B. ein ausgechecktes Git-Repository oder ein entpacktes Bundle).
+/// <see cref="IAppSource"/> that reads an app package from a local directory
+/// (e.g. a checked-out Git repository or an unpacked bundle).
 /// </summary>
 public sealed class FileSystemAppSource : IAppSource
 {
     private readonly string _root;
 
     /// <summary>
-    /// Erzeugt eine neue lokale Paketquelle.
+    /// Creates a new local package source.
     /// </summary>
-    /// <param name="rootPath">Absolutes oder relatives Basisverzeichnis des Pakets.</param>
-    /// <exception cref="DirectoryNotFoundException">Das Verzeichnis existiert nicht.</exception>
+    /// <param name="rootPath">Absolute or relative base directory of the package.</param>
+    /// <exception cref="DirectoryNotFoundException">The directory does not exist.</exception>
     public FileSystemAppSource(string rootPath)
     {
         if (string.IsNullOrWhiteSpace(rootPath))
-            throw new ArgumentException("Wurzelverzeichnis darf nicht leer sein.", nameof(rootPath));
+            throw new ArgumentException(LangRes.GetString("Runtime_RootDirectoryEmpty"), nameof(rootPath));
 
         _root = Path.GetFullPath(rootPath);
         if (!Directory.Exists(_root))
-            throw new DirectoryNotFoundException($"App-Verzeichnis nicht gefunden: {_root}");
+            throw new DirectoryNotFoundException(string.Format(LangRes.GetString("Runtime_AppDirectoryNotFound"), _root));
     }
 
     /// <summary>
-    /// Das aufgelöste absolute Wurzelverzeichnis des Pakets.
+    /// The resolved absolute root directory of the package.
     /// </summary>
     public string Root => _root;
 
     /// <inheritdoc />
-    public string Describe => $"Dateisystem: {_root}";
+    public string Describe => $"File system: {_root}";
 
     /// <inheritdoc />
     public bool Exists(string relativePath) => File.Exists(Resolve(relativePath));
@@ -39,7 +41,7 @@ public sealed class FileSystemAppSource : IAppSource
     {
         var full = Resolve(relativePath);
         if (!File.Exists(full))
-            throw new FileNotFoundException($"Datei fehlt im Paket: {relativePath}", full);
+            throw new FileNotFoundException(string.Format(LangRes.GetString("Runtime_FileMissingInPackage"), relativePath), full);
         return File.ReadAllBytes(full);
     }
 
@@ -48,7 +50,7 @@ public sealed class FileSystemAppSource : IAppSource
     {
         var full = Resolve(relativePath);
         if (!File.Exists(full))
-            throw new FileNotFoundException($"Datei fehlt im Paket: {relativePath}", full);
+            throw new FileNotFoundException(string.Format(LangRes.GetString("Runtime_FileMissingInPackage"), relativePath), full);
         return File.ReadAllText(full, System.Text.Encoding.UTF8);
     }
 
@@ -66,16 +68,16 @@ public sealed class FileSystemAppSource : IAppSource
         => Task.CompletedTask;
 
     /// <summary>
-    /// Löst einen relativen Pfad unterhalb der Paketwurzel auf und verhindert
-    /// Pfad-Traversierung aus der Wurzel heraus.
+    /// Resolves a relative path below the package root and prevents
+    /// path traversal out of the root.
     /// </summary>
-    /// <param name="relativePath">Relativer Pfad zur Paketwurzel.</param>
-    /// <returns>Der absolute Pfad.</returns>
-    /// <exception cref="UnauthorizedAccessException">Der Pfad verlässt die Paketwurzel.</exception>
+    /// <param name="relativePath">Relative path to the package root.</param>
+    /// <returns>The absolute path.</returns>
+    /// <exception cref="UnauthorizedAccessException">The path escapes the package root.</exception>
     private string Resolve(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
-            throw new ArgumentException("Pfad darf nicht leer sein.", nameof(relativePath));
+            throw new ArgumentException(LangRes.GetString("Runtime_PathEmpty"), nameof(relativePath));
 
         var normalized = relativePath.Replace('\\', '/').TrimStart('/');
         var full = Path.GetFullPath(Path.Combine(_root, normalized));
@@ -84,7 +86,7 @@ public sealed class FileSystemAppSource : IAppSource
         if (!full.StartsWith(rootWithSep, StringComparison.Ordinal) &&
             !string.Equals(full, _root, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException($"Pfad verlässt die Paketwurzel: {relativePath}");
+            throw new UnauthorizedAccessException(string.Format(LangRes.GetString("Runtime_PathEscapesPackage"), relativePath));
         }
 
         return full;

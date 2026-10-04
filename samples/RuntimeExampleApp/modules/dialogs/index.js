@@ -1,30 +1,26 @@
-// Dialoge-Modul: alle Messagebox-Kombinationen durchprobieren.
-let ctxRef = null;
+// Dialoge-Modul (Klassenform): alle Messagebox-Kombinationen durchprobieren.
+export default class DialogsForm extends FormBase {
+    constructor(ctx) {
+        super(ctx);
+        this.loadLayout(); // lädt layout.json und füllt this.controls
+        this.controls.btnOk.on("click", () => this.show("Nur eine Bestätigung.", "ok", "info"));
+        this.controls.btnOkCancel.on("click", () => this.show("OK oder Abbrechen?", "okcancel", "question"));
+        this.controls.btnYesNo.on("click", () => this.show("Ja oder Nein?", "yesno", "question"));
+        this.controls.btnYesNoCancel.on("click", () => this.show("Ja, Nein oder Abbrechen?", "yesnocancel", "warning"));
+        console.log("Dialoge initialisiert");
+    }
 
-function show(message, buttons, icon) {
-    if (!ctxRef) return;
-    const result = ctxRef.host.showMessageBox(message, "Dialog-Beispiel", buttons, icon);
-    ctxRef.controls.resultLabel.text = "Ergebnis: " + result;
-    ctxRef.host.setStatus("Dialog-Ergebnis: " + result);
-}
+    show(message, buttons, icon) {
+        const result = this.host.showMessageBox(message, "Dialog-Beispiel", buttons, icon);
+        this.controls.resultLabel.text = "Ergebnis: " + result;
+        this.setStatus("Dialog-Ergebnis: " + result);
+    }
 
-export function init(ctx) {
-    ctxRef = ctx;
-    ctx.controls.btnOk.on("click", () => show("Nur eine Bestätigung.", "ok", "info"));
-    ctx.controls.btnOkCancel.on("click", () => show("OK oder Abbrechen?", "okcancel", "question"));
-    ctx.controls.btnYesNo.on("click", () => show("Ja oder Nein?", "yesno", "question"));
-    ctx.controls.btnYesNoCancel.on("click", () => show("Ja, Nein oder Abbrechen?", "yesnocancel", "warning"));
-    console.log("Dialoge initialisiert");
-}
+    activate() {
+        this.setStatus("Dialoge aktiv");
+    }
 
-export function activate() {
-    if (ctxRef) ctxRef.host.setStatus("Dialoge aktiv");
-}
-
-export function deactivate() {
-    if (ctxRef) ctxRef.host.setStatus("Dialoge verlassen");
-}
-
-export function dispose() {
-    ctxRef = null;
+    deactivate() {
+        this.setStatus("Dialoge verlassen");
+    }
 }

@@ -12,17 +12,17 @@ using OldSchoolForms.Ui.Runtime.Sources;
 namespace OldSchoolForms.Ui.Runtime;
 
 /// <summary>
-/// Einstiegspunkt der Client-Laufzeitumgebung. Parst die Kommandozeile, baut die
-/// Paketquelle, die JS-Engine, die Shell und den Modul-Host auf und startet die
-/// UI-Message-Loop.
+/// Entry point of the client runtime environment. Parses the command line,
+/// builds the package source, the JS engine, the shell and the module host,
+/// and starts the UI message loop.
 /// </summary>
 public static class Program
 {
     /// <summary>
-    /// Startet die Laufzeitumgebung.
+    /// Starts the runtime environment.
     /// </summary>
-    /// <param name="args">Kommandozeilenargumente.</param>
-    /// <returns>Exit-Code.</returns>
+    /// <param name="args">Command-line arguments.</param>
+    /// <returns>Exit code.</returns>
     [STAThread]
     public static int Main(string[] args)
     {
@@ -36,7 +36,7 @@ public static class Program
             }
 
             var source = BuildSource(options);
-            Console.WriteLine($"[runtime] Quelle: {source.Describe}");
+            Console.WriteLine($"[runtime] Source: {source.Describe}");
 
             if (source is CachedAppSource)
             {
@@ -45,7 +45,7 @@ public static class Program
             }
 
             var manifest = AppManifest.Load(source);
-            Console.WriteLine($"[runtime] App: {manifest.Name} v{manifest.Version} ({manifest.Modules.Count} Module)");
+            Console.WriteLine($"[runtime] App: {manifest.Name} v{manifest.Version} ({manifest.Modules.Count} modules)");
 
             using var engine = new JsEngineHost(source, options.Dev);
             engine.Error += (context, ex) =>
@@ -80,7 +80,7 @@ public static class Program
                 watcher = new HotReloadWatcher(fileSource.Root);
                 watcher.Changed += path => OnFileChanged(path, fileSource.Root, manifest, moduleHost);
                 watcher.Start();
-                Console.WriteLine("[runtime] Hot Reload aktiv.");
+                Console.WriteLine("[runtime] Hot Reload enabled.");
             }
 
             LocalizationManager.LoadSavedCulture();
@@ -90,7 +90,7 @@ public static class Program
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[runtime] Fehler: {ex.Message}");
+            Console.Error.WriteLine($"[runtime] Error: {ex.Message}");
             return 1;
         }
     }
@@ -115,7 +115,8 @@ public static class Program
             ctx.Set("form", Jint.Native.JsValue.FromObject(engine.Engine, shellForm));
             ctx.Set("host", Jint.Native.JsValue.FromObject(engine.Engine, host));
             ctx.Set("app", app);
-            engine.CallExport(ns, "init", ctx);
+            if (!engine.TryConstructDefault(ns, ctx, out _))
+                engine.CallExport(ns, "init", ctx);
         }
         catch (Exception ex)
         {
@@ -130,7 +131,7 @@ public static class Program
         ModuleHost moduleHost)
     {
         var relative = Path.GetRelativePath(root, absolutePath).Replace('\\', '/');
-        Console.WriteLine($"[hotreload] geändert: {relative}");
+        Console.WriteLine($"[hotreload] changed: {relative}");
 
         foreach (var module in manifest.Modules)
         {
@@ -140,7 +141,7 @@ public static class Program
             if (string.Equals(relative, module.ScriptPath, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(relative, module.LayoutPath, StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"[hotreload] Reload Modul '{module.Id}'");
+                Console.WriteLine($"[hotreload] Reload module '{module.Id}'");
                 moduleHost.ReloadModule(module.Id);
                 return;
             }
@@ -167,20 +168,20 @@ public static class Program
 
     private static void PrintUsage()
     {
-        Console.WriteLine("OldSchoolForms.Ui.Runtime - JavaScript Client-Laufzeit");
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_Title"));
         Console.WriteLine();
-        Console.WriteLine("Verwendung:");
-        Console.WriteLine("  OldSchoolForms.Ui.Runtime [pfad] [optionen]");
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_Usage"));
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_UsageLine"));
         Console.WriteLine();
-        Console.WriteLine("Argumente:");
-        Console.WriteLine("  pfad              Pfad zum App-Paket (Verzeichnis mit app.json).");
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_Arguments"));
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_ArgPath"));
         Console.WriteLine();
-        Console.WriteLine("Optionen:");
-        Console.WriteLine("  --source <uri>    App aus Netzwerkquelle laden (https://...).");
-        Console.WriteLine("  --dev             Dev-Modus: kein Cache, volle Stacktraces, Hot Reload.");
-        Console.WriteLine("  -h, --help        Diese Hilfe anzeigen.");
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_Options"));
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_OptSource"));
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_OptDev"));
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_OptHelp"));
         Console.WriteLine();
-        Console.WriteLine("Beispiele:");
+        Console.WriteLine(LangRes.GetString("Runtime_Cli_Examples"));
         Console.WriteLine("  OldSchoolForms.Ui.Runtime ./app");
         Console.WriteLine("  OldSchoolForms.Ui.Runtime /pfad/zum/checkout --dev");
         Console.WriteLine("  OldSchoolForms.Ui.Runtime --source https://server/app --dev");
@@ -188,27 +189,27 @@ public static class Program
 }
 
 /// <summary>
-/// Geparste Kommandozeilenoptionen.
+/// Parsed command-line options.
 /// </summary>
 public sealed class CliOptions
 {
-    /// <summary>Positionaler Paketpfad.</summary>
+    /// <summary>Positional package path.</summary>
     public string? PositionalPath { get; set; }
 
-    /// <summary>Netzwerk-Quelle (--source).</summary>
+    /// <summary>Network source (--source).</summary>
     public string? Source { get; set; }
 
-    /// <summary>Dev-Modus (--dev).</summary>
+    /// <summary>Dev mode (--dev).</summary>
     public bool Dev { get; set; }
 
-    /// <summary>Hilfe anzeigen (--help).</summary>
+    /// <summary>Show help (--help).</summary>
     public bool ShowHelp { get; set; }
 
     /// <summary>
-    /// Parst die Kommandozeilenargumente.
+    /// Parses the command-line arguments.
     /// </summary>
-    /// <param name="args">Die Argumente.</param>
-    /// <returns>Die geparsten Optionen.</returns>
+    /// <param name="args">The arguments.</param>
+    /// <returns>The parsed options.</returns>
     public static CliOptions Parse(string[] args)
     {
         var options = new CliOptions();

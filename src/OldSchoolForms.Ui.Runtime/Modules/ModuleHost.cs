@@ -1,3 +1,4 @@
+using Jint;
 using Jint.Native;
 using Jint.Native.Object;
 using OldSchoolForms.Ui.Controls.Advanced;
@@ -10,9 +11,23 @@ using OldSchoolForms.Ui.Runtime.Sources;
 namespace OldSchoolForms.Ui.Runtime.Modules;
 
 /// <summary>
-/// Orchestriert den Lebenszyklus der JavaScript-Module: Öffnen (Layout laden,
-/// Skript importieren, <c>init</c>/<c>activate</c> aufruf), Wechsel, Schließen
-/// und Hot-Reload. Jedes Modul erhält einen eigenen Tab im Content-Bereich.
+/// Describes the form in which a module script is written.
+/// </summary>
+public enum ModuleMode
+{
+    /// <summary>Function-based: exported <c>init</c>/<c>activate</c>/<c>deactivate</c>/<c>dispose</c> functions.</summary>
+    Function,
+
+    /// <summary>Class-based: <c>export default class</c>, constructor = init, methods = lifecycle.</summary>
+    Class
+}
+
+/// <summary>
+/// Orchestrates the lifecycle of the JavaScript modules: opening (loading the
+/// layout, importing the script, calling <c>init</c>/<c>activate</c>), switching,
+/// closing, and hot reload. Each module gets its own tab in the content area.
+/// Modules can be function-based or an ES6 class (<c>export default class</c>);
+/// the form is detected automatically.
 /// </summary>
 public sealed class ModuleHost
 {
@@ -21,6 +36,8 @@ public sealed class ModuleHost
         public ModuleDescriptor Descriptor = null!;
         public TabPage Tab = null!;
         public ObjectInstance Namespace = null!;
+        public ObjectInstance? Instance;
+        public ModuleMode Mode = ModuleMode.Function;
         public List<JsControl> Facades { get; } = new();
         public string ScriptKey = null!;
     }
@@ -37,15 +54,15 @@ public sealed class ModuleHost
     private int _reloadCounter;
 
     /// <summary>
-    /// Erzeugt den Modul-Host.
+    /// Creates the module host.
     /// </summary>
-    /// <param name="source">Die Paketquelle.</param>
-    /// <param name="engine">Die JS-Engine.</param>
-    /// <param name="loader">Der Layout-Loader.</param>
-    /// <param name="registry">Die Modul-Registry.</param>
-    /// <param name="contentTabs">Der TabControl für die Modul-Tabs.</param>
-    /// <param name="shellForm">Die Fassade des Hauptfensters.</param>
-    /// <param name="host">Die Host-Services für JS.</param>
+    /// <param name="source">The package source.</param>
+    /// <param name="engine">The JS engine.</param>
+    /// <param name="loader">The layout loader.</param>
+    /// <param name="registry">The module registry.</param>
+    /// <param name="contentTabs">The TabControl for the module tabs.</param>
+    /// <param name="shellForm">The facade of the main window.</param>
+    /// <param name="host">The host services for JS.</param>
     public ModuleHost(
         IAppSource source,
         JsEngineHost engine,
@@ -72,18 +89,18 @@ public sealed class ModuleHost
         _host = host;
     }
 
-    /// <summary>Die aktuell geöffneten Modul-IDs.</summary>
+    /// <summary>The currently open module IDs.</summary>
     public IReadOnlyCollection<string> OpenModuleIds => _open.Keys;
 
     /// <summary>
-    /// Öffnet ein Modul in einem neuen Tab (oder wählt den vorhandenen).
+    /// Opens a module in a new tab (or selects the existing one).
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
-    /// <exception cref="InvalidOperationException">Das Modul ist unbekannt.</exception>
+    /// <param name="id">The module ID.</param>
+    /// <exception cref="InvalidOperationException">The module is unknown.</exception>
     public void OpenModule(string id)
     {
         var descriptor = _registry.Find(id)
-            ?? throw new InvalidOperationException($"Unbekanntes Modul: {id}");
+            ?? throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_UnknownModule"), id));
 
         if (_open.TryGetValue(id, out var existing))
         {
@@ -94,20 +111,6 @@ public sealed class ModuleHost
         }
 
         var tab = new TabPage { Text = descriptor.Title };
-
-        LayoutLoadResult layoutResult;
-        if (_source.Exists(descriptor.LayoutPath))
-        {
-            layoutResult = _loader.LoadInto(tab, _source.ReadText(descriptor.LayoutPath));
-            foreach (var warning in layoutResult.Warnings)
-                _engine.ReportError($"Layout {descriptor.LayoutPath}", new InvalidOperationException(warning));
-        }
-        else
-        {
-            layoutResult = new LayoutLoadResult(
-                new Dictionary<string, Control>(),
-                new[] { $"Kein Layout gefunden: {descriptor.LayoutPath}" });
-        }
 
         var scriptKey = descriptor.ScriptPath;
         if (_engine.DevMode)
@@ -123,19 +126,74 @@ public sealed class ModuleHost
             ScriptKey = scriptKey
         };
 
-        var context = BuildContext(tab, layoutResult, loaded);
+        // Delegate that binds a class method <c>this.loadLayout(path)</c> to the
+        // C# loader. Without an argument → the module's default layout.
+        Func<JsValue, JsValue> loadLayout = pathJs =>
+        {
+            string? rel = null;
+            if (pathJs is not null && !pathJs.IsUndefined() && !pathJs.IsNull())
+                rel = pathJs.ToString();
+            return LoadLayoutIntoTab(tab, descriptor, loaded, rel);
+        };
+
+        // Delegate that binds a class method <c>this.createControl(type, props)</c>
+        // to the C# control factory. Creates a control, applies props, tracks the facade.
+        Func<string, JsValue, JsValue> createControl = (typeName, propsJs) =>
+        {
+            var control = _loader.CreateControl(typeName);
+            if (control == null)
+            {
+                _engine.ReportError($"createControl '{typeName}'",
+                    new InvalidOperationException(string.Format(LangRes.GetString("Runtime_UnknownControlType"), typeName)));
+                return JsValue.Undefined;
+            }
+
+            if (propsJs is ObjectInstance propsObj)
+            {
+                var warnings = new List<string>();
+                _loader.ApplyPropsFromJs(_engine.Engine, control, propsObj, warnings);
+                foreach (var w in warnings)
+                    _engine.ReportError($"createControl '{typeName}'", new InvalidOperationException(w));
+            }
+
+            var facade = new JsControl(_engine, control) { OwnerModuleId = descriptor.Id };
+            loaded.Facades.Add(facade);
+            return JsValue.FromObject(_engine.Engine, facade);
+        };
 
         if (_source.Exists(descriptor.ScriptPath))
         {
             try
             {
+                using var scope = _engine.UseModule(id);
                 loaded.Namespace = _engine.ImportModule(scriptKey);
-                _engine.CallExport(loaded.Namespace, "init", context);
+                if (IsClassModule(loaded.Namespace))
+                {
+                    // Class mode: the host does NOT preload; the class calls
+                    // this.loadLayout() in its constructor. this.controls starts empty.
+                    loaded.Mode = ModuleMode.Class;
+                    var context = BuildContext(tab, _engine.NewObject(), loaded, loadLayout, createControl);
+                    if (_engine.TryConstructDefault(loaded.Namespace, context, out var instance))
+                        loaded.Instance = instance;
+                }
+                else
+                {
+                    // Function mode (legacy): the layout is preloaded and controls are populated.
+                    loaded.Mode = ModuleMode.Function;
+                    var controls = LoadLayoutIntoTab(tab, descriptor, loaded, null);
+                    var context = BuildContext(tab, controls, loaded, loadLayout, createControl);
+                    _engine.CallExport(loaded.Namespace, "init", context);
+                }
             }
             catch (Exception ex)
             {
-                _engine.ReportError($"Modul-Init '{id}'", ex);
+                _engine.ReportError($"Module init '{id}'", ex);
             }
+        }
+        else
+        {
+            // No script: still load the layout so the tab shows content.
+            LoadLayoutIntoTab(tab, descriptor, loaded, null);
         }
 
         _contentTabs.AddTabPage(tab);
@@ -145,51 +203,75 @@ public sealed class ModuleHost
     }
 
     /// <summary>
-    /// Schließt ein Modul und entfernt seinen Tab.
+    /// Closes a module and removes its tab. The JS <c>dispose</c> callback runs,
+    /// all facade event handlers are unwired, the module's timers are cancelled and
+    /// the tab's control subtree is disposed so no resources (e.g. the shared
+    /// cursor-blink registration) leak.
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="id">The module ID.</param>
     public void CloseModule(string id)
     {
         if (!_open.TryGetValue(id, out var loaded)) return;
 
         try
         {
-            _engine.CallExport(loaded.Namespace, "dispose");
+            using (_engine.UseModule(id))
+                CallLifecycle(loaded, "dispose");
         }
         catch (Exception ex)
         {
-            _engine.ReportError($"Modul-Dispose '{id}'", ex);
+            _engine.ReportError($"Module dispose '{id}'", ex);
         }
 
         foreach (var facade in loaded.Facades)
             facade.OffAll();
 
+        _engine.Timers.ClearForModule(id);
+
         _contentTabs.RemoveTabPage(loaded.Tab);
+        DisposeControlTree(loaded.Tab);
         _open.Remove(id);
         if (_activeId == id) _activeId = null;
     }
 
     /// <summary>
-    /// Lädt ein Modul neu (Hot Reload): Dispose, Re-Import, Re-Init.
+    /// Recursively disposes a control and all of its descendants, then clears the
+    /// container. Used to release the tab page subtree after the tab was removed.
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="control">The root control to dispose.</param>
+    private static void DisposeControlTree(Control control)
+    {
+        foreach (var child in control.Controls.ToArray())
+            DisposeControlTree(child);
+        control.Controls.Clear();
+        control.Dispose();
+    }
+
+    /// <summary>
+    /// Reloads a module (hot reload): dispose, re-import, re-init.
+    /// </summary>
+    /// <param name="id">The module ID.</param>
     public void ReloadModule(string id)
     {
         if (!_open.TryGetValue(id, out var loaded)) return;
 
         try
         {
-            _engine.CallExport(loaded.Namespace, "dispose");
+            using (_engine.UseModule(id))
+                CallLifecycle(loaded, "dispose");
         }
         catch (Exception ex)
         {
-            _engine.ReportError($"Modul-Dispose (Reload) '{id}'", ex);
+            _engine.ReportError($"Module dispose (reload) '{id}'", ex);
         }
 
         foreach (var facade in loaded.Facades)
             facade.OffAll();
 
+        _engine.Timers.ClearForModule(id);
+
         _contentTabs.RemoveTabPage(loaded.Tab);
+        DisposeControlTree(loaded.Tab);
         _open.Remove(id);
         if (_activeId == id) _activeId = null;
 
@@ -197,9 +279,9 @@ public sealed class ModuleHost
     }
 
     /// <summary>
-    /// Aktiviert ein geöffnetes Modul (Callback <c>activate</c>).
+    /// Activates an open module (<c>activate</c> callback).
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="id">The module ID.</param>
     public void Activate(string id)
     {
         if (_activeId == id) return;
@@ -210,11 +292,12 @@ public sealed class ModuleHost
         {
             try
             {
-                _engine.CallExport(loaded.Namespace, "activate");
+                using (_engine.UseModule(id))
+                    CallLifecycle(loaded, "activate");
             }
             catch (Exception ex)
             {
-                _engine.ReportError($"Modul-Activate '{id}'", ex);
+                _engine.ReportError($"Module activate '{id}'", ex);
             }
         }
 
@@ -222,20 +305,21 @@ public sealed class ModuleHost
     }
 
     /// <summary>
-    /// Deaktiviert ein geöffnetes Modul (Callback <c>deactivate</c>).
+    /// Deactivates an open module (<c>deactivate</c> callback).
     /// </summary>
-    /// <param name="id">Die Modul-ID.</param>
+    /// <param name="id">The module ID.</param>
     public void Deactivate(string id)
     {
         if (_open.TryGetValue(id, out var loaded))
         {
             try
             {
-                _engine.CallExport(loaded.Namespace, "deactivate");
+                using (_engine.UseModule(id))
+                    CallLifecycle(loaded, "deactivate");
             }
             catch (Exception ex)
             {
-                _engine.ReportError($"Modul-Deactivate '{id}'", ex);
+                _engine.ReportError($"Module deactivate '{id}'", ex);
             }
         }
 
@@ -243,7 +327,8 @@ public sealed class ModuleHost
     }
 
     /// <summary>
-    /// Verknüpft die Tab-Auswahl mit den Modul-Aktivitäts-Callbacks.
+    /// Wires the tab selection to the module activity callbacks and the tab close
+    /// buttons to <see cref="CloseModule"/>.
     /// </summary>
     public void AttachTabActivation()
     {
@@ -255,19 +340,113 @@ public sealed class ModuleHost
             if (id != null)
                 Activate(id);
         };
+
+        _contentTabs.TabCloseRequested += (s, tab) =>
+        {
+            var id = _open.FirstOrDefault(kv => kv.Value.Tab == tab).Key;
+            if (id != null)
+                CloseModule(id);
+        };
     }
 
-    private ObjectInstance BuildContext(TabPage tab, LayoutLoadResult layout, LoadedModule loaded)
+    /// <summary>
+    /// Invokes a lifecycle callback (<c>activate</c>/<c>deactivate</c>/<c>dispose</c>)
+    /// depending on the module form: for classes on the instance (with <c>this</c>
+    /// binding, inherited no-ops via the prototype chain), otherwise as an exported function.
+    /// </summary>
+    /// <param name="loaded">The loaded module.</param>
+    /// <param name="name">The callback name.</param>
+    private void CallLifecycle(LoadedModule loaded, string name)
     {
-        var ctx = _engine.NewObject();
+        if (loaded.Mode == ModuleMode.Class)
+        {
+            if (loaded.Instance == null) return;
+            var fn = loaded.Instance.Get(name);
+            if (fn is Jint.Native.Function.Function)
+                _engine.CallFunction(fn, loaded.Instance);
+            return;
+        }
+
+        _engine.CallExport(loaded.Namespace, name);
+    }
+
+    /// <summary>
+    /// Detects whether a module namespace has a constructible ES6 class as its
+    /// <c>default</c> export (class mode) or not (function mode).
+    /// </summary>
+    /// <param name="moduleNamespace">The module namespace.</param>
+    /// <returns><see langword="true"/> if an <c>export default class</c> is present.</returns>
+    private static bool IsClassModule(ObjectInstance moduleNamespace)
+    {
+        var def = moduleNamespace.Get("default");
+        return def is Jint.Native.Function.Function f && f.IsConstructor();
+    }
+
+    /// <summary>
+    /// Loads a layout into the tab and rebuilds the JS control facade.
+    /// Existing facades are detached and the tab is cleared first, so a repeated
+    /// call (layout switch) replaces cleanly.
+    /// </summary>
+    /// <param name="tab">The target tab.</param>
+    /// <param name="descriptor">The module descriptor (for the default layout path).</param>
+    /// <param name="loaded">The loaded module (for facade tracking).</param>
+    /// <param name="explicitRel">Explicit relative layout path, or <c>null</c> for the default layout.</param>
+    /// <returns>The JS controls object (name → <see cref="JsControl"/>).</returns>
+    private ObjectInstance LoadLayoutIntoTab(TabPage tab, ModuleDescriptor descriptor, LoadedModule loaded, string? explicitRel)
+    {
+        var rel = explicitRel is null
+            ? descriptor.LayoutPath
+            : ResolveLayoutPath(descriptor.Directory, explicitRel);
+
+        // Detach previous facades and clear the tab (clean switch/reload).
+        foreach (var facade in loaded.Facades)
+            facade.OffAll();
+        loaded.Facades.Clear();
+        tab.Controls.Clear();
 
         var controls = _engine.NewObject();
-        foreach (var kvp in layout.Controls)
+        if (_source.Exists(rel))
         {
-            var facade = new JsControl(_engine, kvp.Value);
-            loaded.Facades.Add(facade);
-            controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
+            var lr = _loader.LoadInto(tab, _source.ReadText(rel));
+            foreach (var warning in lr.Warnings)
+                _engine.ReportError($"Layout {rel}", new InvalidOperationException(warning));
+
+            foreach (var kvp in lr.Controls)
+            {
+                var facade = new JsControl(_engine, kvp.Value) { OwnerModuleId = descriptor.Id };
+                loaded.Facades.Add(facade);
+                controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
+            }
         }
+        else
+        {
+            _engine.ReportError($"Layout {rel}", new InvalidOperationException(string.Format(LangRes.GetString("Runtime_NoLayoutFound"), rel)));
+        }
+
+        return controls;
+    }
+
+    /// <summary>
+    /// Resolves a relative layout path: <c>@app/…</c> and a leading <c>/</c> are
+    /// relative to the package root, otherwise relative to the module directory.
+    /// </summary>
+    /// <param name="moduleDir">The relative module directory.</param>
+    /// <param name="rel">The provided relative path.</param>
+    /// <returns>The normalized package path.</returns>
+    private static string ResolveLayoutPath(string moduleDir, string rel)
+    {
+        if (rel.StartsWith(ModulePath.AppPrefix, StringComparison.Ordinal))
+            return ModulePath.Normalize(rel[ModulePath.AppPrefix.Length..]);
+        if (rel.StartsWith("/", StringComparison.Ordinal))
+            return ModulePath.Normalize(rel);
+
+        var combined = string.IsNullOrEmpty(moduleDir) ? rel : moduleDir.TrimEnd('/') + "/" + rel;
+        return ModulePath.Normalize(combined);
+    }
+
+    private ObjectInstance BuildContext(TabPage tab, ObjectInstance controls, LoadedModule loaded, Func<JsValue, JsValue> loadLayout, Func<string, JsValue, JsValue> createControl)
+    {
+        var ctx = _engine.NewObject();
 
         var app = _engine.NewObject();
         app.Set("name", JsValue.FromObject(_engine.Engine, _host.AppName));
@@ -275,8 +454,10 @@ public sealed class ModuleHost
 
         ctx.Set("form", JsValue.FromObject(_engine.Engine, _shellForm));
         ctx.Set("controls", controls);
+        ctx.Set("__loadLayout", JsValue.FromObject(_engine.Engine, loadLayout));
+        ctx.Set("__createControl", JsValue.FromObject(_engine.Engine, createControl));
         ctx.Set("host", JsValue.FromObject(_engine.Engine, _host));
-        ctx.Set("tab", JsValue.FromObject(_engine.Engine, new JsControl(_engine, tab)));
+        ctx.Set("tab", JsValue.FromObject(_engine.Engine, new JsControl(_engine, tab) { OwnerModuleId = loaded.Descriptor.Id }));
         ctx.Set("app", app);
 
         return ctx;

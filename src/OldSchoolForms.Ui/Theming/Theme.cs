@@ -216,6 +216,14 @@ public abstract class Theme
     /// Gets the selected tab border color.
     /// </summary>
     public abstract Color TabSelectedBorder { get; }
+    /// <summary>
+    /// Gets the color of the tab close (X) glyph in its resting state.
+    /// </summary>
+    public abstract Color TabCloseGlyph { get; }
+    /// <summary>
+    /// Gets the color of the tab close (X) glyph while the pointer hovers over it.
+    /// </summary>
+    public abstract Color TabCloseGlyphHover { get; }
 
     /// <summary>
     /// Gets the tab content area background color.

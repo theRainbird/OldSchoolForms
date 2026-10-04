@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
+using OldSchoolForms.Ui.Core;
 
 namespace OldSchoolForms.Ui.Runtime.Dev;
 
 /// <summary>
-/// Überwacht ein App-Verzeichnis auf Dateiänderungen und löst nach einer
-/// Debounce-Phase ein <see cref="Changed"/>-Event pro geänderter Datei aus.
-/// Nur im Dev-Modus aktiv.
+/// Watches an app directory for file changes and raises a
+/// <see cref="Changed"/> event per changed file after a debounce phase.
+/// Only active in dev mode.
 /// </summary>
 public sealed class HotReloadWatcher : IDisposable
 {
@@ -17,14 +18,14 @@ public sealed class HotReloadWatcher : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Erzeugt den Watcher für ein Verzeichnis.
+    /// Creates the watcher for a directory.
     /// </summary>
-    /// <param name="rootDirectory">Das zu überwachende Verzeichnis (rekursiv).</param>
-    /// <param name="debounceMs">Debounce-Zeit in Millisekunden.</param>
+    /// <param name="rootDirectory">The directory to watch (recursive).</param>
+    /// <param name="debounceMs">Debounce time in milliseconds.</param>
     public HotReloadWatcher(string rootDirectory, int debounceMs = 300)
     {
         if (string.IsNullOrWhiteSpace(rootDirectory))
-            throw new ArgumentException("Verzeichnis fehlt.", nameof(rootDirectory));
+            throw new ArgumentException(LangRes.GetString("Runtime_DirectoryMissing"), nameof(rootDirectory));
 
         _debounceMs = debounceMs;
         _watcher = new FileSystemWatcher(rootDirectory)
@@ -39,12 +40,12 @@ public sealed class HotReloadWatcher : IDisposable
     }
 
     /// <summary>
-    /// Tritt auf, wenn eine Datei geändert wurde (relativer Pfad zur Wurzel).
+    /// Raised when a file has changed (path relative to the root).
     /// </summary>
     public event Action<string>? Changed;
 
     /// <summary>
-    /// Startet die Überwachung.
+    /// Starts the monitoring.
     /// </summary>
     public void Start()
     {
@@ -77,7 +78,7 @@ public sealed class HotReloadWatcher : IDisposable
             }
             catch
             {
-                // Watcher darf nie crashen.
+                // The watcher must never crash.
             }
         }
     }
