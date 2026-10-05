@@ -442,6 +442,12 @@ public class TabControl : ContainerControl
             var x = tabPositions[i];
             var tabWidth = tabWidths[i];
 
+            // Center the text on its measured line height so it sits on the same
+            // optical line as the close glyph (font.Size alone underestimates the
+            // rendered line height and would leave the text slightly below center)
+            var textHeight = CoordinateTransform.MeasureText(_tabPages[i].Text, font, EffectiveZoom).height / Math.Max(EffectiveZoom, 0.001f);
+            var textY = (tabHeaderHeight - textHeight) / 2f;
+
             if (i == _selectedIndex)
             {
                 // Selected tab: white background, border on top/right/left (not bottom)
@@ -452,13 +458,13 @@ public class TabControl : ContainerControl
                 g.DrawLine(theme.TabSelectedBorder, x, 0, x, tabHeaderHeight);
                 // Right border
                 g.DrawLine(theme.TabSelectedBorder, x + tabWidth, 0, x + tabWidth, tabHeaderHeight);
-                g.DrawString(_tabPages[i].Text, font, tabTextColor, x + horizontalPadding / 2, CoordinateTransform.CenterVertically(0, tabHeaderHeight, font, EffectiveZoom));
+                g.DrawString(_tabPages[i].Text, font, tabTextColor, x + horizontalPadding / 2, textY);
             }
             else
             {
                 // Unselected tabs: gray background
                 g.FillRectangle(theme.TabUnselectedBackground, x, 0, tabWidth, tabHeaderHeight);
-                g.DrawString(_tabPages[i].Text, font, unselectedTabTextColor, x + horizontalPadding / 2, CoordinateTransform.CenterVertically(0, tabHeaderHeight, font, EffectiveZoom));
+                g.DrawString(_tabPages[i].Text, font, unselectedTabTextColor, x + horizontalPadding / 2, textY);
             }
 
             // Draw the close (X) button, right-aligned within the tab (browser-style:
