@@ -1,7 +1,0 @@
-{
-  "id": "orders",
-  "title": "Aufträge",
-  "layout": "layout.json",
-  "script": "index.js",
-  "order": 2
-}
