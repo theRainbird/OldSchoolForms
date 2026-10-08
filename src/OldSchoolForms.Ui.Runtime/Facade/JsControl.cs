@@ -1,4 +1,7 @@
+using System.Data;
 using Jint.Native;
+using OldSchoolForms.Shared.Scripting;
+using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Scripting;
 
@@ -142,8 +145,66 @@ public sealed class JsControl
         if (Control is ContainerControl container)
             container.Controls.Add(child.Control);
         else
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_NotAContainer"), Control.GetType().Name));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_NotAContainer"), Control.GetType().Name));
         return child;
+    }
+
+    /// <summary>
+    /// Binds a <see cref="JsDataTable"/> to a <see cref="DataGridView"/> for
+    /// read-only display. Each non-deleted row becomes a grid row; cell values are
+    /// matched to the grid columns by <c>DataPropertyName</c>. The grid is not
+    /// two-way bound — edit the table facade and re-bind to refresh.
+    /// </summary>
+    /// <param name="table">The table facade to display, or <c>null</c> to clear.</param>
+    /// <exception cref="InvalidOperationException">The wrapped control is not a <see cref="DataGridView"/>.</exception>
+    public void BindTable(JsDataTable? table)
+    {
+        if (Control is not DataGridView grid)
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_NotAContainer"), Control.GetType().Name));
+
+        grid.Rows.Clear();
+        if (table == null)
+        {
+            grid.Invalidate();
+            return;
+        }
+
+        var dt = table.Table;
+        foreach (DataRow dr in dt.Rows)
+        {
+            if (dr.RowState == DataRowState.Deleted)
+                continue;
+
+            var row = new DataGridViewRow { DataBoundItem = dr };
+            foreach (var column in grid.Columns)
+            {
+                object? value = null;
+                if (!string.IsNullOrEmpty(column.DataPropertyName) && dt.Columns.Contains(column.DataPropertyName))
+                    value = dr[column.DataPropertyName];
+                row.Cells.Add(new DataGridViewCell { Value = value });
+            }
+
+            grid.Rows.Add(row);
+        }
+
+        grid.Invalidate();
+    }
+
+    /// <summary>
+    /// Binds a <see cref="JsBindingSource"/> to a <see cref="DataGridView"/> for a
+    /// live, filtered and sorted view. The grid follows the binding source's
+    /// <c>ListChanged</c> notifications, and cell edits are written back to the
+    /// underlying <see cref="DataRow"/> (marking it modified for optimistic
+    /// concurrency via <c>getChanges()</c>).
+    /// </summary>
+    /// <param name="source">The binding source facade, or <c>null</c> to clear.</param>
+    /// <exception cref="InvalidOperationException">The wrapped control is not a <see cref="DataGridView"/>.</exception>
+    public void BindSource(JsBindingSource? source)
+    {
+        if (Control is not DataGridView grid)
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_NotAContainer"), Control.GetType().Name));
+
+        grid.DataSource = source?.Source;
     }
 
     /// <summary>
@@ -171,7 +232,7 @@ public sealed class JsControl
     public void On(string eventName, JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
-            throw new ArgumentException(LangRes.GetString("Runtime_CallbackMustBeFunction"), nameof(callback));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var normalized = (eventName ?? string.Empty).Trim().ToLowerInvariant();
         Delegate handler = normalized switch
@@ -192,7 +253,7 @@ public sealed class JsControl
             }),
             "gotfocus" => new EventHandler((s, e) => Raise("gotfocus", callback, e)),
             "lostfocus" => new EventHandler((s, e) => Raise("lostfocus", callback, e)),
-            _ => throw new ArgumentException(string.Format(LangRes.GetString("Runtime_UnknownEvent"), eventName), nameof(eventName))
+            _ => throw new ArgumentException(string.Format(LangRes.GetEnglish("Runtime_UnknownEvent"), eventName), nameof(eventName))
         };
 
         Wire(normalized, handler);

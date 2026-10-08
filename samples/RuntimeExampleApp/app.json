@@ -3,11 +3,20 @@
   "version": "1.0.0",
   "shell": "layouts/shell.json",
   "entry": "app.js",
+  "defaultCulture": "en",
+  "i18n": "i18n",
+  "cultures": ["de", "en"],
+  "server": {
+    "host": "127.0.0.1",
+    "port": 9090,
+    "encryption": false
+  },
   "modules": [
     "modules/dashboard",
     "modules/counter",
     "modules/notes",
     "modules/dialogs",
-    "modules/codeui"
+    "modules/codeui",
+    "modules/remote"
   ]
 }

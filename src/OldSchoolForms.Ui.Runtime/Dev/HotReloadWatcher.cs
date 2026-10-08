@@ -25,7 +25,7 @@ public sealed class HotReloadWatcher : IDisposable
     public HotReloadWatcher(string rootDirectory, int debounceMs = 300)
     {
         if (string.IsNullOrWhiteSpace(rootDirectory))
-            throw new ArgumentException(LangRes.GetString("Runtime_DirectoryMissing"), nameof(rootDirectory));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_DirectoryMissing"), nameof(rootDirectory));
 
         _debounceMs = debounceMs;
         _watcher = new FileSystemWatcher(rootDirectory)

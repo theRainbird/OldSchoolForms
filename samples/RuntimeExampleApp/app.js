@@ -1,13 +1,13 @@
-// Einstiegs-Skript der Beispiel-App (Klassenform).
-// ctx = { form, host, app }
+// Entry script of the sample app (class form).
+// ctx = { form, host, app, i18n }
 
-export default class BeispielApp extends FormBase {
+export default class SampleApp extends FormBase {
     constructor(ctx) {
         super(ctx);
-        console.log("Beispiel-App initialisiert: " + this.app.name + " v" + this.app.version);
-        this.setStatus("Willkommen bei " + this.app.name);
+        console.log("Sample app initialized: " + this.app.name + " v" + this.app.version);
+        this.setStatus(this.t("App_Welcome", this.app.name));
 
-        // Startseite direkt öffnen, damit beim Start Content sichtbar ist.
+        // Open the start page directly so content is visible at startup.
         this.openModule("dashboard");
     }
 }

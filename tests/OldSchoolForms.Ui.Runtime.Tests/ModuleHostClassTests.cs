@@ -218,6 +218,23 @@ public class ModuleHostClassTests : IDisposable
     }
 
     [Fact]
+    public void ClassModule_WiredButtonClick_FiresJsCallback()
+    {
+        using var f = Build();
+        f.ModuleHost.OpenModule("codeui");
+
+        var btn = f.Tabs.TabPages[0].Controls.FindControl("btn1", true);
+        Assert.NotNull(btn);
+        Assert.NotEqual("geklickt", f.Status.Text);
+
+        var onClick = typeof(OldSchoolForms.Ui.Core.Control)
+            .GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        onClick.Invoke(btn, new object[] { EventArgs.Empty });
+
+        Assert.Equal("geklickt", f.Status.Text);
+    }
+
+    [Fact]
     public void ClassModule_CreateControlUnknownTypeDoesNotCrash()
     {
         using var f = Build();

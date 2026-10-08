@@ -104,7 +104,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
         {
             var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             if (!string.Equals(hash, sha256.Trim().ToLowerInvariant(), StringComparison.Ordinal))
-                throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_Sha256CheckFailed"), url));
+                throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_Sha256CheckFailed"), url));
         }
 
         using var ms = new MemoryStream(bytes);
@@ -141,7 +141,7 @@ public sealed class CachedAppSource : IAppSource, IDisposable
     private FileSystemAppSource EnsureLocal()
     {
         if (_local != null) return _local;
-        throw new InvalidOperationException(LangRes.GetString("Runtime_PackageNotSynced"));
+        throw new InvalidOperationException(LangRes.GetEnglish("Runtime_PackageNotSynced"));
     }
 
     private static string Sanitize(string name)
@@ -170,7 +170,7 @@ public static class RemoteAppSourceFactory
     public static IAppSource Create(string uri)
     {
         if (string.IsNullOrWhiteSpace(uri))
-            throw new ArgumentException(LangRes.GetString("Runtime_UriMissing"), nameof(uri));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_UriMissing"), nameof(uri));
 
         if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))

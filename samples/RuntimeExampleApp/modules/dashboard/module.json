@@ -1,6 +1,7 @@
 {
   "id": "dashboard",
   "title": "Dashboard",
+  "titleKey": "Module_Dashboard",
   "layout": "layout.json",
   "script": "index.js",
   "order": 1

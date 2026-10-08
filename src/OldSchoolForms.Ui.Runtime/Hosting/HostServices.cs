@@ -1,5 +1,7 @@
+using System.Globalization;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Modules;
 using OldSchoolForms.Ui.Runtime.Sources;
 using MessageBox = OldSchoolForms.Ui.MessageBox;
@@ -40,8 +42,29 @@ public sealed class HostServices
     /// <summary>The app version.</summary>
     public string AppVersion { get; }
 
+    /// <summary>The localization service (set after construction, may be <c>null</c>).</summary>
+    public RuntimeI18n? I18n { get; set; }
+
     /// <summary>The module host for navigation (set after construction).</summary>
     public ModuleHost? ModuleHost { get; set; }
+
+    /// <summary>The cultures available as i18n bundles in the app package.</summary>
+    public IReadOnlyList<string> AvailableCultures => I18n?.AvailableCultures ?? new[] { "en" };
+
+    /// <summary>
+    /// Switches the UI culture at runtime and persists the choice.
+    /// Raises <see cref="LocalizationManager.CultureChanged"/> so the shell and
+    /// the open modules can re-localize themselves.
+    /// </summary>
+    /// <param name="cultureName">The culture name (e.g. <c>"de"</c> or <c>"en"</c>).</param>
+    /// <exception cref="ArgumentException">The culture name is empty.</exception>
+    /// <exception cref="CultureNotFoundException">The culture name is invalid.</exception>
+    public void SetCulture(string cultureName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cultureName);
+        LocalizationManager.SetCulture(new CultureInfo(cultureName));
+        LocalizationManager.SaveCurrentCulture();
+    }
 
     /// <summary>
     /// Attaches the status bar label.
@@ -114,7 +137,7 @@ public sealed class HostServices
     /// </summary>
     /// <param name="relativePath">Relative path to the package root.</param>
     /// <returns><see langword="true"/> if present.</returns>
-    public bool FileExists(string relativePath) => _source.Exists(relativePath);
+    public bool HasFile(string relativePath) => _source.Exists(relativePath);
 
     /// <summary>
     /// Writes a text file to the app's sandbox data folder.
@@ -150,7 +173,7 @@ public sealed class HostServices
     private string ResolveSandbox(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
-            throw new ArgumentException(LangRes.GetString("Runtime_PathEmpty"), nameof(relativePath));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_PathEmpty"), nameof(relativePath));
 
         var normalized = relativePath.Replace('\\', '/').TrimStart('/');
         var full = Path.GetFullPath(Path.Combine(_sandboxDir, normalized));
@@ -159,7 +182,7 @@ public sealed class HostServices
             : _sandboxDir + Path.DirectorySeparatorChar;
 
         if (!full.StartsWith(rootWithSep, StringComparison.Ordinal))
-            throw new UnauthorizedAccessException(string.Format(LangRes.GetString("Runtime_SandboxPathViolation"), relativePath));
+            throw new UnauthorizedAccessException(string.Format(LangRes.GetEnglish("Runtime_SandboxPathViolation"), relativePath));
 
         return full;
     }

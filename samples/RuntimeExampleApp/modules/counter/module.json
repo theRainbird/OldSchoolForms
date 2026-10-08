@@ -1,6 +1,7 @@
 {
   "id": "counter",
   "title": "Zähler",
+  "titleKey": "Module_Counter",
   "layout": "layout.json",
   "script": "index.js",
   "order": 2

@@ -21,11 +21,12 @@ public class JsEngineHostTests
         using var engine = CreateSampleEngine();
         var ns = engine.ImportModule("shared/util.js");
 
-        var currency = engine.CallExport(ns, "formatCurrency", 1234.5).ToString();
-        Assert.Equal("1234.50 EUR", currency);
+        var padded = engine.CallExport(ns, "pad", 5).ToString();
+        Assert.Equal("05", padded);
 
-        var greet = engine.CallExport(ns, "greet", "Welt").ToString();
-        Assert.Equal("Hallo, Welt!", greet);
+        var date = engine.Engine.Evaluate("new Date(2024, 4, 9)");
+        var formatted = engine.CallExport(ns, "formatDate", date).ToString();
+        Assert.Equal("2024-05-09", formatted);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.ComponentModel;
+using System.Data;
 using System.Reflection;
 
 namespace OldSchoolForms.Ui.Data;
@@ -13,6 +14,7 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
     private object? _dataSource;
     private string _dataMember = string.Empty;
     private IBindingList? _list;
+    private DataView? _view;
     private PropertyManager? _propertyManager;
     private int _position;
     private bool _rebuilding;
@@ -146,14 +148,71 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
     public bool IsEmpty => Count == 0;
 
     /// <summary>
-    /// Gets the sort property description.
+    /// Gets or sets the sort expression (e.g. <c>"Name ASC, Age DESC"</c>).
+    /// When the data source is a <see cref="DataTable"/> or <see cref="DataView"/>,
+    /// the sort is applied live through the underlying view.
     /// </summary>
-    public string? Sort { get; private set; }
+    public string? Sort
+    {
+        get => _view?.Sort ?? _sortExpression;
+        set
+        {
+            _sortExpression = value ?? string.Empty;
+            if (_view != null)
+                _view.Sort = _sortExpression;
+            SortDirection = ParseFirstSortDirection(_sortExpression);
+        }
+    }
+
+    private string _sortExpression = string.Empty;
 
     /// <summary>
-    /// Gets the sort direction.
+    /// Gets or sets the filter expression using <see cref="DataView.RowFilter"/>
+    /// syntax (e.g. <c>"Age &gt;= 18 AND Name LIKE 'A*'"</c>).
+    /// Only effective when the data source is a <see cref="DataTable"/> or
+    /// <see cref="DataView"/>; assigning to a non-view source throws.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the current data source does not support filtering.
+    /// </exception>
+    public string Filter
+    {
+        get => _view?.RowFilter ?? string.Empty;
+        set
+        {
+            if (_view == null)
+                throw new InvalidOperationException("The current data source does not support filtering. Use a DataTable or DataView as DataSource.");
+            _view.RowFilter = value ?? string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the current data source supports filtering.
+    /// </summary>
+    public bool SupportsFiltering => _view != null;
+
+    /// <summary>
+    /// Gets a value indicating whether the current list is sorted.
+    /// </summary>
+    public bool IsSorted => _view is IBindingList vl && vl.IsSorted;
+
+    /// <summary>
+    /// Gets the sort direction of the first sort column.
     /// </summary>
     public ListSortDirection SortDirection { get; private set; }
+
+    private static ListSortDirection ParseFirstSortDirection(string? sort)
+    {
+        if (string.IsNullOrWhiteSpace(sort))
+            return ListSortDirection.Ascending;
+        var parts = sort.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return ListSortDirection.Ascending;
+        var tokens = parts[0].Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return tokens.Length > 1 && string.Equals(tokens[1], "DESC", StringComparison.OrdinalIgnoreCase)
+            ? ListSortDirection.Descending
+            : ListSortDirection.Ascending;
+    }
 
     // ===== IBindingList implementation =====
 
@@ -388,15 +447,42 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
             var item = _list[i];
             if (item != null)
             {
-                var prop = item.GetType().GetProperty(propertyName);
-                if (prop == null)
+                var desc = ReflectionPropertyDescriptor.GetProperty(item, propertyName);
+                if (desc == null)
                     continue;
-                var value = prop.GetValue(item);
-                if (Equals(value, key))
+                var value = desc.GetValue(item);
+                if (ValuesEqual(value, key))
                     return i;
             }
         }
         return -1;
+    }
+
+    private static bool ValuesEqual(object? a, object? b)
+    {
+        if (Equals(a, b))
+            return true;
+        // Numeric normalization: JS marshals integrals as long, columns may be int, and vice versa.
+        if (a != null && b != null && IsNumeric(a) && IsNumeric(b))
+        {
+            try
+            {
+                return Convert.ToDouble(a).Equals(Convert.ToDouble(b));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static bool IsNumeric(object value)
+    {
+        var code = Type.GetTypeCode(value.GetType());
+        return code is TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16
+            or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64
+            or TypeCode.Single or TypeCode.Double or TypeCode.Decimal;
     }
 
     /// <summary>
@@ -408,8 +494,8 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
         if (current == null)
             return null;
 
-        var prop = current.GetType().GetProperty(propertyName);
-        return prop?.GetValue(current);
+        var desc = ReflectionPropertyDescriptor.GetProperty(current, propertyName);
+        return desc?.GetValue(current);
     }
 
     /// <summary>
@@ -442,6 +528,33 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
         if (_dataSource == null)
             return null;
 
+        _view = null;
+
+        if (_dataSource is DataView view)
+        {
+            _view = view;
+            ApplyPendingSort();
+            return view;
+        }
+
+        if (_dataSource is DataTable table)
+        {
+            _view = table.DefaultView;
+            ApplyPendingSort();
+            return _view;
+        }
+
+        if (_dataSource is DataSet dataSet && !string.IsNullOrEmpty(_dataMember))
+        {
+            var memberTable = dataSet.Tables[_dataMember];
+            if (memberTable != null)
+            {
+                _view = memberTable.DefaultView;
+                ApplyPendingSort();
+                return _view;
+            }
+        }
+
         if (_dataSource is IBindingList bl)
         {
             if (!string.IsNullOrEmpty(_dataMember))
@@ -467,6 +580,12 @@ public class BindingSource : Component, IBindingList, ICancelAddNew, IRaiseItemC
 
         _propertyManager = new PropertyManager(_dataSource);
         return null;
+    }
+
+    private void ApplyPendingSort()
+    {
+        if (_view != null && !string.IsNullOrEmpty(_sortExpression))
+            _view.Sort = _sortExpression;
     }
 
     private static IBindingList? ResolveNestedList(IBindingList parent, string dataMember)

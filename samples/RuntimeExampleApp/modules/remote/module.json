@@ -1,0 +1,8 @@
+{
+  "id": "remote",
+  "title": "Remote (Server)",
+  "titleKey": "Module_Remote",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 6
+}

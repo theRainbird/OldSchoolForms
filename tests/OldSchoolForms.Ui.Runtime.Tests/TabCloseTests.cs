@@ -1,7 +1,9 @@
+using System.Globalization;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Hosting;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Modules;
 using OldSchoolForms.Ui.Runtime.Scripting;
 using OldSchoolForms.Ui.Runtime.Serialization;
@@ -11,8 +13,8 @@ using Xunit;
 namespace OldSchoolForms.Ui.Runtime.Tests;
 
 /// <summary>
-/// Headless-Tests für das Schließen der Modul-Reiter per X-Button: Event,
-/// sauberes Entladen (Dispose der Tab-Subtree) und Timer-Bereinigung.
+/// Headless tests for closing module tabs via the X button: event, clean
+/// unload (dispose of the tab subtree) and timer cleanup.
 /// </summary>
 public class TabCloseTests
 {
@@ -28,13 +30,15 @@ public class TabCloseTests
     private static Fixture Build()
     {
         var source = new FileSystemAppSource(TestPaths.SampleApp);
-        var engine = new JsEngineHost(source);
-        var loader = new RuntimeLayoutLoader();
+        var i18n = new RuntimeI18n(source, "i18n", "en");
+        LocalizationManager.SetCulture(new CultureInfo("en"));
+        var engine = new JsEngineHost(source) { I18n = i18n };
+        var loader = new RuntimeLayoutLoader { I18n = i18n };
         var manifest = AppManifest.Load(source);
         var registry = new ModuleRegistry(manifest.Modules);
         var tabs = new TabControl();
         var shellForm = new JsForm(engine, new Form());
-        var host = new HostServices(source, manifest.Name, manifest.Version);
+        var host = new HostServices(source, manifest.Name, manifest.Version) { I18n = i18n };
         var moduleHost = new ModuleHost(source, engine, loader, registry, tabs, shellForm, host);
 
         host.ModuleHost = moduleHost;
@@ -59,8 +63,8 @@ public class TabCloseTests
     public void CloseButtonClick_FiresTabCloseRequested_WithoutChangingSelection()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.OpenModule("orders");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.OpenModule("counter");
         Assert.Equal(1, f.Tabs.SelectedIndex);
 
         var firstTab = f.Tabs.TabPages[0];
@@ -97,27 +101,27 @@ public class TabCloseTests
     public void CloseButtonClick_ClosesModuleViaHost()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.OpenModule("orders");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.OpenModule("counter");
 
         ClickCloseButton(f.Tabs, 0);
 
-        Assert.DoesNotContain("customers", f.ModuleHost.OpenModuleIds);
+        Assert.DoesNotContain("dashboard", f.ModuleHost.OpenModuleIds);
         Assert.Single(f.Tabs.TabPages);
-        Assert.Contains("orders", f.ModuleHost.OpenModuleIds);
+        Assert.Contains("counter", f.ModuleHost.OpenModuleIds);
     }
 
     [Fact]
     public void CloseModule_DisposesTabPageAndChildControls()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
 
         var tab = f.Tabs.TabPages[0];
         Assert.NotEmpty(tab.Controls);
         var child = tab.Controls.First();
 
-        f.ModuleHost.CloseModule("customers");
+        f.ModuleHost.CloseModule("dashboard");
 
         Assert.True(tab.IsDisposed);
         Assert.True(child.IsDisposed);
@@ -127,14 +131,14 @@ public class TabCloseTests
     public void CloseModule_ClearsModuleOwnedTimers()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
 
-        using (f.Engine.UseModule("customers"))
+        using (f.Engine.UseModule("dashboard"))
             f.Engine.Engine.Evaluate("globalThis.__interval = setInterval(function () { }, 100000);");
 
         Assert.True(f.Engine.Timers.Count >= 1);
 
-        f.ModuleHost.CloseModule("customers");
+        f.ModuleHost.CloseModule("dashboard");
 
         Assert.Equal(0, f.Engine.Timers.Count);
     }
@@ -143,25 +147,25 @@ public class TabCloseTests
     public void CloseModule_KeepsTimersOfOtherModules()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.OpenModule("orders");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.OpenModule("counter");
 
-        using (f.Engine.UseModule("orders"))
+        using (f.Engine.UseModule("counter"))
             f.Engine.Engine.Evaluate("globalThis.__interval = setInterval(function () { }, 100000);");
 
-        var ordersTimers = f.Engine.Timers.Count;
-        Assert.True(ordersTimers >= 1);
+        var counterTimers = f.Engine.Timers.Count;
+        Assert.True(counterTimers >= 1);
 
-        f.ModuleHost.CloseModule("customers");
+        f.ModuleHost.CloseModule("dashboard");
 
-        Assert.Equal(ordersTimers, f.Engine.Timers.Count);
+        Assert.Equal(counterTimers, f.Engine.Timers.Count);
     }
 
     [Fact]
     public void CloseLastTab_LeavesEmptyShell()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
 
         ClickCloseButton(f.Tabs, 0);
 

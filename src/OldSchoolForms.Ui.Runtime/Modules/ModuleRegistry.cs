@@ -21,7 +21,7 @@ public sealed class ModuleRegistry
         foreach (var module in _all)
         {
             if (string.IsNullOrEmpty(module.Id))
-                throw new InvalidOperationException(LangRes.GetString("Runtime_DescriptorWithoutId"));
+                throw new InvalidOperationException(LangRes.GetEnglish("Runtime_DescriptorWithoutId"));
             _byId[module.Id] = module;
         }
     }

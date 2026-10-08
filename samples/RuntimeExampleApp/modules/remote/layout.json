@@ -1,0 +1,40 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "controls": [
+    {
+      "type": "DataGridView",
+      "name": "grid",
+      "props": { "location": { "x": 16, "y": 16 }, "size": { "width": 640, "height": 240 } },
+      "columns": [
+        { "name": "colId", "headerText": "ID", "dataPropertyName": "id", "valueType": "Int64", "width": 60 },
+        { "name": "colName", "headerText": "Name", "dataPropertyName": "name", "valueType": "String", "width": 200 },
+        { "name": "colEmail", "headerText": "E-Mail", "dataPropertyName": "email", "valueType": "String", "width": 220 },
+        { "name": "colAge", "headerText": "Alter", "dataPropertyName": "age", "valueType": "Int64", "width": 70 }
+      ]
+    },
+    { "type": "Label", "name": "filterLabel", "props": { "text": "tr:Remote_Filter", "location": { "x": 16, "y": 268 }, "size": { "width": 50, "height": 24 } } },
+    { "type": "TextBox", "name": "filterBox", "props": { "text": "", "location": { "x": 70, "y": 266 }, "size": { "width": 250, "height": 26 } } },
+    { "type": "Button", "name": "btnApply", "props": { "text": "tr:Remote_Apply", "location": { "x": 328, "y": 265 }, "size": { "width": 90, "height": 28 } } },
+    { "type": "Label", "name": "sortLabel", "props": { "text": "tr:Remote_Sort", "location": { "x": 428, "y": 268 }, "size": { "width": 40, "height": 24 } } },
+    { "type": "TextBox", "name": "sortBox", "props": { "text": "name ASC", "location": { "x": 472, "y": 266 }, "size": { "width": 184, "height": 26 } } },
+    { "type": "Label", "name": "nameLabel", "props": { "text": "tr:Remote_Name", "location": { "x": 16, "y": 308 }, "size": { "width": 50, "height": 24 } } },
+    { "type": "TextBox", "name": "nameBox", "props": { "text": "", "location": { "x": 70, "y": 306 }, "size": { "width": 180, "height": 26 } } },
+    { "type": "Label", "name": "emailLabel", "props": { "text": "tr:Remote_Email", "location": { "x": 262, "y": 308 }, "size": { "width": 50, "height": 24 } } },
+    { "type": "TextBox", "name": "emailBox", "props": { "text": "", "location": { "x": 316, "y": 306 }, "size": { "width": 200, "height": 26 } } },
+    { "type": "Label", "name": "ageLabel", "props": { "text": "tr:Remote_Age", "location": { "x": 528, "y": 308 }, "size": { "width": 40, "height": 24 } } },
+    { "type": "TextBox", "name": "ageBox", "props": { "text": "", "location": { "x": 572, "y": 306 }, "size": { "width": 84, "height": 26 } } },
+    { "type": "Button", "name": "btnFirst", "props": { "text": "tr:Remote_First", "location": { "x": 16, "y": 346 }, "size": { "width": 60, "height": 28 } } },
+    { "type": "Button", "name": "btnPrev", "props": { "text": "tr:Remote_Prev", "location": { "x": 80, "y": 346 }, "size": { "width": 60, "height": 28 } } },
+    { "type": "Button", "name": "btnNext", "props": { "text": "tr:Remote_Next", "location": { "x": 144, "y": 346 }, "size": { "width": 60, "height": 28 } } },
+    { "type": "Button", "name": "btnLast", "props": { "text": "tr:Remote_Last", "location": { "x": 208, "y": 346 }, "size": { "width": 60, "height": 28 } } },
+    { "type": "Label", "name": "posLabel", "props": { "text": "", "location": { "x": 278, "y": 348 }, "size": { "width": 150, "height": 24 } } },
+    { "type": "Button", "name": "btnAdd", "props": { "text": "tr:Remote_Add", "location": { "x": 438, "y": 346 }, "size": { "width": 90, "height": 28 } } },
+    { "type": "Button", "name": "btnSave", "props": { "text": "tr:Remote_Save", "location": { "x": 536, "y": 346 }, "size": { "width": 120, "height": 28 } } },
+    { "type": "Button", "name": "btnLoad", "props": { "text": "tr:Remote_Load", "location": { "x": 16, "y": 388 }, "size": { "width": 100, "height": 32 } } },
+    { "type": "Button", "name": "btnLoadAsync", "props": { "text": "tr:Remote_LoadAsync", "location": { "x": 124, "y": 388 }, "size": { "width": 120, "height": 32 } } },
+    { "type": "Button", "name": "btnValidate", "props": { "text": "tr:Remote_Validate", "location": { "x": 252, "y": 388 }, "size": { "width": 120, "height": 32 } } },
+    { "type": "Label", "name": "statusLabel", "props": { "text": "", "location": { "x": 388, "y": 392 }, "size": { "width": 268, "height": 24 } } }
+  ]
+}

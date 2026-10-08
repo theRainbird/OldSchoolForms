@@ -1,6 +1,7 @@
 {
   "id": "dialogs",
   "title": "Dialoge",
+  "titleKey": "Module_Dialogs",
   "layout": "layout.json",
   "script": "index.js",
   "order": 4

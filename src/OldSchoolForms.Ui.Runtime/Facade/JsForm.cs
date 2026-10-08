@@ -96,7 +96,7 @@ public sealed class JsForm
     public void OnClosing(JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
-            throw new ArgumentException(LangRes.GetString("Runtime_CallbackMustBeFunction"), nameof(callback));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var handler = new EventHandler((s, e) =>
         {

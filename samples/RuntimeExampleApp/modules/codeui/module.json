@@ -1,6 +1,7 @@
 {
   "id": "codeui",
   "title": "Code-UI",
+  "titleKey": "Module_CodeUi",
   "script": "index.js",
   "order": 5
 }

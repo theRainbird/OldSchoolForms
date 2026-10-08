@@ -18,11 +18,11 @@ public sealed class FileSystemAppSource : IAppSource
     public FileSystemAppSource(string rootPath)
     {
         if (string.IsNullOrWhiteSpace(rootPath))
-            throw new ArgumentException(LangRes.GetString("Runtime_RootDirectoryEmpty"), nameof(rootPath));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_RootDirectoryEmpty"), nameof(rootPath));
 
         _root = Path.GetFullPath(rootPath);
         if (!Directory.Exists(_root))
-            throw new DirectoryNotFoundException(string.Format(LangRes.GetString("Runtime_AppDirectoryNotFound"), _root));
+            throw new DirectoryNotFoundException(string.Format(LangRes.GetEnglish("Runtime_AppDirectoryNotFound"), _root));
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public sealed class FileSystemAppSource : IAppSource
     {
         var full = Resolve(relativePath);
         if (!File.Exists(full))
-            throw new FileNotFoundException(string.Format(LangRes.GetString("Runtime_FileMissingInPackage"), relativePath), full);
+            throw new FileNotFoundException(string.Format(LangRes.GetEnglish("Runtime_FileMissingInPackage"), relativePath), full);
         return File.ReadAllBytes(full);
     }
 
@@ -50,7 +50,7 @@ public sealed class FileSystemAppSource : IAppSource
     {
         var full = Resolve(relativePath);
         if (!File.Exists(full))
-            throw new FileNotFoundException(string.Format(LangRes.GetString("Runtime_FileMissingInPackage"), relativePath), full);
+            throw new FileNotFoundException(string.Format(LangRes.GetEnglish("Runtime_FileMissingInPackage"), relativePath), full);
         return File.ReadAllText(full, System.Text.Encoding.UTF8);
     }
 
@@ -77,7 +77,7 @@ public sealed class FileSystemAppSource : IAppSource
     private string Resolve(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
-            throw new ArgumentException(LangRes.GetString("Runtime_PathEmpty"), nameof(relativePath));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_PathEmpty"), nameof(relativePath));
 
         var normalized = relativePath.Replace('\\', '/').TrimStart('/');
         var full = Path.GetFullPath(Path.Combine(_root, normalized));
@@ -86,7 +86,7 @@ public sealed class FileSystemAppSource : IAppSource
         if (!full.StartsWith(rootWithSep, StringComparison.Ordinal) &&
             !string.Equals(full, _root, StringComparison.Ordinal))
         {
-            throw new UnauthorizedAccessException(string.Format(LangRes.GetString("Runtime_PathEscapesPackage"), relativePath));
+            throw new UnauthorizedAccessException(string.Format(LangRes.GetEnglish("Runtime_PathEscapesPackage"), relativePath));
         }
 
         return full;

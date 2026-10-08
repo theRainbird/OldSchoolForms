@@ -21,4 +21,15 @@ public static class LangRes
     {
         return _manager.GetString(key, CultureInfo.CurrentUICulture) ?? key;
     }
+
+    /// <summary>
+    /// Gets the English string for the specified key regardless of the current UI culture.
+    /// Intended for log output that must remain English while the UI is localized.
+    /// </summary>
+    /// <param name="key">The resource key.</param>
+    /// <returns>The English string, or the key itself if not found.</returns>
+    public static string GetEnglish(string key)
+    {
+        return _manager.GetString(key, CultureInfo.GetCultureInfo("en")) ?? key;
+    }
 }

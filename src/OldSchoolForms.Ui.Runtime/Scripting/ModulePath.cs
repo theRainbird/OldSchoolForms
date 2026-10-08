@@ -22,7 +22,7 @@ public static class ModulePath
     public static string Normalize(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
-            throw new InvalidOperationException(LangRes.GetString("Runtime_ModulePathEmpty"));
+            throw new InvalidOperationException(LangRes.GetEnglish("Runtime_ModulePathEmpty"));
 
         var parts = path.Replace('\\', '/').Split('/');
         var stack = new List<string>();
@@ -32,7 +32,7 @@ public static class ModulePath
             if (part == "..")
             {
                 if (stack.Count == 0)
-                    throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModulePathEscapesRoot"), path));
+                    throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ModulePathEscapesRoot"), path));
                 stack.RemoveAt(stack.Count - 1);
                 continue;
             }
@@ -41,7 +41,7 @@ public static class ModulePath
         }
 
         if (stack.Count == 0)
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModulePathEmptyAfterNormalize"), path));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ModulePathEmptyAfterNormalize"), path));
 
         return string.Join("/", stack);
     }

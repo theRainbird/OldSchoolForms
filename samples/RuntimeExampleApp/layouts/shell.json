@@ -11,16 +11,24 @@
       "items": [
         {
           "type": "ToolStripMenuItem",
-          "props": { "text": "&Datei" },
+          "props": { "text": "tr:Shell_Menu_File" },
           "dropDownItems": [
-            { "type": "ToolStripMenuItem", "props": { "text": "Beenden" } }
+            { "type": "ToolStripMenuItem", "props": { "text": "tr:Shell_Menu_Exit" } }
           ]
         },
         {
           "type": "ToolStripMenuItem",
-          "props": { "text": "&Hilfe" },
+          "props": { "text": "tr:Shell_Menu_Language" },
           "dropDownItems": [
-            { "type": "ToolStripMenuItem", "props": { "text": "Über" } }
+            { "type": "ToolStripMenuItem", "name": "culture:de", "props": { "text": "Deutsch" } },
+            { "type": "ToolStripMenuItem", "name": "culture:en", "props": { "text": "English" } }
+          ]
+        },
+        {
+          "type": "ToolStripMenuItem",
+          "props": { "text": "tr:Shell_Menu_Help" },
+          "dropDownItems": [
+            { "type": "ToolStripMenuItem", "props": { "text": "tr:Shell_Menu_About" } }
           ]
         }
       ]
@@ -30,9 +38,9 @@
       "name": "toolStrip",
       "props": { "dock": "Top" },
       "items": [
-        { "type": "ToolStripButton", "props": { "text": "Start" } },
+        { "type": "ToolStripButton", "props": { "text": "tr:Shell_Tb_Start" } },
         { "type": "ToolStripSeparator" },
-        { "type": "ToolStripLabel", "props": { "text": "OldSchoolForms JS-Beispiel" } }
+        { "type": "ToolStripLabel", "props": { "text": "tr:Shell_Tb_Title" } }
       ]
     },
     {
@@ -40,7 +48,7 @@
       "name": "statusStrip",
       "props": { "dock": "Bottom" },
       "items": [
-        { "type": "ToolStripStatusLabel", "props": { "text": "Bereit" } }
+        { "type": "ToolStripStatusLabel", "props": { "text": "tr:Shell_Status_Ready" } }
       ]
     },
     {

@@ -234,7 +234,8 @@ public class Binding
         var instance = ResolveSourceInstance();
         if (instance != null && _sourceProperty == null)
         {
-            _sourceProperty = ReflectionPropertyDescriptor.GetProperty(instance.GetType(), _dataMember);
+            // Instance-based resolution so custom type descriptors (DataRowView columns) work.
+            _sourceProperty = ReflectionPropertyDescriptor.GetProperty(instance, _dataMember);
         }
     }
 

@@ -1,6 +1,7 @@
 {
   "id": "notes",
   "title": "Notizen",
+  "titleKey": "Module_Notes",
   "layout": "layout.json",
   "script": "index.js",
   "order": 3

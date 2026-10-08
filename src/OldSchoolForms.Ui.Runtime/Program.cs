@@ -1,9 +1,12 @@
+using System.Globalization;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Platform;
 using OldSchoolForms.Ui.Runtime.Dev;
 using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Hosting;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Modules;
+using OldSchoolForms.Ui.Runtime.Remote;
 using OldSchoolForms.Ui.Runtime.Scripting;
 using OldSchoolForms.Ui.Runtime.Serialization;
 using OldSchoolForms.Ui.Runtime.Shell;
@@ -47,7 +50,49 @@ public static class Program
             var manifest = AppManifest.Load(source);
             Console.WriteLine($"[runtime] App: {manifest.Name} v{manifest.Version} ({manifest.Modules.Count} modules)");
 
-            using var engine = new JsEngineHost(source, options.Dev);
+            var i18n = new RuntimeI18n(
+                source,
+                manifest.I18nPath,
+                manifest.DefaultCulture,
+                manifest.Cultures.Count > 0 ? manifest.Cultures : null);
+
+            LocalizationManager.LoadSavedCulture();
+            if (!string.IsNullOrWhiteSpace(options.Culture))
+            {
+                LocalizationManager.SetCulture(new CultureInfo(options.Culture));
+                LocalizationManager.SaveCurrentCulture();
+            }
+            else if (!i18n.Supports(LocalizationManager.CurrentCulture.Name))
+            {
+                LocalizationManager.SetCulture(new CultureInfo(i18n.DefaultCulture));
+            }
+
+            Console.WriteLine($"[runtime] Culture: {i18n.Locale} (available: {string.Join(", ", i18n.AvailableCultures)})");
+
+            RemoteGatewayClient? gateway = null;
+            SharedCodeCache? sharedCache = null;
+            if (manifest.Server != null)
+            {
+                gateway = new RemoteGatewayClient(manifest.Server.Host, manifest.Server.Port, manifest.Server.Encryption);
+                sharedCache = new SharedCodeCache(manifest.Name);
+                try
+                {
+                    gateway.Connect();
+                    sharedCache.Sync(gateway, new Progress<string>(p => Console.WriteLine($"[shared] {p}")));
+                    Console.WriteLine($"[remote] Connected to {manifest.Server.Host}:{manifest.Server.Port} (shared v{sharedCache.Version})");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[remote] Connect/sync failed: {ex.Message}");
+                    if (sharedCache.TryLoadCached())
+                        Console.WriteLine($"[remote] Offline mode: using cached shared code v{sharedCache.Version}");
+                    else
+                        Console.WriteLine("[remote] No cached shared code available.");
+                }
+            }
+
+            var moduleLoader = new CompositeModuleLoader(new AppSourceModuleLoader(source), sharedCache);
+            using var engine = new JsEngineHost(source, options.Dev, moduleLoader) { I18n = i18n };
             engine.Error += (context, ex) =>
             {
                 Console.Error.WriteLine($"[js-error] {context}: {ex.Message}");
@@ -55,24 +100,35 @@ public static class Program
                     Console.Error.WriteLine(ex.StackTrace);
             };
 
-            var loader = new RuntimeLayoutLoader();
+            var loader = new RuntimeLayoutLoader { I18n = i18n };
             var registry = new ModuleRegistry(manifest.Modules);
-            var host = new HostServices(source, manifest.Name, manifest.Version);
+            var host = new HostServices(source, manifest.Name, manifest.Version) { I18n = i18n };
 
-            var shell = ShellBuilder.Build(source, manifest, engine, loader, registry, host);
+            var shell = ShellBuilder.Build(source, manifest, engine, loader, registry, host, i18n);
             var shellForm = new JsForm(engine, shell.Form);
             var moduleHost = new ModuleHost(source, engine, loader, registry, shell.ContentTabs, shellForm, host);
 
             host.ModuleHost = moduleHost;
             host.AttachStatusLabel(shell.StatusLabel);
 
+            RemoteServices? remoteServices = null;
+            if (gateway != null)
+            {
+                remoteServices = new RemoteServices(engine, gateway);
+                moduleHost.Remote = remoteServices;
+            }
+
             if (shell.NavTree != null)
                 ShellBuilder.WireNavTree(shell.NavTree, moduleHost);
             moduleHost.AttachTabActivation();
 
-            RunEntryScript(engine, manifest, source, shellForm, host);
+            LocalizationManager.CultureChanged += (s, c) => OnCultureChanged(c, shell, registry, moduleHost, i18n);
+
+            RunEntryScript(engine, manifest, source, shellForm, host, remoteServices);
 
             Platform.Platform.OnFrame += engine.PumpTimers;
+            if (remoteServices != null)
+                Platform.Platform.OnFrame += remoteServices.Pump;
 
             HotReloadWatcher? watcher = null;
             if (options.Dev && source is FileSystemAppSource fileSource)
@@ -83,9 +139,10 @@ public static class Program
                 Console.WriteLine("[runtime] Hot Reload enabled.");
             }
 
-            LocalizationManager.LoadSavedCulture();
             Application.Run(shell.Form);
             watcher?.Dispose();
+            remoteServices?.Dispose();
+            gateway?.Dispose();
             return 0;
         }
         catch (Exception ex)
@@ -100,7 +157,8 @@ public static class Program
         AppManifest manifest,
         IAppSource source,
         JsForm shellForm,
-        HostServices host)
+        HostServices host,
+        RemoteServices? remote = null)
     {
         if (string.IsNullOrEmpty(manifest.Entry) || !source.Exists(manifest.Entry))
             return;
@@ -115,6 +173,8 @@ public static class Program
             ctx.Set("form", Jint.Native.JsValue.FromObject(engine.Engine, shellForm));
             ctx.Set("host", Jint.Native.JsValue.FromObject(engine.Engine, host));
             ctx.Set("app", app);
+            if (remote != null)
+                ctx.Set("remote", Jint.Native.JsValue.FromObject(engine.Engine, remote));
             if (!engine.TryConstructDefault(ns, ctx, out _))
                 engine.CallExport(ns, "init", ctx);
         }
@@ -122,6 +182,35 @@ public static class Program
         {
             engine.ReportError($"Entry '{manifest.Entry}'", ex);
         }
+    }
+
+    /// <summary>
+    /// Reacts to a runtime culture switch: re-localizes the shell chrome
+    /// (menu, toolbar, status bar), refreshes the navigation tree and reloads
+    /// all open modules so their scripts re-run with the new culture.
+    /// </summary>
+    /// <param name="culture">The new UI culture.</param>
+    /// <param name="shell">The shell result with translation bindings.</param>
+    /// <param name="registry">The module registry.</param>
+    /// <param name="moduleHost">The module host owning the open modules.</param>
+    /// <param name="i18n">The localization service.</param>
+    private static void OnCultureChanged(
+        CultureInfo culture,
+        ShellResult shell,
+        ModuleRegistry registry,
+        ModuleHost moduleHost,
+        RuntimeI18n i18n)
+    {
+        Console.WriteLine($"[runtime] Culture changed to '{culture.Name}'.");
+
+        foreach (var translation in shell.Translations)
+            translation.Reapply(i18n);
+
+        if (shell.NavTree != null)
+            ShellBuilder.RefreshNavTree(shell.NavTree, registry, i18n);
+
+        foreach (var id in moduleHost.OpenModuleIds.ToArray())
+            moduleHost.ReloadModule(id);
     }
 
     private static void OnFileChanged(
@@ -202,6 +291,9 @@ public sealed class CliOptions
     /// <summary>Dev mode (--dev).</summary>
     public bool Dev { get; set; }
 
+    /// <summary>UI culture override (--culture de | --culture=en).</summary>
+    public string? Culture { get; set; }
+
     /// <summary>Show help (--help).</summary>
     public bool ShowHelp { get; set; }
 
@@ -229,9 +321,15 @@ public sealed class CliOptions
                     if (i + 1 < args.Length)
                         options.Source = args[++i];
                     break;
+                case "--culture":
+                    if (i + 1 < args.Length)
+                        options.Culture = args[++i];
+                    break;
                 default:
                     if (arg.StartsWith("--source=", StringComparison.Ordinal))
                         options.Source = arg["--source=".Length..];
+                    else if (arg.StartsWith("--culture=", StringComparison.Ordinal))
+                        options.Culture = arg["--culture=".Length..];
                     else if (string.IsNullOrEmpty(options.PositionalPath))
                         options.PositionalPath = arg;
                     break;

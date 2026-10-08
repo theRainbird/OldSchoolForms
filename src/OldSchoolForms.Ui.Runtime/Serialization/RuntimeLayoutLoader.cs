@@ -8,6 +8,7 @@ using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Serialization;
+using OldSchoolForms.Ui.Runtime.Localization;
 
 namespace OldSchoolForms.Ui.Runtime.Serialization;
 
@@ -22,10 +23,15 @@ public sealed class LayoutLoadResult
     /// </summary>
     /// <param name="controls">Controls keyed by <see cref="Control.Name"/> (case-insensitive).</param>
     /// <param name="warnings">Warnings from the load operation.</param>
-    public LayoutLoadResult(IReadOnlyDictionary<string, Control> controls, IReadOnlyList<string> warnings)
+    /// <param name="translations">Translation bindings captured from <c>tr:</c> references.</param>
+    public LayoutLoadResult(
+        IReadOnlyDictionary<string, Control> controls,
+        IReadOnlyList<string> warnings,
+        IReadOnlyList<TranslationRef>? translations = null)
     {
         Controls = controls;
         Warnings = warnings;
+        Translations = translations ?? new List<TranslationRef>();
     }
 
     /// <summary>The loaded, named controls.</summary>
@@ -33,6 +39,12 @@ public sealed class LayoutLoadResult
 
     /// <summary>Warnings about unknown types or properties.</summary>
     public IReadOnlyList<string> Warnings { get; }
+
+    /// <summary>
+    /// Translation bindings captured from <c>tr:</c> property values.
+    /// Re-applying them re-localizes the targets after a culture change.
+    /// </summary>
+    public IReadOnlyList<TranslationRef> Translations { get; }
 
     /// <summary>
     /// Finds a control by its name.
@@ -53,13 +65,19 @@ public sealed class RuntimeLayoutLoader
     private readonly Dictionary<string, Type> _customTypes = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Optional localization service. When set, string property values with the
+    /// <c>tr:</c> prefix are resolved to localized texts during layout loading.
+    /// </summary>
+    public RuntimeI18n? I18n { get; set; }
+
+    /// <summary>
     /// Registers an additional control type under a simple name.
     /// </summary>
     /// <param name="typeName">The type name used in the layout.</param>
     /// <param name="type">The CLR type (must derive from <see cref="Control"/> or <see cref="ToolStripItem"/>).</param>
     public void Register(string typeName, Type type)
     {
-        if (string.IsNullOrWhiteSpace(typeName)) throw new ArgumentException(LangRes.GetString("Runtime_TypeNameMissing"), nameof(typeName));
+        if (string.IsNullOrWhiteSpace(typeName)) throw new ArgumentException(LangRes.GetEnglish("Runtime_TypeNameMissing"), nameof(typeName));
         ArgumentNullException.ThrowIfNull(type);
         _customTypes[typeName] = type;
     }
@@ -126,7 +144,7 @@ public sealed class RuntimeLayoutLoader
 
         if (node is not JsonObject obj) return;
         foreach (var kvp in obj)
-            ApplyProperty(target, kvp.Key, kvp.Value, warnings);
+            ApplyProperty(target, kvp.Key, kvp.Value, warnings, null);
     }
 
     /// <summary>
@@ -143,6 +161,7 @@ public sealed class RuntimeLayoutLoader
 
         var warnings = new List<string>();
         var controls = new Dictionary<string, Control>(StringComparer.OrdinalIgnoreCase);
+        var translations = new List<TranslationRef>();
 
         JsonNode? parsed;
         try
@@ -151,11 +170,11 @@ public sealed class RuntimeLayoutLoader
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_InvalidJsonDocument"), ex.Message), ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_InvalidJsonDocument"), ex.Message), ex);
         }
 
         if (parsed is not JsonObject doc)
-            throw new InvalidOperationException(LangRes.GetString("Runtime_JsonRootMustBeObject"));
+            throw new InvalidOperationException(LangRes.GetEnglish("Runtime_JsonRootMustBeObject"));
 
         var format = GetString(doc, "format");
         if (format != LayoutJsonSerializer.FormatId)
@@ -177,14 +196,19 @@ public sealed class RuntimeLayoutLoader
             foreach (var node in roots)
             {
                 if (node is JsonObject controlNode)
-                    LoadControl(controlNode, target, warnings, controls);
+                    LoadControl(controlNode, target, warnings, controls, translations);
             }
         }
 
-        return new LayoutLoadResult(controls, warnings);
+        return new LayoutLoadResult(controls, warnings, translations);
     }
 
-    private void LoadControl(JsonObject node, Control parent, List<string> warnings, Dictionary<string, Control> controls)
+    private void LoadControl(
+        JsonObject node,
+        Control parent,
+        List<string> warnings,
+        Dictionary<string, Control> controls,
+        List<TranslationRef> translations)
     {
         var typeName = GetString(node, "type");
         var type = ResolveType(typeName ?? string.Empty);
@@ -209,7 +233,7 @@ public sealed class RuntimeLayoutLoader
         if (!string.IsNullOrEmpty(declaredName))
             control.Name = declaredName;
 
-        ApplyProperties(control, node["props"] as JsonObject, warnings);
+        ApplyProperties(control, node["props"] as JsonObject, warnings, translations);
 
         if (!string.IsNullOrEmpty(control.Name))
             controls[control.Name] = control;
@@ -224,7 +248,7 @@ public sealed class RuntimeLayoutLoader
             foreach (var columnNode in columns)
             {
                 if (columnNode is JsonObject columnObj)
-                    grid.Columns.Add(LoadColumn(columnObj, warnings));
+                    grid.Columns.Add(LoadColumn(columnObj, warnings, translations));
             }
         }
 
@@ -234,7 +258,7 @@ public sealed class RuntimeLayoutLoader
             {
                 if (itemNode is JsonObject itemObj)
                 {
-                    var stripItem = LoadStripItem(itemObj, warnings);
+                    var stripItem = LoadStripItem(itemObj, warnings, translations);
                     if (stripItem != null)
                         toolStrip.Items.Add(stripItem);
                 }
@@ -247,7 +271,7 @@ public sealed class RuntimeLayoutLoader
             {
                 if (itemNode is JsonObject itemObj)
                 {
-                    var label = LoadStatusLabel(itemObj, warnings);
+                    var label = LoadStatusLabel(itemObj, warnings, translations);
                     if (label != null)
                         statusStrip.Items.Add(label);
                 }
@@ -261,7 +285,7 @@ public sealed class RuntimeLayoutLoader
                 if (childNode is JsonObject childObj)
                 {
                     if (control is ContainerControl container)
-                        LoadControl(childObj, container, warnings, controls);
+                        LoadControl(childObj, container, warnings, controls, translations);
                     else
                         warnings.Add($"Control '{typeName}' cannot accept children.");
                 }
@@ -269,7 +293,7 @@ public sealed class RuntimeLayoutLoader
         }
     }
 
-    private DataGridViewColumn LoadColumn(JsonObject node, List<string> warnings)
+    private DataGridViewColumn LoadColumn(JsonObject node, List<string> warnings, List<TranslationRef> translations)
     {
         var column = new DataGridViewColumn();
 
@@ -299,7 +323,7 @@ public sealed class RuntimeLayoutLoader
                     column.FalseValue = JsonValueConverter.FromNode(kvp.Value, typeof(object));
                     break;
                 default:
-                    ApplyProperty(column, kvp.Key, kvp.Value, warnings);
+                    ApplyProperty(column, kvp.Key, kvp.Value, warnings, translations);
                     break;
             }
         }
@@ -307,7 +331,7 @@ public sealed class RuntimeLayoutLoader
         return column;
     }
 
-    private ToolStripItem? LoadStripItem(JsonObject node, List<string> warnings)
+    private ToolStripItem? LoadStripItem(JsonObject node, List<string> warnings, List<TranslationRef> translations)
     {
         var typeName = GetString(node, "type");
         var type = ResolveType(typeName ?? string.Empty);
@@ -328,7 +352,7 @@ public sealed class RuntimeLayoutLoader
             return null;
         }
 
-        ApplyProperties(item, node["props"] as JsonObject, warnings);
+        ApplyProperties(item, node["props"] as JsonObject, warnings, translations);
 
         if (node["dropDownItems"] is JsonArray dropDownNodes && GetDropDownItems(item) is System.Collections.IList dropDowns)
         {
@@ -336,7 +360,7 @@ public sealed class RuntimeLayoutLoader
             {
                 if (dropDownNode is JsonObject dropDownObj)
                 {
-                    var child = LoadStripItem(dropDownObj, warnings);
+                    var child = LoadStripItem(dropDownObj, warnings, translations);
                     if (child != null)
                         dropDowns.Add(child);
                 }
@@ -346,21 +370,21 @@ public sealed class RuntimeLayoutLoader
         return item;
     }
 
-    private static ToolStripStatusLabel LoadStatusLabel(JsonObject node, List<string> warnings)
+    private ToolStripStatusLabel LoadStatusLabel(JsonObject node, List<string> warnings, List<TranslationRef> translations)
     {
         var label = new ToolStripStatusLabel();
-        ApplyProperties(label, node["props"] as JsonObject, warnings);
+        ApplyProperties(label, node["props"] as JsonObject, warnings, translations);
         return label;
     }
 
-    private static void ApplyProperties(object target, JsonObject? props, List<string> warnings)
+    private void ApplyProperties(object target, JsonObject? props, List<string> warnings, List<TranslationRef>? translations)
     {
         if (props == null) return;
         foreach (var kvp in props)
-            ApplyProperty(target, kvp.Key, kvp.Value, warnings);
+            ApplyProperty(target, kvp.Key, kvp.Value, warnings, translations);
     }
 
-    private static void ApplyProperty(object target, string name, JsonNode? value, List<string> warnings)
+    private void ApplyProperty(object target, string name, JsonNode? value, List<string> warnings, List<TranslationRef>? translations)
     {
         var prop = FindProperty(target.GetType(), name);
         if (prop == null || !prop.CanWrite)
@@ -373,6 +397,20 @@ public sealed class RuntimeLayoutLoader
         {
             warnings.Add($"Property '{name}' of type '{prop.PropertyType.Name}' is not supported.");
             return;
+        }
+
+        if (value is JsonValue jsonValue && jsonValue.TryGetValue<string>(out var text) && RuntimeI18n.IsReference(text))
+        {
+            var key = text[RuntimeI18n.Prefix.Length..];
+            if (I18n == null)
+            {
+                warnings.Add($"Translation reference '{text}' was kept because no localization service is configured.");
+            }
+            else
+            {
+                value = JsonValue.Create(I18n.T(key));
+                translations?.Add(new TranslationRef(target, prop, key));
+            }
         }
 
         var converted = JsonValueConverter.FromNode(value, prop.PropertyType, warnings);

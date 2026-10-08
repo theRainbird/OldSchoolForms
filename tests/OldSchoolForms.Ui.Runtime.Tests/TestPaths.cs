@@ -1,12 +1,12 @@
 namespace OldSchoolForms.Ui.Runtime.Tests;
 
 /// <summary>
-/// Hilfen zum Auffinden des Sample-App-Pakets (<c>samples/RuntimeSampleApp</c>)
-/// ausgehend vom Test-Assembly-Verzeichnis.
+/// Helpers for locating the sample app package (<c>samples/RuntimeExampleApp</c>)
+/// starting from the test assembly directory.
 /// </summary>
 internal static class TestPaths
 {
-    /// <summary>Verzeichnis der Sample-App.</summary>
+    /// <summary>Directory of the sample app.</summary>
     public static string SampleApp { get; } = Find();
 
     private static string Find()
@@ -14,14 +14,14 @@ internal static class TestPaths
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir != null)
         {
-            var candidate = Path.Combine(dir.FullName, "samples", "RuntimeSampleApp");
+            var candidate = Path.Combine(dir.FullName, "samples", "RuntimeExampleApp");
             if (File.Exists(Path.Combine(candidate, "app.json")))
                 return candidate;
             dir = dir.Parent;
         }
 
         throw new DirectoryNotFoundException(
-            "Sample-App 'samples/RuntimeSampleApp' wurde ausgehend von " +
-            AppContext.BaseDirectory + " nicht gefunden.");
+            "Sample app 'samples/RuntimeExampleApp' was not found starting from " +
+            AppContext.BaseDirectory + ".");
     }
 }

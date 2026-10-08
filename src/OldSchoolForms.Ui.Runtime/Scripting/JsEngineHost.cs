@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Jint.Native.Object;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Sources;
 
 namespace OldSchoolForms.Ui.Runtime.Scripting;
@@ -21,7 +22,13 @@ public sealed class JsEngineHost : IDisposable
     /// </summary>
     /// <param name="source">The package source for module imports.</param>
     /// <param name="devMode">In dev mode: longer timeouts and detailed errors.</param>
-    public JsEngineHost(IAppSource source, bool devMode = false)
+    /// <param name="moduleLoader">
+    /// Optional custom module loader. When <c>null</c>, an
+    /// <see cref="AppSourceModuleLoader"/> for <paramref name="source"/> is used.
+    /// Pass a <see cref="CompositeModuleLoader"/> to additionally resolve
+    /// <c>@shared/</c> imports from the server-provided shared code cache.
+    /// </param>
+    public JsEngineHost(IAppSource source, bool devMode = false, Jint.Runtime.Modules.IModuleLoader? moduleLoader = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         _source = source;
@@ -32,7 +39,7 @@ public sealed class JsEngineHost : IDisposable
         {
             options.Strict = true;
             options.TimeoutInterval(TimeSpan.FromSeconds(devMode ? 120 : 10));
-            options.Modules.ModuleLoader = new AppSourceModuleLoader(source);
+            options.Modules.ModuleLoader = moduleLoader ?? new AppSourceModuleLoader(source);
             options.Modules.RegisterRequire = false;
 
             // camelCase fallback: JS accesses with lowercase names while the CLR facade
@@ -64,6 +71,12 @@ public sealed class JsEngineHost : IDisposable
 
     /// <summary><see langword="true"/> when started in development mode.</summary>
     public bool DevMode { get; }
+
+    /// <summary>
+    /// The localization service backing the JS <c>t()</c> / <c>i18n</c> globals.
+    /// When <c>null</c>, translation calls return the key unchanged.
+    /// </summary>
+    public RuntimeI18n? I18n { get; set; }
 
     /// <summary>
     /// The ID of the module whose code is currently executing (set via
@@ -131,7 +144,7 @@ public sealed class JsEngineHost : IDisposable
     public JsValue CallFunction(JsValue function, JsValue thisArg, params JsValue[] args)
     {
         if (function is not Jint.Native.Function.Function)
-            throw new InvalidOperationException(LangRes.GetString("Runtime_ValueNotFunction"));
+            throw new InvalidOperationException(LangRes.GetEnglish("Runtime_ValueNotFunction"));
         return Engine.Call(function, thisArg, args);
     }
 
@@ -215,7 +228,40 @@ public sealed class JsEngineHost : IDisposable
             "  error: function (...a) { __jsConsole('error', a); }" +
             "};");
 
+        InstallI18nGlobals();
         InstallFormBase();
+    }
+
+    /// <summary>
+    /// Injects the localization globals <c>t(key, ...args)</c> and the
+    /// <c>i18n</c> object (<c>t</c>, <c>locale</c>, <c>languages</c>) that are
+    /// available to every module and to <c>FormBase</c>.
+    /// </summary>
+    private void InstallI18nGlobals()
+    {
+        Engine.SetValue("__jsTranslate", (Func<JsValue, JsValue[], JsValue>)((keyJs, argsJs) =>
+        {
+            var key = keyJs.ToString();
+            if (I18n == null || string.IsNullOrEmpty(key)) return keyJs;
+
+            var args = new object?[argsJs.Length];
+            for (var i = 0; i < argsJs.Length; i++)
+                args[i] = argsJs[i].ToObject();
+
+            return JsValue.FromObject(Engine, I18n.T(key, args));
+        }));
+        Engine.SetValue("__i18nLocale", (Func<string>)(() => I18n?.Locale ?? "en"));
+        Engine.SetValue("__i18nLanguages", (Func<string[]>)(() =>
+        {
+            var cultures = I18n?.AvailableCultures;
+            return cultures is { Count: > 0 } ? cultures.ToArray() : new[] { "en" };
+        }));
+
+        Engine.Evaluate(
+            "var t = function (key) { return __jsTranslate(key, Array.prototype.slice.call(arguments, 1)); };" +
+            "var i18n = { t: t };" +
+            "Object.defineProperty(i18n, 'locale', { get: function () { return __i18nLocale(); } });" +
+            "Object.defineProperty(i18n, 'languages', { get: function () { return __i18nLanguages(); } });");
     }
 
     /// <summary>
@@ -252,6 +298,8 @@ public sealed class JsEngineHost : IDisposable
             "    return c;" +
             "  }" +
             "  find(name) { return this.controls ? this.controls[name] : null; }" +
+            "  t(key) { return globalThis.t.apply(globalThis, arguments); }" +
+            "  get locale() { return globalThis.i18n.locale; }" +
             "  setStatus(text) { if (this.host) this.host.setStatus(text); }" +
             "  openModule(id) { if (this.host) this.host.openModule(id); }" +
             "  closeModule(id) { if (this.host) this.host.closeModule(id); }" +

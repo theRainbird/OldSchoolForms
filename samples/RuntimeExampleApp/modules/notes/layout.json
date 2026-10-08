@@ -4,8 +4,8 @@
   "rootType": "Form",
   "controls": [
     { "type": "MemoBox", "name": "memo", "props": { "text": "", "location": { "x": 24, "y": 24 }, "size": { "width": 520, "height": 260 } } },
-    { "type": "Button", "name": "btnSave", "props": { "text": "Speichern", "location": { "x": 24, "y": 300 }, "size": { "width": 130, "height": 38 } } },
-    { "type": "Button", "name": "btnLoad", "props": { "text": "Laden", "location": { "x": 170, "y": 300 }, "size": { "width": 130, "height": 38 } } },
-    { "type": "Label", "name": "noteStatus", "props": { "text": "Bereit", "location": { "x": 320, "y": 306 }, "size": { "width": 224, "height": 26 } } }
+    { "type": "Button", "name": "btnSave", "props": { "text": "tr:Notes_Save", "location": { "x": 24, "y": 300 }, "size": { "width": 130, "height": 38 } } },
+    { "type": "Button", "name": "btnLoad", "props": { "text": "tr:Notes_Load", "location": { "x": 170, "y": 300 }, "size": { "width": 130, "height": 38 } } },
+    { "type": "Label", "name": "noteStatus", "props": { "text": "tr:Shell_Status_Ready", "location": { "x": 320, "y": 306 }, "size": { "width": 224, "height": 26 } } }
   ]
 }

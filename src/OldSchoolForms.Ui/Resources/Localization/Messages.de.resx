@@ -520,4 +520,13 @@
   <data name="Runtime_NotAContainer" xml:space="preserve">
     <value>Steuerelement '{0}' ist kein Container.</value>
   </data>
+  <data name="Runtime_BindingSourceNoTable" xml:space="preserve">
+    <value>Der Dataset enthält keine Tabelle namens '{0}'.</value>
+  </data>
+  <data name="Runtime_BindingSourceAddNewFailed" xml:space="preserve">
+    <value>Die BindingSource konnte keine neue Zeile hinzufügen.</value>
+  </data>
+  <data name="Runtime_BindingSourceUnsupportedItem" xml:space="preserve">
+    <value>Nicht unterstützter gebundener Elementtyp '{0}'.</value>
+  </data>
 </root>

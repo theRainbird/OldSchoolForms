@@ -46,7 +46,7 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ServerManifestUnreachable"), url, ex.Message), ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ServerManifestUnreachable"), url, ex.Message), ex);
         }
 
         try
@@ -55,7 +55,7 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_InvalidServerManifest"), ex.Message), ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_InvalidServerManifest"), ex.Message), ex);
         }
     }
 
@@ -74,7 +74,7 @@ public sealed class RemoteAppSource : IDisposable
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_BundleUnreachable"), full, ex.Message), ex);
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_BundleUnreachable"), full, ex.Message), ex);
         }
     }
 
@@ -120,7 +120,7 @@ public sealed class RemoteManifest
     public static RemoteManifest Parse(string json)
     {
         var doc = JsonNode.Parse(json) as JsonObject
-            ?? throw new InvalidOperationException(LangRes.GetString("Runtime_ServerManifestRootNotObject"));
+            ?? throw new InvalidOperationException(LangRes.GetEnglish("Runtime_ServerManifestRootNotObject"));
 
         var manifest = new RemoteManifest
         {

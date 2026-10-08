@@ -1718,7 +1718,11 @@ public class DataGridView : ContainerControl
         for (int c = 0; c < _columns.Count; c++)
         {
             object? v = null;
-            if (item != null && !string.IsNullOrEmpty(_columns[c].DataPropertyName)) { var p = item.GetType().GetProperty(_columns[c].DataPropertyName); if (p != null) v = p.GetValue(item); }
+            if (item != null && !string.IsNullOrEmpty(_columns[c].DataPropertyName))
+            {
+                var p = ReflectionPropertyDescriptor.GetProperty(item, _columns[c].DataPropertyName);
+                if (p != null) v = p.GetValue(item);
+            }
             row.Cells.Add(CreateCell(v));
         }
         return row;
@@ -1804,10 +1808,12 @@ public class DataGridView : ContainerControl
                 var cd = _columns[columnIndex];
                 if (!string.IsNullOrEmpty(cd.DataPropertyName))
                 {
-                    var p = di.GetType().GetProperty(cd.DataPropertyName);
+                    var p = ReflectionPropertyDescriptor.GetProperty(di, cd.DataPropertyName);
                     if (p != null && p.CanWrite)
                     {
                         var convertedValue = ConvertValueToType(newValue, p.PropertyType);
+                        if (convertedValue is string { Length: 0 } && p.PropertyType != typeof(string))
+                            convertedValue = DBNull.Value;
                         p.SetValue(di, convertedValue);
                     }
                 }

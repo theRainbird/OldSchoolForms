@@ -1,7 +1,9 @@
+using System.Globalization;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Hosting;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Modules;
 using OldSchoolForms.Ui.Runtime.Scripting;
 using OldSchoolForms.Ui.Runtime.Serialization;
@@ -11,9 +13,10 @@ using Xunit;
 namespace OldSchoolForms.Ui.Runtime.Tests;
 
 /// <summary>
-/// Headless-Integrationstests für den <see cref="ModuleHost"/>: Module werden
-/// gegen einen echten <see cref="TabControl"/> geöffnet/geschlossen, ohne ein
-/// Fenster zu erzeugen (kein Display nötig).
+/// Headless integration tests for the <see cref="ModuleHost"/>: modules are
+/// opened/closed against a real <see cref="TabControl"/> without creating a
+/// window (no display needed). Runs with a fixed English culture so localized
+/// titles and status texts are deterministic.
 /// </summary>
 public class ModuleHostTests
 {
@@ -30,13 +33,15 @@ public class ModuleHostTests
     private static Fixture Build()
     {
         var source = new FileSystemAppSource(TestPaths.SampleApp);
-        var engine = new JsEngineHost(source);
-        var loader = new RuntimeLayoutLoader();
+        var i18n = new RuntimeI18n(source, "i18n", "en");
+        LocalizationManager.SetCulture(new CultureInfo("en"));
+        var engine = new JsEngineHost(source) { I18n = i18n };
+        var loader = new RuntimeLayoutLoader { I18n = i18n };
         var manifest = AppManifest.Load(source);
         var registry = new ModuleRegistry(manifest.Modules);
         var tabs = new TabControl();
         var shellForm = new JsForm(engine, new Form());
-        var host = new HostServices(source, manifest.Name, manifest.Version);
+        var host = new HostServices(source, manifest.Name, manifest.Version) { I18n = i18n };
         var moduleHost = new ModuleHost(source, engine, loader, registry, tabs, shellForm, host);
 
         host.ModuleHost = moduleHost;
@@ -62,51 +67,51 @@ public class ModuleHostTests
         try
         {
             Console.SetOut(buffer);
-            f.ModuleHost.OpenModule("customers");
+            f.ModuleHost.OpenModule("dashboard");
         }
         finally
         {
             Console.SetOut(original);
         }
 
-        Assert.Contains("customers", f.ModuleHost.OpenModuleIds);
+        Assert.Contains("dashboard", f.ModuleHost.OpenModuleIds);
         Assert.Single(f.Tabs.TabPages);
-        Assert.Equal("Kunden", f.Tabs.TabPages[0].Text);
-        Assert.Contains("Hallo, Kunden-Modul!", buffer.ToString());
-        Assert.Equal("Kunden-Modul aktiv", f.Status.Text);
+        Assert.Equal("Dashboard", f.Tabs.TabPages[0].Text);
+        Assert.Contains("Dashboard initialized", buffer.ToString());
+        Assert.Equal("Dashboard active", f.Status.Text);
     }
 
     [Fact]
     public void OpenModule_SecondModuleSwitchesActive()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.OpenModule("orders");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.OpenModule("counter");
 
         Assert.Equal(2, f.Tabs.TabPages.Count);
-        Assert.Equal("Aufträge-Modul aktiv", f.Status.Text);
+        Assert.Equal("Counter active", f.Status.Text);
     }
 
     [Fact]
     public void OpenModule_ExistingSelectsAndActivates()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.OpenModule("orders");
-        f.ModuleHost.OpenModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.OpenModule("counter");
+        f.ModuleHost.OpenModule("dashboard");
 
         Assert.Equal(2, f.Tabs.TabPages.Count);
-        Assert.Equal("Kunden-Modul aktiv", f.Status.Text);
+        Assert.Equal("Dashboard active", f.Status.Text);
     }
 
     [Fact]
     public void CloseModule_RemovesTabAndUntracks()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.CloseModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.CloseModule("dashboard");
 
-        Assert.DoesNotContain("customers", f.ModuleHost.OpenModuleIds);
+        Assert.DoesNotContain("dashboard", f.ModuleHost.OpenModuleIds);
         Assert.Empty(f.Tabs.TabPages);
     }
 
@@ -121,11 +126,11 @@ public class ModuleHostTests
     public void ReloadModule_KeepsTabAndReinitializes()
     {
         using var f = Build();
-        f.ModuleHost.OpenModule("customers");
-        f.ModuleHost.ReloadModule("customers");
+        f.ModuleHost.OpenModule("dashboard");
+        f.ModuleHost.ReloadModule("dashboard");
 
-        Assert.Contains("customers", f.ModuleHost.OpenModuleIds);
+        Assert.Contains("dashboard", f.ModuleHost.OpenModuleIds);
         Assert.Single(f.Tabs.TabPages);
-        Assert.Equal("Kunden-Modul aktiv", f.Status.Text);
+        Assert.Equal("Dashboard active", f.Status.Text);
     }
 }

@@ -199,7 +199,7 @@ this.form.onClosing((e) => {
 | `openModule(id)` | Open (or select) a module tab |
 | `closeModule(id)` | Close a module tab |
 | `readText(path)` | Read a UTF-8 text file from the app package (read-only access) |
-| `fileExists(path)` | Check whether a file exists in the package |
+| `hasFile(path)` | Check whether a file exists in the package |
 | `writeText(path, content)` | Write a UTF-8 text file to the app's **sandbox** folder |
 | `readSandboxText(path)` | Read a text file from the sandbox; returns `null` if absent |
 | `log(message)` | Write a message to the runtime log (`[host] ...`) |

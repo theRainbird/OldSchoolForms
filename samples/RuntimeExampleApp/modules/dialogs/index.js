@@ -1,26 +1,26 @@
-// Dialoge-Modul (Klassenform): alle Messagebox-Kombinationen durchprobieren.
+// Dialogs module (class form): try out all messagebox combinations.
 export default class DialogsForm extends FormBase {
     constructor(ctx) {
         super(ctx);
-        this.loadLayout(); // lädt layout.json und füllt this.controls
-        this.controls.btnOk.on("click", () => this.show("Nur eine Bestätigung.", "ok", "info"));
-        this.controls.btnOkCancel.on("click", () => this.show("OK oder Abbrechen?", "okcancel", "question"));
-        this.controls.btnYesNo.on("click", () => this.show("Ja oder Nein?", "yesno", "question"));
-        this.controls.btnYesNoCancel.on("click", () => this.show("Ja, Nein oder Abbrechen?", "yesnocancel", "warning"));
-        console.log("Dialoge initialisiert");
+        this.loadLayout(); // loads layout.json and fills this.controls
+        this.controls.btnOk.on("click", () => this.show(this.t("Dialogs_MsgOk"), "ok", "info"));
+        this.controls.btnOkCancel.on("click", () => this.show(this.t("Dialogs_MsgOkCancel"), "okcancel", "question"));
+        this.controls.btnYesNo.on("click", () => this.show(this.t("Dialogs_MsgYesNo"), "yesno", "question"));
+        this.controls.btnYesNoCancel.on("click", () => this.show(this.t("Dialogs_MsgYesNoCancel"), "yesnocancel", "warning"));
+        console.log("Dialogs initialized");
     }
 
     show(message, buttons, icon) {
-        const result = this.host.showMessageBox(message, "Dialog-Beispiel", buttons, icon);
-        this.controls.resultLabel.text = "Ergebnis: " + result;
-        this.setStatus("Dialog-Ergebnis: " + result);
+        const result = this.host.showMessageBox(message, this.t("Dialogs_Caption"), buttons, icon);
+        this.controls.resultLabel.text = this.t("Dialogs_Result", result);
+        this.setStatus(this.t("Dialogs_ResultStatus", result));
     }
 
     activate() {
-        this.setStatus("Dialoge aktiv");
+        this.setStatus(this.t("Dialogs_Active"));
     }
 
     deactivate() {
-        this.setStatus("Dialoge verlassen");
+        this.setStatus(this.t("Dialogs_Left"));
     }
 }

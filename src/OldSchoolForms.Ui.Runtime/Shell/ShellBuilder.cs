@@ -3,6 +3,7 @@ using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Facade;
+using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Modules;
 using OldSchoolForms.Ui.Runtime.Scripting;
 using OldSchoolForms.Ui.Runtime.Serialization;
@@ -33,6 +34,12 @@ public sealed class ShellResult
 
     /// <summary>The ToolStrip, optional.</summary>
     public ToolStrip? Toolbar { get; init; }
+
+    /// <summary>
+    /// Translation bindings captured from <c>tr:</c> references in the shell layout.
+    /// Re-applying them re-localizes the shell chrome after a culture change.
+    /// </summary>
+    public IReadOnlyList<TranslationRef> Translations { get; init; } = new List<TranslationRef>();
 }
 
 /// <summary>
@@ -51,6 +58,7 @@ public static class ShellBuilder
     /// <param name="loader">The layout loader.</param>
     /// <param name="registry">The module registry.</param>
     /// <param name="host">The host services.</param>
+    /// <param name="i18n">The localization service for titles and <c>tr:</c> references.</param>
     /// <returns>The shell result.</returns>
     /// <exception cref="InvalidOperationException">The shell layout or the content TabControl is missing.</exception>
     public static ShellResult Build(
@@ -59,7 +67,8 @@ public static class ShellBuilder
         JsEngineHost engine,
         RuntimeLayoutLoader loader,
         ModuleRegistry registry,
-        Hosting.HostServices host)
+        Hosting.HostServices host,
+        RuntimeI18n? i18n = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(manifest);
@@ -69,7 +78,7 @@ public static class ShellBuilder
         ArgumentNullException.ThrowIfNull(host);
 
         if (!source.Exists(manifest.Shell))
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ShellLayoutMissing"), manifest.Shell));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ShellLayoutMissing"), manifest.Shell));
 
         var form = new Form { Text = manifest.Name };
         var result = loader.LoadInto(form, source.ReadText(manifest.Shell));
@@ -77,7 +86,7 @@ public static class ShellBuilder
             Console.WriteLine($"[shell] Warning: {warning}");
 
         var contentTabs = result.Find("contentTabs") as TabControl
-            ?? throw new InvalidOperationException(LangRes.GetString("Runtime_ShellMissingContentTabs"));
+            ?? throw new InvalidOperationException(LangRes.GetEnglish("Runtime_ShellMissingContentTabs"));
 
         var navTree = result.Find("navTree") as TreeView;
         var statusStrip = result.Find("statusStrip") as StatusStrip ?? FindFirst<StatusStrip>(form);
@@ -86,7 +95,10 @@ public static class ShellBuilder
         var toolbar = result.Find("toolStrip") as ToolStrip ?? FindFirst<ToolStrip>(form);
 
         if (navTree != null)
-            PopulateNavTree(navTree, registry);
+            PopulateNavTree(navTree, registry, i18n);
+
+        WireCultureMenuItems(menu, host);
+        WireCultureMenuItems(toolbar, host);
 
         return new ShellResult
         {
@@ -95,8 +107,66 @@ public static class ShellBuilder
             NavTree = navTree,
             StatusLabel = statusLabel,
             Menu = menu,
-            Toolbar = toolbar
+            Toolbar = toolbar,
+            Translations = result.Translations
         };
+    }
+
+    /// <summary>
+    /// Rebuilds the navigation tree with the titles localized for the current culture.
+    /// </summary>
+    /// <param name="navTree">The navigation TreeView.</param>
+    /// <param name="registry">The module registry.</param>
+    /// <param name="i18n">The localization service.</param>
+    public static void RefreshNavTree(TreeView navTree, ModuleRegistry registry, RuntimeI18n? i18n)
+    {
+        ArgumentNullException.ThrowIfNull(navTree);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        navTree.Nodes.Clear();
+        PopulateNavTree(navTree, registry, i18n);
+    }
+
+    /// <summary>
+    /// Wires strip items whose name starts with <c>culture:</c> (e.g. <c>culture:de</c>)
+    /// to a runtime culture switch via <see cref="Hosting.HostServices.SetCulture"/>.
+    /// Handles both <see cref="MenuStrip"/> and <see cref="ToolStrip"/>.
+    /// </summary>
+    /// <param name="strip">The tool strip or menu strip (may be <c>null</c>).</param>
+    /// <param name="host">The host services performing the switch.</param>
+    public static void WireCultureMenuItems(Control? strip, Hosting.HostServices host)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        if (strip == null) return;
+
+        if (strip is MenuStrip menuStrip)
+        {
+            foreach (var item in menuStrip.Items)
+                WireCultureItem(item, host);
+        }
+        else if (strip is ToolStrip toolStrip)
+        {
+            foreach (ToolStripItem item in toolStrip.Items)
+                WireCultureItem(item, host);
+        }
+    }
+
+    private static void WireCultureItem(ToolStripItem item, Hosting.HostServices host)
+    {
+        if (!string.IsNullOrEmpty(item.Name) && item.Name.StartsWith("culture:", StringComparison.OrdinalIgnoreCase))
+        {
+            var culture = item.Name["culture:".Length..];
+            item.Click += (s, e) => host.SetCulture(culture);
+        }
+
+        if (item is ToolStripMenuItem menuItem)
+        {
+            foreach (var child in menuItem.DropDownItems)
+            {
+                if (child is ToolStripItem childItem)
+                    WireCultureItem(childItem, host);
+            }
+        }
     }
 
     /// <summary>
@@ -117,11 +187,11 @@ public static class ShellBuilder
         };
     }
 
-    private static void PopulateNavTree(TreeView navTree, ModuleRegistry registry)
+    private static void PopulateNavTree(TreeView navTree, ModuleRegistry registry, RuntimeI18n? i18n)
     {
         foreach (var module in registry.All)
         {
-            var node = new TreeNode(module.Title) { Tag = module.Id };
+            var node = new TreeNode(module.GetTitle(i18n)) { Tag = module.Id };
             navTree.Nodes.Add(node);
         }
     }

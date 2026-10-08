@@ -1,16 +1,16 @@
-// Dashboard-Modul (Klassenform): Live-Uhr via setInterval, Navigation zu anderen Modulen.
+// Dashboard module (class form): live clock via setInterval, navigation to other modules.
 import { formatClock, formatDate } from "@app/shared/util.js";
 
 export default class DashboardForm extends FormBase {
     constructor(ctx) {
         super(ctx);
-        this.loadLayout(); // lädt layout.json und füllt this.controls
+        this.loadLayout(); // loads layout.json and fills this.controls
         this.timerId = 0;
         this.controls.openCounter.on("click", () => this.openModule("counter"));
         this.controls.openNotes.on("click", () => this.openModule("notes"));
         this.controls.openDialogs.on("click", () => this.openModule("dialogs"));
         this.tick();
-        console.log("Dashboard initialisiert");
+        console.log("Dashboard initialized");
     }
 
     tick() {
@@ -22,12 +22,12 @@ export default class DashboardForm extends FormBase {
     activate() {
         if (this.timerId) clearInterval(this.timerId);
         this.timerId = setInterval(() => this.tick(), 1000);
-        this.setStatus("Dashboard aktiv");
+        this.setStatus(this.t("Dashboard_Active"));
     }
 
     deactivate() {
         if (this.timerId) { clearInterval(this.timerId); this.timerId = 0; }
-        this.setStatus("Dashboard verlassen");
+        this.setStatus(this.t("Dashboard_Left"));
     }
 
     dispose() {

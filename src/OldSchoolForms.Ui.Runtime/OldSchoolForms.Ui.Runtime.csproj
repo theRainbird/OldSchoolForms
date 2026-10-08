@@ -10,10 +10,12 @@
 
   <ItemGroup>
     <PackageReference Include="Jint" Version="4.8.0" />
+    <PackageReference Include="CoreRemoting" Version="1.3.6" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OldSchoolForms.Ui\OldSchoolForms.Ui.csproj" />
     <ProjectReference Include="..\OldSchoolForms.Ui.Designer\OldSchoolForms.Ui.Designer.csproj" />
+    <ProjectReference Include="..\OldSchoolForms.Shared\OldSchoolForms.Shared.csproj" />
   </ItemGroup>
 </Project>

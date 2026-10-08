@@ -520,4 +520,13 @@
   <data name="Runtime_NotAContainer" xml:space="preserve">
     <value>Control '{0}' is not a container.</value>
   </data>
+  <data name="Runtime_BindingSourceNoTable" xml:space="preserve">
+    <value>The dataset has no table named '{0}'.</value>
+  </data>
+  <data name="Runtime_BindingSourceAddNewFailed" xml:space="preserve">
+    <value>The binding source could not add a new row.</value>
+  </data>
+  <data name="Runtime_BindingSourceUnsupportedItem" xml:space="preserve">
+    <value>Unsupported bound item type '{0}'.</value>
+  </data>
 </root>

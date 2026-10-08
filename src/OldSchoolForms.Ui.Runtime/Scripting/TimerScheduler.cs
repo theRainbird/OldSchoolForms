@@ -124,7 +124,7 @@ public sealed class TimerScheduler
     private int Add(JsValue callback, double intervalMs, bool repeat, string? ownerId)
     {
         if (callback is not Jint.Native.Function.Function)
-            throw new ArgumentException(LangRes.GetString("Runtime_TimerCallbackMustBeFunction"), nameof(callback));
+            throw new ArgumentException(LangRes.GetEnglish("Runtime_TimerCallbackMustBeFunction"), nameof(callback));
 
         if (double.IsNaN(intervalMs) || intervalMs < 0) intervalMs = 0;
 

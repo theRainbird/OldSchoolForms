@@ -22,8 +22,27 @@ public sealed class AppManifest
     /// <summary>Relative path of the entry script (optional).</summary>
     public string? Entry { get; set; }
 
+    /// <summary>Fallback UI culture when a translation key is missing in the current culture.</summary>
+    public string DefaultCulture { get; set; } = "en";
+
+    /// <summary>Relative directory of the i18n bundles within the package.</summary>
+    public string I18nPath { get; set; } = "i18n";
+
+    /// <summary>
+    /// The cultures supported by the app. Empty means auto-detection
+    /// (probe for <c>de</c> and <c>en</c> bundles in the package).
+    /// </summary>
+    public List<string> Cultures { get; } = new();
+
     /// <summary>The feature modules, sorted by <see cref="ModuleDescriptor.Order"/>.</summary>
     public List<ModuleDescriptor> Modules { get; } = new();
+
+    /// <summary>
+    /// The optional backend endpoint (<c>server</c> section). When present, the
+    /// runtime connects to the CoreRemoting server and exposes <c>ctx.remote</c>
+    /// plus <c>@shared/</c> module resolution.
+    /// </summary>
+    public ServerEndpoint? Server { get; set; }
 
     /// <summary>
     /// Loads the app manifest from a package source.
@@ -36,7 +55,7 @@ public sealed class AppManifest
     {
         ArgumentNullException.ThrowIfNull(source);
         if (!source.Exists(path))
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_AppManifestMissing"), path));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_AppManifestMissing"), path));
 
         var doc = ModuleDescriptor.ParseObject(source.ReadText(path), path);
         var manifest = new AppManifest
@@ -44,8 +63,29 @@ public sealed class AppManifest
             Name = ModuleDescriptor.GetString(doc, "name") ?? "OldSchoolForms App",
             Version = ModuleDescriptor.GetString(doc, "version") ?? "1.0.0",
             Shell = ModuleDescriptor.GetString(doc, "shell") ?? "layouts/shell.json",
-            Entry = ModuleDescriptor.GetString(doc, "entry")
+            Entry = ModuleDescriptor.GetString(doc, "entry"),
+            DefaultCulture = ModuleDescriptor.GetString(doc, "defaultCulture") ?? "en",
+            I18nPath = ModuleDescriptor.GetString(doc, "i18n") ?? "i18n"
         };
+
+        if (doc["cultures"] is JsonArray cultures)
+        {
+            foreach (var item in cultures)
+            {
+                if (item is JsonValue val && val.GetValueKind() == System.Text.Json.JsonValueKind.String)
+                    manifest.Cultures.Add(val.GetValue<string>());
+            }
+        }
+
+        if (doc["server"] is JsonObject serverObj)
+        {
+            manifest.Server = new ServerEndpoint
+            {
+                Host = ModuleDescriptor.GetString(serverObj, "host") ?? "localhost",
+                Port = serverObj["port"] is JsonValue pv && pv.TryGetValue(out int port) ? port : 9090,
+                Encryption = !(serverObj["encryption"] is JsonValue ev && ev.TryGetValue(out bool enc) && !enc)
+            };
+        }
 
         if (doc["modules"] is JsonArray modules)
         {
@@ -72,4 +112,20 @@ public sealed class AppManifest
 
         return manifest;
     }
+}
+
+/// <summary>
+/// Backend endpoint configuration from the <c>server</c> section of
+/// <c>app.json</c>: where the CoreRemoting server listens.
+/// </summary>
+public sealed class ServerEndpoint
+{
+    /// <summary>The server host name or address.</summary>
+    public string Host { get; set; } = "localhost";
+
+    /// <summary>The server port.</summary>
+    public int Port { get; set; } = 9090;
+
+    /// <summary>Whether transport encryption (RSA+AES) is used.</summary>
+    public bool Encryption { get; set; } = true;
 }

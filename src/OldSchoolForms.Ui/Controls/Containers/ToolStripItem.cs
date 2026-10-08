@@ -84,6 +84,16 @@ public abstract class ToolStripItem : Component
     private Padding _padding;
     private bool _isHovered;
     private bool _isPressed;
+    private string _name = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the name of the item, used to look it up by name.
+    /// </summary>
+    public string Name
+    {
+        get => _name;
+        set => _name = value ?? string.Empty;
+    }
 
     /// <summary>
     /// Gets or sets the text displayed on the item.

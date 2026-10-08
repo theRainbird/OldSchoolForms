@@ -1,6 +1,7 @@
 using Jint;
 using Jint.Native;
 using Jint.Native.Object;
+using OldSchoolForms.Shared.Scripting;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Facade;
@@ -39,6 +40,7 @@ public sealed class ModuleHost
         public ObjectInstance? Instance;
         public ModuleMode Mode = ModuleMode.Function;
         public List<JsControl> Facades { get; } = new();
+        public List<Facade.JsBindingSource> BindingSources { get; } = new();
         public string ScriptKey = null!;
     }
 
@@ -93,6 +95,12 @@ public sealed class ModuleHost
     public IReadOnlyCollection<string> OpenModuleIds => _open.Keys;
 
     /// <summary>
+    /// The remote services facade exposed to modules as <c>ctx.remote</c>
+    /// (set after construction when a server endpoint is configured).
+    /// </summary>
+    public Remote.RemoteServices? Remote { get; set; }
+
+    /// <summary>
     /// Opens a module in a new tab (or selects the existing one).
     /// </summary>
     /// <param name="id">The module ID.</param>
@@ -100,7 +108,7 @@ public sealed class ModuleHost
     public void OpenModule(string id)
     {
         var descriptor = _registry.Find(id)
-            ?? throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_UnknownModule"), id));
+            ?? throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_UnknownModule"), id));
 
         if (_open.TryGetValue(id, out var existing))
         {
@@ -110,7 +118,7 @@ public sealed class ModuleHost
             return;
         }
 
-        var tab = new TabPage { Text = descriptor.Title };
+        var tab = new TabPage { Text = descriptor.GetTitle(_engine.I18n) };
 
         var scriptKey = descriptor.ScriptPath;
         if (_engine.DevMode)
@@ -144,7 +152,7 @@ public sealed class ModuleHost
             if (control == null)
             {
                 _engine.ReportError($"createControl '{typeName}'",
-                    new InvalidOperationException(string.Format(LangRes.GetString("Runtime_UnknownControlType"), typeName)));
+                    new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_UnknownControlType"), typeName)));
                 return JsValue.Undefined;
             }
 
@@ -226,6 +234,10 @@ public sealed class ModuleHost
         foreach (var facade in loaded.Facades)
             facade.OffAll();
 
+        foreach (var bs in loaded.BindingSources)
+            bs.Dispose();
+        loaded.BindingSources.Clear();
+
         _engine.Timers.ClearForModule(id);
 
         _contentTabs.RemoveTabPage(loaded.Tab);
@@ -267,6 +279,10 @@ public sealed class ModuleHost
 
         foreach (var facade in loaded.Facades)
             facade.OffAll();
+
+        foreach (var bs in loaded.BindingSources)
+            bs.Dispose();
+        loaded.BindingSources.Clear();
 
         _engine.Timers.ClearForModule(id);
 
@@ -420,7 +436,7 @@ public sealed class ModuleHost
         }
         else
         {
-            _engine.ReportError($"Layout {rel}", new InvalidOperationException(string.Format(LangRes.GetString("Runtime_NoLayoutFound"), rel)));
+            _engine.ReportError($"Layout {rel}", new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_NoLayoutFound"), rel)));
         }
 
         return controls;
@@ -459,7 +475,43 @@ public sealed class ModuleHost
         ctx.Set("host", JsValue.FromObject(_engine.Engine, _host));
         ctx.Set("tab", JsValue.FromObject(_engine.Engine, new JsControl(_engine, tab) { OwnerModuleId = loaded.Descriptor.Id }));
         ctx.Set("app", app);
+        ctx.Set("i18n", _engine.Engine.GetValue("i18n"));
+        if (Remote != null)
+            ctx.Set("remote", JsValue.FromObject(_engine.Engine, Remote));
+        ctx.Set("data", BuildDataFactory(loaded));
 
         return ctx;
+    }
+
+    /// <summary>
+    /// Builds the <c>ctx.data</c> object that exposes the <c>createBindingSource</c>
+    /// factory. Created binding sources are tracked on the module and disposed when
+    /// the module closes, so their event subscriptions never outlive the module.
+    /// </summary>
+    /// <param name="loaded">The loaded module that owns the created sources.</param>
+    /// <returns>The <c>data</c> namespace object.</returns>
+    private ObjectInstance BuildDataFactory(LoadedModule loaded)
+    {
+        var data = _engine.NewObject();
+
+        Func<JsValue, JsValue, JsValue> createBindingSource = (sourceJs, tableJs) =>
+        {
+            var source = sourceJs.ToObject() switch
+            {
+                JsDataTable table => new Facade.JsBindingSource(_engine, table),
+                JsDataSet set => new Facade.JsBindingSource(
+                    _engine,
+                    set,
+                    tableJs.IsUndefined() || tableJs.IsNull()
+                        ? throw new InvalidOperationException("createBindingSource(dataSet, tableName) requires a table name.")
+                        : tableJs.ToString()),
+                _ => throw new InvalidOperationException("createBindingSource expects a table or dataset facade.")
+            };
+            loaded.BindingSources.Add(source);
+            return JsValue.FromObject(_engine.Engine, source);
+        };
+
+        data.Set("createBindingSource", JsValue.FromObject(_engine.Engine, createBindingSource));
+        return data;
     }
 }

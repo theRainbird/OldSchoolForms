@@ -44,11 +44,11 @@ public sealed class AppSourceModuleLoader : IModuleLoader
     public Module LoadModule(Engine engine, ResolvedSpecifier resolved)
     {
         if (resolved.Type == SpecifierType.Error)
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModuleResolveFailed"), resolved.ModuleRequest.Specifier));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ModuleResolveFailed"), resolved.ModuleRequest.Specifier));
 
         var key = resolved.Key;
         if (!_source.Exists(key))
-            throw new InvalidOperationException(string.Format(LangRes.GetString("Runtime_ModuleFileMissing"), key));
+            throw new InvalidOperationException(string.Format(LangRes.GetEnglish("Runtime_ModuleFileMissing"), key));
 
         var code = _source.ReadText(key);
         return ModuleFactory.BuildSourceTextModule(engine, resolved, code);
