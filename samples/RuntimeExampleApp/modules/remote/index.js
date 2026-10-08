@@ -16,10 +16,10 @@ export default class RemoteCustomersForm extends FormBase {
         this.controls.btnLoad.on("click", () => this.load());
         this.controls.btnLoadAsync.on("click", () => this.loadAsync());
         this.controls.btnApply.on("click", () => this.applyFilterSort());
-        this.controls.btnFirst.on("click", () => this.bs && this.bs.moveFirst());
-        this.controls.btnPrev.on("click", () => this.bs && this.bs.movePrevious());
-        this.controls.btnNext.on("click", () => this.bs && this.bs.moveNext());
-        this.controls.btnLast.on("click", () => this.bs && this.bs.moveLast());
+        this.controls.navFirst.on("click", () => this.bs && this.bs.moveFirst());
+        this.controls.navPrev.on("click", () => this.bs && this.bs.movePrevious());
+        this.controls.navNext.on("click", () => this.bs && this.bs.moveNext());
+        this.controls.navLast.on("click", () => this.bs && this.bs.moveLast());
         this.controls.btnAdd.on("click", () => this.addCustomer());
         this.controls.btnSave.on("click", () => this.save());
         this.controls.btnValidate.on("click", () => this.validateAll());

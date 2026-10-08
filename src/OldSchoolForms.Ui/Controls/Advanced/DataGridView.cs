@@ -18,6 +18,7 @@ public class DataGridView : ContainerControl
     private int _rowHeight = 30;
     private object? _dataSource;
     private IBindingList? _previousBindingList;
+    private BindingSource? _boundBindingSource;
     private string _dataMember = string.Empty;
     private bool _dataSourceUpdating;
     private bool _allowUserToAddRows = true;
@@ -1702,11 +1703,41 @@ public class DataGridView : ContainerControl
                 _previousBindingList.ListChanged -= OnDataSourceListChanged;
             _previousBindingList = null;
 
+            if (_boundBindingSource != null)
+            {
+                _boundBindingSource.PositionChanged -= OnBoundBindingSourcePositionChanged;
+                _boundBindingSource = null;
+            }
+
             _rows.Clear(); ClearSort(); _selectedRowIndex = -1; _selectedColumnIndex = -1;
             if (_dataSource is System.Collections.IEnumerable enumerable && _dataSource is not string) { foreach (var item in enumerable) _rows.Add(CreateRowFromDataItem(item)); }
             if (_dataSource is IBindingList bindingList) { bindingList.ListChanged += OnDataSourceListChanged; _previousBindingList = bindingList; }
+            if (_dataSource is BindingSource bs)
+            {
+                _boundBindingSource = bs;
+                bs.PositionChanged += OnBoundBindingSourcePositionChanged;
+                if (bs.Position >= 0 && bs.Position < _rows.Count)
+                    _selectedRowIndex = bs.Position;
+            }
             if (_groupedColumnIndices.Count > 0) BuildGroups();
-            if (_rows.Count > 0 && _columns.Count > 0) { _selectedRowIndex = 0; _selectedColumnIndex = 0; }
+            if (_rows.Count > 0 && _columns.Count > 0 && _selectedRowIndex < 0) { _selectedRowIndex = 0; _selectedColumnIndex = 0; }
+            Invalidate();
+        }
+        finally { _dataSourceUpdating = false; }
+    }
+
+    private void OnBoundBindingSourcePositionChanged(object? sender, EventArgs e)
+    {
+        if (_dataSourceUpdating || _boundBindingSource == null) return;
+        int pos = _boundBindingSource.Position;
+        if (pos < 0 || pos >= _rows.Count) return;
+        if (_selectedRowIndex == pos) return;
+        _dataSourceUpdating = true;
+        try
+        {
+            _selectedRowIndex = pos;
+            if (_selectedColumnIndex < 0) _selectedColumnIndex = 0;
+            EnsureRowVisible(pos);
             Invalidate();
         }
         finally { _dataSourceUpdating = false; }

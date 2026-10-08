@@ -40,6 +40,7 @@ public sealed class ModuleHost
         public ObjectInstance? Instance;
         public ModuleMode Mode = ModuleMode.Function;
         public List<JsControl> Facades { get; } = new();
+        public List<Facade.JsToolStripItem> StripFacades { get; } = new();
         public List<Facade.JsBindingSource> BindingSources { get; } = new();
         public string ScriptKey = null!;
     }
@@ -234,6 +235,10 @@ public sealed class ModuleHost
         foreach (var facade in loaded.Facades)
             facade.OffAll();
 
+        foreach (var stripFacade in loaded.StripFacades)
+            stripFacade.OffAll();
+        loaded.StripFacades.Clear();
+
         foreach (var bs in loaded.BindingSources)
             bs.Dispose();
         loaded.BindingSources.Clear();
@@ -279,6 +284,10 @@ public sealed class ModuleHost
 
         foreach (var facade in loaded.Facades)
             facade.OffAll();
+
+        foreach (var stripFacade in loaded.StripFacades)
+            stripFacade.OffAll();
+        loaded.StripFacades.Clear();
 
         foreach (var bs in loaded.BindingSources)
             bs.Dispose();
@@ -418,6 +427,9 @@ public sealed class ModuleHost
         foreach (var facade in loaded.Facades)
             facade.OffAll();
         loaded.Facades.Clear();
+        foreach (var stripFacade in loaded.StripFacades)
+            stripFacade.OffAll();
+        loaded.StripFacades.Clear();
         tab.Controls.Clear();
 
         var controls = _engine.NewObject();
@@ -431,6 +443,13 @@ public sealed class ModuleHost
             {
                 var facade = new JsControl(_engine, kvp.Value) { OwnerModuleId = descriptor.Id };
                 loaded.Facades.Add(facade);
+                controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
+            }
+
+            foreach (var kvp in lr.StripItems)
+            {
+                var facade = new Facade.JsToolStripItem(_engine, kvp.Value) { OwnerModuleId = descriptor.Id };
+                loaded.StripFacades.Add(facade);
                 controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
             }
         }

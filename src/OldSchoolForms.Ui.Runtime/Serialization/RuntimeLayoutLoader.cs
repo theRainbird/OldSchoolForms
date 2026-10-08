@@ -24,14 +24,17 @@ public sealed class LayoutLoadResult
     /// <param name="controls">Controls keyed by <see cref="Control.Name"/> (case-insensitive).</param>
     /// <param name="warnings">Warnings from the load operation.</param>
     /// <param name="translations">Translation bindings captured from <c>tr:</c> references.</param>
+    /// <param name="stripItems">Named tool strip items keyed by <see cref="ToolStripItem.Name"/> (case-insensitive).</param>
     public LayoutLoadResult(
         IReadOnlyDictionary<string, Control> controls,
         IReadOnlyList<string> warnings,
-        IReadOnlyList<TranslationRef>? translations = null)
+        IReadOnlyList<TranslationRef>? translations = null,
+        IReadOnlyDictionary<string, ToolStripItem>? stripItems = null)
     {
         Controls = controls;
         Warnings = warnings;
         Translations = translations ?? new List<TranslationRef>();
+        StripItems = stripItems ?? new Dictionary<string, ToolStripItem>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>The loaded, named controls.</summary>
@@ -39,6 +42,14 @@ public sealed class LayoutLoadResult
 
     /// <summary>Warnings about unknown types or properties.</summary>
     public IReadOnlyList<string> Warnings { get; }
+
+    /// <summary>
+    /// Named tool strip items (buttons, labels) captured from tool strips in the layout,
+    /// keyed by <see cref="ToolStripItem.Name"/> (case-insensitive). These are not
+    /// <see cref="Control"/> instances, so they are tracked separately from
+    /// <see cref="Controls"/>.
+    /// </summary>
+    public IReadOnlyDictionary<string, ToolStripItem> StripItems { get; }
 
     /// <summary>
     /// Translation bindings captured from <c>tr:</c> property values.
@@ -162,6 +173,7 @@ public sealed class RuntimeLayoutLoader
         var warnings = new List<string>();
         var controls = new Dictionary<string, Control>(StringComparer.OrdinalIgnoreCase);
         var translations = new List<TranslationRef>();
+        var stripItems = new Dictionary<string, ToolStripItem>(StringComparer.OrdinalIgnoreCase);
 
         JsonNode? parsed;
         try
@@ -196,11 +208,11 @@ public sealed class RuntimeLayoutLoader
             foreach (var node in roots)
             {
                 if (node is JsonObject controlNode)
-                    LoadControl(controlNode, target, warnings, controls, translations);
+                    LoadControl(controlNode, target, warnings, controls, translations, stripItems);
             }
         }
 
-        return new LayoutLoadResult(controls, warnings, translations);
+        return new LayoutLoadResult(controls, warnings, translations, stripItems);
     }
 
     private void LoadControl(
@@ -208,7 +220,8 @@ public sealed class RuntimeLayoutLoader
         Control parent,
         List<string> warnings,
         Dictionary<string, Control> controls,
-        List<TranslationRef> translations)
+        List<TranslationRef> translations,
+        Dictionary<string, ToolStripItem> stripItems)
     {
         var typeName = GetString(node, "type");
         var type = ResolveType(typeName ?? string.Empty);
@@ -252,15 +265,19 @@ public sealed class RuntimeLayoutLoader
             }
         }
 
-        if (control is ToolStrip toolStrip && node["items"] is JsonArray stripItems)
+        if (control is ToolStrip toolStrip && node["items"] is JsonArray stripItemsNode)
         {
-            foreach (var itemNode in stripItems)
+            foreach (var itemNode in stripItemsNode)
             {
                 if (itemNode is JsonObject itemObj)
                 {
                     var stripItem = LoadStripItem(itemObj, warnings, translations);
                     if (stripItem != null)
+                    {
+                        if (!string.IsNullOrEmpty(stripItem.Name))
+                            stripItems[stripItem.Name] = stripItem;
                         toolStrip.Items.Add(stripItem);
+                    }
                 }
             }
         }
@@ -285,7 +302,7 @@ public sealed class RuntimeLayoutLoader
                 if (childNode is JsonObject childObj)
                 {
                     if (control is ContainerControl container)
-                        LoadControl(childObj, container, warnings, controls, translations);
+                        LoadControl(childObj, container, warnings, controls, translations, stripItems);
                     else
                         warnings.Add($"Control '{typeName}' cannot accept children.");
                 }
@@ -351,6 +368,10 @@ public sealed class RuntimeLayoutLoader
             warnings.Add($"Strip item '{typeName}' could not be created: {ex.Message}");
             return null;
         }
+
+        var declaredItemName = GetString(node, "name");
+        if (!string.IsNullOrEmpty(declaredItemName))
+            item.Name = declaredItemName;
 
         ApplyProperties(item, node["props"] as JsonObject, warnings, translations);
 

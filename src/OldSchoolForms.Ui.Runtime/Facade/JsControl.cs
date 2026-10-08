@@ -1,4 +1,5 @@
 using System.Data;
+using System.Reflection;
 using Jint.Native;
 using OldSchoolForms.Shared.Scripting;
 using OldSchoolForms.Ui.Controls.Advanced;
@@ -47,11 +48,33 @@ public sealed class JsControl
         set => Control.Name = value ?? string.Empty;
     }
 
-    /// <summary>The text of the control.</summary>
+    /// <summary>
+    /// The text of the control. Some controls (e.g. <c>TextBox</c>, <c>ComboBox</c>)
+    /// shadow <see cref="Control.Text"/> with a <c>new</c> property backed by their own
+    /// storage; this reads/writes the most-derived <c>Text</c> so the facade reflects
+    /// the value the user sees and the data binding writes, rather than the base field.
+    /// </summary>
     public string Text
     {
-        get => Control.Text;
-        set => Control.Text = value ?? string.Empty;
+        get => ReadText();
+        set => WriteText(value ?? string.Empty);
+    }
+
+    private string ReadText()
+    {
+        var prop = Control.GetType().GetProperty("Text", BindingFlags.Public | BindingFlags.Instance);
+        if (prop != null && prop.CanRead && prop.DeclaringType != typeof(Control))
+            return (prop.GetValue(Control) as string) ?? string.Empty;
+        return Control.Text;
+    }
+
+    private void WriteText(string value)
+    {
+        var prop = Control.GetType().GetProperty("Text", BindingFlags.Public | BindingFlags.Instance);
+        if (prop != null && prop.CanWrite && prop.DeclaringType != typeof(Control))
+            prop.SetValue(Control, value);
+        else
+            Control.Text = value;
     }
 
     /// <summary>Visibility of the control.</summary>

@@ -12,8 +12,8 @@ public sealed class JsEvent
     /// Creates an event with a type and target.
     /// </summary>
     /// <param name="type">The event type (e.g. <c>click</c>).</param>
-    /// <param name="target">The target facade.</param>
-    public JsEvent(string type, JsControl target)
+    /// <param name="target">The target facade, or <c>null</c> for non-control targets such as tool strip items.</param>
+    public JsEvent(string type, JsControl? target)
     {
         Type = type;
         Target = target;
@@ -22,8 +22,8 @@ public sealed class JsEvent
     /// <summary>The event type.</summary>
     public string Type { get; }
 
-    /// <summary>The control that raised the event.</summary>
-    public JsControl Target { get; }
+    /// <summary>The control that raised the event, or <c>null</c> for non-control targets such as tool strip items.</summary>
+    public JsControl? Target { get; }
 
     /// <summary>X coordinate (mouse).</summary>
     public int X { get; set; }

@@ -1,5 +1,6 @@
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Basic;
+using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Hosting;
@@ -105,6 +106,34 @@ public sealed class RemoteModuleIntegrationTests : IDisposable
         onClick.Invoke(control, new object[] { EventArgs.Empty });
     }
 
+    /// <summary>
+    /// Recursively searches the control tree for a <see cref="ToolStrip"/> and returns
+    /// the named <see cref="ToolStripItem"/> (button/label) living inside it.
+    /// </summary>
+    private static ToolStripItem? FindStripItem(Control root, string name)
+    {
+        foreach (Control c in root.Controls)
+        {
+            if (c is ToolStrip strip)
+            {
+                foreach (ToolStripItem item in strip.Items)
+                {
+                    if (string.Equals(item.Name, name, System.StringComparison.OrdinalIgnoreCase))
+                        return item;
+                }
+            }
+
+            var nested = FindStripItem(c, name);
+            if (nested != null)
+                return nested;
+        }
+
+        return null;
+    }
+
+    /// <summary>Raises a tool strip item's click (honoring its enabled state).</summary>
+    private static void FireStripClick(ToolStripItem item) => item.PerformClick();
+
     [Fact]
     public void RemoteModule_OpensAndConstructsWithoutError()
     {
@@ -127,13 +156,13 @@ public sealed class RemoteModuleIntegrationTests : IDisposable
         Assert.NotNull(grid);
         Assert.Equal(0, grid!.Rows.Count); // empty before load
 
-        var btnLoad = tab.Controls.FindControl("btnLoad", true);
+        var btnLoad = FindStripItem(tab, "btnLoad");
         Assert.NotNull(btnLoad);
 
         var clickErrors = new List<string>();
         _fx.Engine.Error += (ctx, ex) => clickErrors.Add(ctx + ": " + ex.Message);
 
-        FireClick(btnLoad!);
+        FireStripClick(btnLoad!);
 
         var statusText = _fx.Status.Text;
         Assert.True(grid.Rows.Count >= 2,
@@ -146,16 +175,16 @@ public sealed class RemoteModuleIntegrationTests : IDisposable
         _fx.ModuleHost.OpenModule("remote");
         var tab = _fx.Tabs.TabPages[_fx.Tabs.TabPages.Count - 1];
 
-        var btnLoad = tab.Controls.FindControl("btnLoad", true)!;
-        FireClick(btnLoad);
+        var btnLoad = FindStripItem(tab, "btnLoad")!;
+        FireStripClick(btnLoad);
 
         var nameBox = tab.Controls.FindControl("nameBox", true) as TextBox;
         Assert.NotNull(nameBox);
         var first = nameBox!.Text;
         Assert.False(string.IsNullOrEmpty(first), "nameBox should show current row's name after load");
 
-        var btnNext = tab.Controls.FindControl("btnNext", true)!;
-        FireClick(btnNext);
+        var btnNext = FindStripItem(tab, "navNext")!;
+        FireStripClick(btnNext);
 
         // Navigation moves the currency; the bound TextBox must reflect a different row.
         Assert.NotEqual(first, nameBox.Text);
@@ -167,7 +196,7 @@ public sealed class RemoteModuleIntegrationTests : IDisposable
         _fx.ModuleHost.OpenModule("remote");
         var tab = _fx.Tabs.TabPages[_fx.Tabs.TabPages.Count - 1];
 
-        FireClick(tab.Controls.FindControl("btnLoad", true)!);
+        FireStripClick(FindStripItem(tab, "btnLoad")!);
         var grid = (DataGridView)tab.Controls.FindControl("grid", true)!;
         var before = grid.Rows.Count;
 
@@ -183,7 +212,7 @@ public sealed class RemoteModuleIntegrationTests : IDisposable
         var clickErrors = new List<string>();
         _fx.Engine.Error += (ctx, ex) => clickErrors.Add(ctx + ": " + ex.Message);
 
-        FireClick(tab.Controls.FindControl("btnAdd", true)!);
+        FireStripClick(FindStripItem(tab, "btnAdd")!);
 
         Console.WriteLine($"TESTDBG after click: CLR nameBox.Text='{nameBox.Text}'");
         var statusText = _fx.Status.Text;

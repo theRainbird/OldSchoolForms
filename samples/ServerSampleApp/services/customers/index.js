@@ -12,6 +12,7 @@ export default class CustomersService {
     this.store = createTable(context, CUSTOMER_SCHEMA);
     this.store.add({ id: 1, name: "Ada Lovelace", email: "ada@example.com", age: 36 });
     this.store.add({ id: 2, name: "Bob Smith", email: "bob@example.com", age: 41 });
+    this.store.acceptChanges();
   }
 
   // Returns the full customer table (typed DataTable over the wire).
