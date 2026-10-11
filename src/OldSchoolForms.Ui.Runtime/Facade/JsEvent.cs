@@ -58,5 +58,12 @@ public sealed class JsEvent
     /// </summary>
     public bool Handled { get; set; }
 
+    /// <summary>
+    /// Additional event data, e.g. the affected tool strip item facade for
+    /// <c>itemadded</c>/<c>itemremoved</c> events. <see langword="null"/> when
+    /// the event carries no extra payload.
+    /// </summary>
+    public object? Payload { get; set; }
+
     internal EventArgs? Inner { get; set; }
 }

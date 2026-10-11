@@ -14,10 +14,13 @@ namespace OldSchoolForms.Ui.Runtime.Facade;
 /// thanks to the engine's camelCase fallback they are reachable from JS as
 /// <c>text</c>, <c>enabled</c>, <c>visible</c>, etc.
 /// </summary>
-public sealed class JsToolStripItem
+public class JsToolStripItem
 {
-    private readonly JsEngineHost _host;
-    private readonly List<(string Event, Delegate Handler)> _wired = new();
+    /// <summary>The JS engine used for event callbacks.</summary>
+    protected readonly JsEngineHost Host;
+
+    /// <summary>The event handlers registered through <see cref="On"/>, for teardown.</summary>
+    protected readonly List<(string Event, Delegate Handler)> Wired = new();
 
     /// <summary>
     /// Creates a facade around a tool strip item.
@@ -28,7 +31,7 @@ public sealed class JsToolStripItem
     {
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(item);
-        _host = host;
+        Host = host;
         Item = item;
     }
 
@@ -106,17 +109,25 @@ public sealed class JsToolStripItem
 
     /// <summary>
     /// Registers a JavaScript callback for an event.
-    /// Supported: click.
+    /// Supported: click, plus typed-facade events via <see cref="WireCustom"/>.
     /// </summary>
     /// <param name="eventName">The event name (case-insensitive).</param>
     /// <param name="callback">The JavaScript function.</param>
     /// <exception cref="ArgumentException">Unknown event or callback is not a function.</exception>
-    public void On(string eventName, JsValue callback)
+    public virtual void On(string eventName, JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
             throw new ArgumentException(LangRes.GetEnglish("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var normalized = (eventName ?? string.Empty).Trim().ToLowerInvariant();
+
+        var customHandler = WireCustom(normalized, callback);
+        if (customHandler != null)
+        {
+            Wired.Add((normalized, customHandler));
+            return;
+        }
+
         Delegate handler = normalized switch
         {
             "click" => new EventHandler((s, e) => Raise("click", callback, e)),
@@ -124,30 +135,82 @@ public sealed class JsToolStripItem
         };
 
         Item.Click += (EventHandler)handler;
-        _wired.Add((normalized, handler));
+        Wired.Add((normalized, handler));
     }
 
     /// <summary>
     /// Removes all registered callbacks (on module teardown).
     /// </summary>
-    public void OffAll()
+    public virtual void OffAll()
     {
-        foreach (var (_, handler) in _wired)
-            Item.Click -= (EventHandler)handler;
-        _wired.Clear();
+        foreach (var (evt, handler) in Wired)
+            Unwire(evt, handler);
+        Wired.Clear();
     }
 
-    private void Raise(string type, JsValue callback, EventArgs e)
+    /// <summary>
+    /// Hook for typed facades to wire item-specific events. Return the created
+    /// handler when the event was handled; return <see langword="null"/> to let
+    /// the base class wire the generic <c>click</c> event.
+    /// </summary>
+    /// <param name="normalized">The normalized (lowercase) event name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <returns>The wired handler, or <see langword="null"/> when not handled.</returns>
+    protected virtual Delegate? WireCustom(string normalized, JsValue callback) => null;
+
+    /// <summary>
+    /// Hook for typed facades to unwire item-specific events created by
+    /// <see cref="WireCustom"/>. Return <see langword="true"/> when the event was
+    /// handled; otherwise the base class attempts the generic events.
+    /// </summary>
+    /// <param name="normalized">The normalized (lowercase) event name.</param>
+    /// <param name="handler">The handler originally created by <see cref="WireCustom"/>.</param>
+    /// <returns><see langword="true"/> when the handler was unwired.</returns>
+    protected virtual bool UnwireCustom(string normalized, Delegate handler) => false;
+
+    /// <summary>
+    /// Removes a previously registered handler for the given event.
+    /// </summary>
+    /// <param name="normalized">The normalized (lowercase) event name.</param>
+    /// <param name="handler">The handler to remove.</param>
+    protected virtual void Unwire(string normalized, Delegate handler)
+    {
+        if (UnwireCustom(normalized, handler))
+            return;
+
+        if (normalized == "click")
+            Item.Click -= (EventHandler)handler;
+    }
+
+    /// <summary>
+    /// Raises a JavaScript callback for an event within the owner module's scope.
+    /// Typed facades use this for their item-specific events.
+    /// </summary>
+    /// <param name="type">The normalized event type name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <param name="e">The CLR event arguments.</param>
+    protected void Raise(string type, JsValue callback, EventArgs e)
     {
         var jsEvent = new JsEvent(type, null) { Inner = e };
+        RaiseEvent(type, callback, jsEvent);
+    }
+
+    /// <summary>
+    /// Raises a pre-built <see cref="JsEvent"/> within the owner module's scope.
+    /// </summary>
+    /// <param name="type">The normalized event type name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <param name="jsEvent">The pre-built JS event.</param>
+    protected void RaiseEvent(string type, JsValue callback, JsEvent jsEvent)
+    {
         try
         {
-            using (_host.UseModule(OwnerModuleId))
-                _host.CallFunction(callback, Jint.Native.JsValue.FromObject(_host.Engine, jsEvent));
+            using (Host.UseModule(OwnerModuleId))
+                Host.CallFunction(callback, JsValue.Undefined, JsValue.FromObject(Host.Engine, jsEvent));
         }
         catch (Exception ex)
         {
-            _host.ReportError($"Event '{type}' on strip item '{Item.Name}'", ex);
+            Host.ReportError($"Event '{type}' on strip item '{Item.Name}'", ex);
         }
     }
 }

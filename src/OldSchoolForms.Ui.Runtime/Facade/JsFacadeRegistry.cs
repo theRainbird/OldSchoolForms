@@ -1,3 +1,4 @@
+using OldSchoolForms.Ui.Controls;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
@@ -111,6 +112,19 @@ public static class JsFacadeRegistry
         Register<Label>((host, c) => new JsLabel(host, c));
         Register<PictureBox>((host, c) => new JsPictureBox(host, c));
         Register<DateTimePicker>((host, c) => new JsDateTimePicker(host, c));
+
+        Register<Panel>((host, c) => new JsPanel(host, c));
+        Register<SplitPanel>((host, c) => new JsSplitPanel(host, c));
+        Register<TabControl>((host, c) => new JsTabControl(host, c));
+        Register<TreeView>((host, c) => new JsTreeView(host, c));
+        Register<MenuStrip>((host, c) => new JsMenuStrip(host, c));
+        Register<ToolStrip>((host, c) => new JsToolStrip(host, c));
+        Register<StatusStrip>((host, c) => new JsStatusStrip(host, c));
+
+        RegisterStripItem<ToolStripMenuItem>((host, i) => new JsToolStripMenuItem(host, i));
+        RegisterStripItem<ToolStripButton>((host, i) => new JsToolStripButton(host, i));
+        RegisterStripItem<ToolStripLabel>((host, i) => new JsToolStripLabel(host, i));
+        RegisterStripItem<ToolStripTextBox>((host, i) => new JsToolStripTextBox(host, i));
     }
 
     /// <summary>

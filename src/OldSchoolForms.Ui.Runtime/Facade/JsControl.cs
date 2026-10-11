@@ -316,10 +316,24 @@ public class JsControl
     protected void Raise(string type, JsValue callback, EventArgs e)
     {
         var jsEvent = BuildEvent(type, e);
+        RaiseEvent(type, callback, jsEvent, e);
+    }
+
+    /// <summary>
+    /// Raises a pre-built <see cref="JsEvent"/> within the owner module's scope.
+    /// Typed facades use this for events whose JS target differs from the facade
+    /// itself (e.g. a tab close request targeting the closed page).
+    /// </summary>
+    /// <param name="type">The normalized event type name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <param name="jsEvent">The pre-built JS event.</param>
+    /// <param name="e">Optional CLR event args for <c>handled</c> write-back.</param>
+    protected void RaiseEvent(string type, JsValue callback, JsEvent jsEvent, EventArgs? e = null)
+    {
         try
         {
             using (Host.UseModule(OwnerModuleId))
-                Host.CallFunction(callback, Jint.Native.JsValue.FromObject(Host.Engine, jsEvent));
+                Host.CallFunction(callback, JsValue.Undefined, JsValue.FromObject(Host.Engine, jsEvent));
         }
         catch (Exception ex)
         {
@@ -353,6 +367,9 @@ public class JsControl
                 break;
             case KeyPressEventArgs kpe:
                 jsEvent.KeyChar = kpe.KeyChar.ToString();
+                break;
+            case OldSchoolForms.Ui.Controls.Containers.SplitterDragEventArgs sde:
+                jsEvent.X = sde.NewPosition;
                 break;
         }
 

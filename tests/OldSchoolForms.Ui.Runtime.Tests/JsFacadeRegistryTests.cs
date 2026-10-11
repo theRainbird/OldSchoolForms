@@ -130,7 +130,7 @@ public class JsFacadeRegistryTests : IDisposable
     public void WrapStripItem_FallsBackToBaseFacade()
     {
         using var engine = CreateEngine();
-        var item = new ToolStripButton("x");
+        var item = new ToolStripSeparator();
 
         var facade = JsFacadeRegistry.WrapStripItem(engine, item);
 
