@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Jint.Native.Object;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Localization;
 using OldSchoolForms.Ui.Runtime.Sources;
 
@@ -60,6 +61,7 @@ public sealed class JsEngineHost : IDisposable
             };
         });
 
+        JsFacadeRegistry.RegisterDefaults();
         InstallGlobals();
     }
 

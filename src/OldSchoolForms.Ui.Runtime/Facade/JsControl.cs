@@ -263,6 +263,14 @@ public class JsControl
             throw new ArgumentException(LangRes.GetEnglish("Runtime_CallbackMustBeFunction"), nameof(callback));
 
         var normalized = (eventName ?? string.Empty).Trim().ToLowerInvariant();
+
+        var customHandler = WireCustom(normalized, callback);
+        if (customHandler != null)
+        {
+            Wired.Add((normalized, customHandler));
+            return;
+        }
+
         Delegate handler = normalized switch
         {
             "click" => new EventHandler((s, e) => Raise("click", callback, e)),
@@ -351,6 +359,26 @@ public class JsControl
         return jsEvent;
     }
 
+    /// <summary>
+    /// Hook for typed facades to wire control-specific events. Return the created
+    /// handler when the event was handled; return <see langword="null"/> to let the
+    /// base class wire the generic control events.
+    /// </summary>
+    /// <param name="normalized">The normalized (lowercase) event name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <returns>The wired handler, or <see langword="null"/> when not handled.</returns>
+    protected virtual Delegate? WireCustom(string normalized, JsValue callback) => null;
+
+    /// <summary>
+    /// Hook for typed facades to unwire control-specific events created by
+    /// <see cref="WireCustom"/>. Return <see langword="true"/> when the event was
+    /// handled; otherwise the base class attempts the generic events.
+    /// </summary>
+    /// <param name="normalized">The normalized (lowercase) event name.</param>
+    /// <param name="handler">The handler originally created by <see cref="WireCustom"/>.</param>
+    /// <returns><see langword="true"/> when the handler was unwired.</returns>
+    protected virtual bool UnwireCustom(string normalized, Delegate handler) => false;
+
     protected virtual void Wire(string normalized, Delegate handler)
     {
         switch (normalized)
@@ -372,6 +400,9 @@ public class JsControl
 
     protected virtual void Unwire(string normalized, Delegate handler)
     {
+        if (UnwireCustom(normalized, handler))
+            return;
+
         switch (normalized)
         {
             case "click": Control.Click -= (EventHandler)handler; break;

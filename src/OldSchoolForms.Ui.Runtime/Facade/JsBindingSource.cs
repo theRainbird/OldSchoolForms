@@ -124,7 +124,7 @@ public sealed class JsBindingSource : IDisposable
     {
         if (_source.List == null || index < 0 || index >= _source.List.Count)
             throw new ArgumentOutOfRangeException(nameof(index));
-        return new JsDataRow(_host.Engine, UnderlyingRow(_source.List[index]));
+        return new JsDataRow(_host.Engine, UnderlyingRow(_source.List[index]!));
     }
 
     /// <summary>Moves the currency to the first row.</summary>

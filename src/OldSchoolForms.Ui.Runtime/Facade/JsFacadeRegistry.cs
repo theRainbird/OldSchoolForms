@@ -1,5 +1,8 @@
+using OldSchoolForms.Ui.Controls.Advanced;
+using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Facade.Typed;
 using OldSchoolForms.Ui.Runtime.Scripting;
 
 namespace OldSchoolForms.Ui.Runtime.Facade;
@@ -86,6 +89,28 @@ public static class JsFacadeRegistry
         }
 
         return new JsToolStripItem(host, item);
+    }
+
+    /// <summary>
+    /// Registers the built-in typed facades for the basic controls. Idempotent;
+    /// called automatically when a <see cref="JsEngineHost"/> is created.
+    /// Custom registrations made after this call override the defaults.
+    /// </summary>
+    public static void RegisterDefaults()
+    {
+        Register<Button>((host, c) => new JsButton(host, c));
+        Register<CheckBox>((host, c) => new JsCheckBox(host, c));
+        Register<RadioButton>((host, c) => new JsRadioButton(host, c));
+        Register<TextBox>((host, c) => new JsTextBox(host, c));
+        Register<MemoBox>((host, c) => new JsMemoBox(host, c));
+        Register<ComboBox>((host, c) => new JsComboBox(host, c));
+        Register<ListBox>((host, c) => new JsListBox(host, c));
+        Register<ProgressBar>((host, c) => new JsProgressBar(host, c));
+        Register<Spinner>((host, c) => new JsSpinner(host, c));
+        Register<FontPicker>((host, c) => new JsFontPicker(host, c));
+        Register<Label>((host, c) => new JsLabel(host, c));
+        Register<PictureBox>((host, c) => new JsPictureBox(host, c));
+        Register<DateTimePicker>((host, c) => new JsDateTimePicker(host, c));
     }
 
     /// <summary>
