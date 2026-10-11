@@ -13,11 +13,16 @@ namespace OldSchoolForms.Ui.Runtime.Facade;
 /// stable API so that JavaScript does not access the raw CLR surface directly.
 /// Properties are written in PascalCase; thanks to the engine's camelCase
 /// fallback they are reachable from JS as <c>text</c>, <c>visible</c>, etc.
+/// Typed facades (e.g. <c>JsCheckBox</c>) derive from this class and are resolved
+/// through the <see cref="JsFacadeRegistry"/>.
 /// </summary>
-public sealed class JsControl
+public class JsControl
 {
-    private readonly JsEngineHost _host;
-    private readonly List<(string Event, Delegate Handler)> _wired = new();
+    /// <summary>The JS engine used for event callbacks.</summary>
+    protected readonly JsEngineHost Host;
+
+    /// <summary>The event handlers registered through <see cref="On"/>, for teardown.</summary>
+    protected readonly List<(string Event, Delegate Handler)> Wired = new();
 
     /// <summary>
     /// Creates a facade around a control.
@@ -28,7 +33,7 @@ public sealed class JsControl
     {
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(control);
-        _host = host;
+        Host = host;
         Control = control;
     }
 
@@ -140,7 +145,7 @@ public sealed class JsControl
     public JsControl? Find(string name)
     {
         var found = Control.Controls.FindControl(name, true);
-        return found == null ? null : new JsControl(_host, found);
+        return found == null ? null : JsFacadeRegistry.WrapControl(Host, found);
     }
 
     /// <summary>
@@ -151,7 +156,7 @@ public sealed class JsControl
     {
         var list = new List<JsControl>();
         foreach (Control c in Control.Controls)
-            list.Add(new JsControl(_host, c));
+            list.Add(JsFacadeRegistry.WrapControl(Host, c));
         return list.ToArray();
     }
 
@@ -252,7 +257,7 @@ public sealed class JsControl
     /// <param name="eventName">The event name (case-insensitive).</param>
     /// <param name="callback">The JavaScript function.</param>
     /// <exception cref="ArgumentException">Unknown event or callback is not a function.</exception>
-    public void On(string eventName, JsValue callback)
+    public virtual void On(string eventName, JsValue callback)
     {
         if (callback is not Jint.Native.Function.Function)
             throw new ArgumentException(LangRes.GetEnglish("Runtime_CallbackMustBeFunction"), nameof(callback));
@@ -280,30 +285,37 @@ public sealed class JsControl
         };
 
         Wire(normalized, handler);
-        _wired.Add((normalized, handler));
+        Wired.Add((normalized, handler));
     }
 
     /// <summary>
     /// Removes all registered callbacks (on module teardown).
     /// </summary>
-    public void OffAll()
+    public virtual void OffAll()
     {
-        foreach (var (evt, handler) in _wired)
+        foreach (var (evt, handler) in Wired)
             Unwire(evt, handler);
-        _wired.Clear();
+        Wired.Clear();
     }
 
-    private void Raise(string type, JsValue callback, EventArgs e)
+    /// <summary>
+    /// Raises a JavaScript callback for an event within the owner module's scope.
+    /// Typed facades use this for their control-specific events.
+    /// </summary>
+    /// <param name="type">The normalized event type name.</param>
+    /// <param name="callback">The JavaScript function.</param>
+    /// <param name="e">The CLR event arguments.</param>
+    protected void Raise(string type, JsValue callback, EventArgs e)
     {
         var jsEvent = BuildEvent(type, e);
         try
         {
-            using (_host.UseModule(OwnerModuleId))
-                _host.CallFunction(callback, Jint.Native.JsValue.FromObject(_host.Engine, jsEvent));
+            using (Host.UseModule(OwnerModuleId))
+                Host.CallFunction(callback, Jint.Native.JsValue.FromObject(Host.Engine, jsEvent));
         }
         catch (Exception ex)
         {
-            _host.ReportError($"Event '{type}' on '{Control.Name}'", ex);
+            Host.ReportError($"Event '{type}' on '{Control.Name}'", ex);
         }
         finally
         {
@@ -314,7 +326,7 @@ public sealed class JsControl
         }
     }
 
-    private JsEvent BuildEvent(string type, EventArgs e)
+    protected JsEvent BuildEvent(string type, EventArgs e)
     {
         var jsEvent = new JsEvent(type, this) { Inner = e };
         switch (e)
@@ -339,7 +351,7 @@ public sealed class JsControl
         return jsEvent;
     }
 
-    private void Wire(string normalized, Delegate handler)
+    protected virtual void Wire(string normalized, Delegate handler)
     {
         switch (normalized)
         {
@@ -358,7 +370,7 @@ public sealed class JsControl
         }
     }
 
-    private void Unwire(string normalized, Delegate handler)
+    protected virtual void Unwire(string normalized, Delegate handler)
     {
         switch (normalized)
         {

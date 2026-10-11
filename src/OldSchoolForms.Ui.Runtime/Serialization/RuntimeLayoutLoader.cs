@@ -8,6 +8,7 @@ using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Serialization;
+using OldSchoolForms.Ui.Resources;
 using OldSchoolForms.Ui.Runtime.Localization;
 
 namespace OldSchoolForms.Ui.Runtime.Serialization;
@@ -375,6 +376,16 @@ public sealed class RuntimeLayoutLoader
 
         ApplyProperties(item, node["props"] as JsonObject, warnings, translations);
 
+        var iconKey = GetString(node, "icon");
+        if (!string.IsNullOrEmpty(iconKey))
+        {
+            var icon = ResolveIcon(iconKey);
+            if (icon != null)
+                item.Image = icon;
+            else
+                warnings.Add($"Icon '{iconKey}' could not be resolved for strip item '{declaredItemName}'.");
+        }
+
         if (node["dropDownItems"] is JsonArray dropDownNodes && GetDropDownItems(item) is System.Collections.IList dropDowns)
         {
             foreach (var dropDownNode in dropDownNodes)
@@ -499,5 +510,30 @@ public sealed class RuntimeLayoutLoader
         }
 
         return fallback;
+    }
+
+    /// <summary>
+    /// Resolves a core icon key (for example <c>nav_first</c> or <c>NavFirst</c>) to a
+    /// rasterizable <see cref="SvgImage"/> exposed by the <see cref="Icons"/> catalog.
+    /// Underscores and hyphens are ignored and matching is case-insensitive.
+    /// </summary>
+    /// <param name="key">The icon key to resolve.</param>
+    /// <returns>The resolved <see cref="SvgImage"/>, or <c>null</c> when the key is empty or unknown.</returns>
+    public static SvgImage? ResolveIcon(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return null;
+
+        var normalized = key.Replace("_", string.Empty).Replace("-", string.Empty);
+        foreach (var prop in typeof(Icons).GetProperties(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (prop.PropertyType == typeof(SvgImage) && prop.CanRead &&
+                string.Equals(prop.Name, normalized, StringComparison.OrdinalIgnoreCase))
+            {
+                return prop.GetValue(null) as SvgImage;
+            }
+        }
+
+        return null;
     }
 }

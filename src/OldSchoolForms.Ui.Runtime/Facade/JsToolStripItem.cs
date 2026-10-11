@@ -1,6 +1,7 @@
 using Jint.Native;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Serialization;
 using OldSchoolForms.Ui.Runtime.Scripting;
 
 namespace OldSchoolForms.Ui.Runtime.Facade;
@@ -66,6 +67,36 @@ public sealed class JsToolStripItem
     {
         get => Item.Visible;
         set => Item.Visible = value;
+    }
+
+    /// <summary>
+    /// Sets the item's icon from a core icon key (for example <c>nav_first</c> or
+    /// <c>NavFirst</c>). Assigning an unknown or empty key leaves the current image unchanged.
+    /// Setting this to a non-null image does not change the <c>displayStyle</c>; use
+    /// <see cref="DisplayStyle"/> to control whether the icon, the text, or both are shown.
+    /// </summary>
+    public string? Icon
+    {
+        set
+        {
+            var icon = RuntimeLayoutLoader.ResolveIcon(value);
+            if (icon != null)
+                Item.Image = icon;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets how the item renders its icon and text. Accepts <c>Image</c>,
+    /// <c>ImageAndText</c> or <c>Text</c> (case-insensitive). Invalid values are ignored.
+    /// </summary>
+    public string? DisplayStyle
+    {
+        get => Item.DisplayStyle.ToString();
+        set
+        {
+            if (Enum.TryParse<ToolStripItemDisplayStyle>(value, true, out var style))
+                Item.DisplayStyle = style;
+        }
     }
 
     /// <summary>

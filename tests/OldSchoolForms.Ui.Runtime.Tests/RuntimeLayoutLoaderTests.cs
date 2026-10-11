@@ -162,4 +162,63 @@ public class RuntimeLayoutLoaderTests
         loader.Register("MyPanel", typeof(Panel));
         Assert.Same(typeof(Panel), loader.ResolveType("mypanel"));
     }
+
+    [Theory]
+    [InlineData("nav_first")]
+    [InlineData("NavFirst")]
+    [InlineData("nav-first")]
+    [InlineData("NAVNEXT")]
+    public void ResolveIcon_ResolvesNavigationIconsCaseAndSeparatorInsensitive(string key)
+    {
+        var icon = RuntimeLayoutLoader.ResolveIcon(key);
+        Assert.NotNull(icon);
+        Assert.True(icon!.Width > 0);
+        Assert.True(icon.Height > 0);
+    }
+
+    [Fact]
+    public void ResolveIcon_UnknownOrEmptyReturnsNull()
+    {
+        Assert.Null(RuntimeLayoutLoader.ResolveIcon("does_not_exist"));
+        Assert.Null(RuntimeLayoutLoader.ResolveIcon(""));
+        Assert.Null(RuntimeLayoutLoader.ResolveIcon(null));
+    }
+
+    [Fact]
+    public void LoadInto_StripItemIconSetsImageAndDisplayStyle()
+    {
+        const string json = """
+        { "format": "OldSchoolForms.Layout", "version": 1,
+          "controls": [
+            { "type": "ToolStrip", "name": "strip", "props": { "dock": "Top" }, "items": [
+              { "type": "ToolStripButton", "name": "navFirst", "icon": "nav_first",
+                "props": { "text": "First", "displayStyle": "Image" } }
+            ] }
+          ] }
+        """;
+
+        var result = new RuntimeLayoutLoader().LoadInto(new Panel(), json);
+        Assert.Empty(result.Warnings);
+
+        var item = result.StripItems["navFirst"];
+        Assert.NotNull(item.Image);
+        Assert.Equal(ToolStripItemDisplayStyle.Image, item.DisplayStyle);
+    }
+
+    [Fact]
+    public void LoadInto_UnknownStripIconWarnsAndLeavesImageNull()
+    {
+        const string json = """
+        { "format": "OldSchoolForms.Layout", "version": 1,
+          "controls": [
+            { "type": "ToolStrip", "name": "strip", "items": [
+              { "type": "ToolStripButton", "name": "b", "icon": "no_such_icon", "props": { "text": "X" } }
+            ] }
+          ] }
+        """;
+
+        var result = new RuntimeLayoutLoader().LoadInto(new Panel(), json);
+        Assert.Contains(result.Warnings, w => w.Contains("no_such_icon"));
+        Assert.Null(result.StripItems["b"].Image);
+    }
 }

@@ -3140,4 +3140,16 @@ public static class Icons
     /// <summary>Gets the SvgRepo icon: workflow</summary>
     public static SvgImage? Workflow => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.SvgRepo.workflow.svg", 24);
 
+    /// <summary>Gets the record-navigation icon: first (skip to first record)</summary>
+    public static SvgImage? NavFirst => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.Navigation.nav_first.svg", 16);
+
+    /// <summary>Gets the record-navigation icon: previous (step one record back)</summary>
+    public static SvgImage? NavPrevious => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.Navigation.nav_previous.svg", 16);
+
+    /// <summary>Gets the record-navigation icon: next (step one record forward)</summary>
+    public static SvgImage? NavNext => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.Navigation.nav_next.svg", 16);
+
+    /// <summary>Gets the record-navigation icon: last (skip to last record)</summary>
+    public static SvgImage? NavLast => SvgImage.FromSvgResource("OldSchoolForms.Ui.Resources.Icons.Navigation.nav_last.svg", 16);
+
 }

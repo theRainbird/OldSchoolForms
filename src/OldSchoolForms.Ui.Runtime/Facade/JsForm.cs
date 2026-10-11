@@ -72,7 +72,7 @@ public sealed class JsForm
     public JsControl? Find(string name)
     {
         var found = Form.Controls.FindControl(name, true);
-        return found == null ? null : new JsControl(_host, found);
+        return found == null ? null : JsFacadeRegistry.WrapControl(_host, found);
     }
 
     /// <summary>

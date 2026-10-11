@@ -165,7 +165,8 @@ public sealed class ModuleHost
                     _engine.ReportError($"createControl '{typeName}'", new InvalidOperationException(w));
             }
 
-            var facade = new JsControl(_engine, control) { OwnerModuleId = descriptor.Id };
+            var facade = JsFacadeRegistry.WrapControl(_engine, control);
+            facade.OwnerModuleId = descriptor.Id;
             loaded.Facades.Add(facade);
             return JsValue.FromObject(_engine.Engine, facade);
         };
@@ -441,14 +442,16 @@ public sealed class ModuleHost
 
             foreach (var kvp in lr.Controls)
             {
-                var facade = new JsControl(_engine, kvp.Value) { OwnerModuleId = descriptor.Id };
+                var facade = JsFacadeRegistry.WrapControl(_engine, kvp.Value);
+                facade.OwnerModuleId = descriptor.Id;
                 loaded.Facades.Add(facade);
                 controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
             }
 
             foreach (var kvp in lr.StripItems)
             {
-                var facade = new Facade.JsToolStripItem(_engine, kvp.Value) { OwnerModuleId = descriptor.Id };
+                var facade = JsFacadeRegistry.WrapStripItem(_engine, kvp.Value);
+                facade.OwnerModuleId = descriptor.Id;
                 loaded.StripFacades.Add(facade);
                 controls.Set(kvp.Key, JsValue.FromObject(_engine.Engine, facade));
             }
@@ -492,7 +495,9 @@ public sealed class ModuleHost
         ctx.Set("__loadLayout", JsValue.FromObject(_engine.Engine, loadLayout));
         ctx.Set("__createControl", JsValue.FromObject(_engine.Engine, createControl));
         ctx.Set("host", JsValue.FromObject(_engine.Engine, _host));
-        ctx.Set("tab", JsValue.FromObject(_engine.Engine, new JsControl(_engine, tab) { OwnerModuleId = loaded.Descriptor.Id }));
+        var tabFacade = JsFacadeRegistry.WrapControl(_engine, tab);
+        tabFacade.OwnerModuleId = loaded.Descriptor.Id;
+        ctx.Set("tab", JsValue.FromObject(_engine.Engine, tabFacade));
         ctx.Set("app", app);
         ctx.Set("i18n", _engine.Engine.GetValue("i18n"));
         if (Remote != null)
