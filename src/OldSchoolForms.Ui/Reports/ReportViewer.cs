@@ -115,10 +115,10 @@ public class ReportViewer : UserControl
     {
         Size = new Size(800, 600);
 
-        var btnFirst = new ToolStripButton(Icons.Previous!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
-        var btnPrev = new ToolStripButton(Icons.Left!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
-        var btnNext = new ToolStripButton(Icons.Right!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
-        var btnLast = new ToolStripButton(Icons.Next!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
+        var btnFirst = new ToolStripButton(Icons.NavFirst!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
+        var btnPrev = new ToolStripButton(Icons.NavPrevious!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
+        var btnNext = new ToolStripButton(Icons.NavNext!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
+        var btnLast = new ToolStripButton(Icons.NavLast!) { DisplayStyle = ToolStripItemDisplayStyle.Image };
 
         btnFirst.Click += (_, _) => _preview.FirstPage();
         btnPrev.Click += (_, _) => _preview.PreviousPage();
