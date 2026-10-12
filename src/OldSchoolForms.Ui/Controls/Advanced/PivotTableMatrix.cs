@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Reflection;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Data;
 
 namespace OldSchoolForms.Ui.Controls.Advanced;
 
@@ -772,6 +773,9 @@ internal class PivotTableMatrix
     /// </summary>
     private object? GetPropertyValue(object record, string propertyName)
     {
+        if (record is IDictionary<string, object?> or IDictionary<string, object>)
+            return DataRecord.GetValue(record, propertyName);
+
         if (!_propertyCache.TryGetValue(propertyName, out var prop))
         {
             prop = record.GetType().GetProperty(propertyName,
@@ -785,7 +789,11 @@ internal class PivotTableMatrix
         // Try field
         var field = record.GetType().GetField(propertyName,
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-        return field?.GetValue(record);
+        if (field != null)
+            return field.GetValue(record);
+
+        // Custom type descriptors (e.g. DataRowView) expose columns dynamically
+        return DataRecord.GetValue(record, propertyName);
     }
 
     /// <summary>

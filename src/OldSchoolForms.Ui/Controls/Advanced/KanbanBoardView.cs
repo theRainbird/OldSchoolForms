@@ -634,25 +634,24 @@ public class KanbanBoardView : Control
     {
         if (string.IsNullOrEmpty(propertyName))
             return string.Empty;
-        var prop = item.GetType().GetProperty(propertyName);
-        return prop?.GetValue(item)?.ToString() ?? string.Empty;
+        return DataRecord.GetValue(item, propertyName)?.ToString() ?? string.Empty;
     }
 
     private static object? GetPropertyValue(object item, string propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
             return null;
-        var prop = item.GetType().GetProperty(propertyName);
-        return prop?.GetValue(item);
+        return DataRecord.GetValue(item, propertyName);
     }
 
     private static IReadOnlyList<string> GetPropertyEnumerableStrings(object item, string propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
             return Array.Empty<string>();
-        var prop = item.GetType().GetProperty(propertyName);
-        if (prop?.GetValue(item) is IEnumerable<string> strings)
+        if (DataRecord.GetValue(item, propertyName) is IEnumerable<string> strings)
             return strings.ToList().AsReadOnly();
+        if (DataRecord.GetValue(item, propertyName) is IEnumerable values)
+            return values.Cast<object?>().Where(v => v != null).Select(v => v!.ToString()!).ToList().AsReadOnly();
         return Array.Empty<string>();
     }
 

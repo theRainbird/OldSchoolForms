@@ -529,4 +529,19 @@
   <data name="Runtime_BindingSourceUnsupportedItem" xml:space="preserve">
     <value>Nicht unterstützter gebundener Elementtyp '{0}'.</value>
   </data>
+  <data name="Runtime_ReportJsonEmpty" xml:space="preserve">
+    <value>Report-JSON ist leer.</value>
+  </data>
+  <data name="Runtime_ReportFormatMismatch" xml:space="preserve">
+    <value>Erwartetes Report-Format '{0}', aber '{1}' gefunden.</value>
+  </data>
+  <data name="Runtime_ReportTypeMemberMissing" xml:space="preserve">
+    <value>Dem Report-Steuerelement-Knoten fehlt das 'type'-Mitglied.</value>
+  </data>
+  <data name="Runtime_ReportControlTypeUnknown" xml:space="preserve">
+    <value>Unbekannter Report-Steuerelementtyp '{0}'.</value>
+  </data>
+  <data name="Runtime_ReportControlTypeUnsupported" xml:space="preserve">
+    <value>Nicht unterstützter Report-Steuerelementtyp '{0}'.</value>
+  </data>
 </root>

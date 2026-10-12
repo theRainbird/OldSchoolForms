@@ -4,6 +4,7 @@ using Jint.Native;
 using Jint.Native.Array;
 using Jint.Native.Object;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Runtime.Scripting;
 
 namespace OldSchoolForms.Ui.Runtime.Facade;
 
@@ -180,6 +181,217 @@ public static class JsMarshal
         }
 
         return new object?[] { value.ToObject() };
+    }
+
+    /// <summary>
+    /// Reads the raw member value from a JS config object.
+    /// Returns <see cref="JsValue.Undefined"/> when the member is absent.
+    /// </summary>
+    /// <param name="obj">The JS config object.</param>
+    /// <param name="name">The member name.</param>
+    /// <returns>The member value.</returns>
+    public static JsValue GetMember(ObjectInstance obj, string name)
+        => obj.Get(name) ?? JsValue.Undefined;
+
+    /// <summary>
+    /// Reads a string member from a JS config object.
+    /// </summary>
+    /// <param name="obj">The JS config object.</param>
+    /// <param name="name">The member name.</param>
+    /// <returns>The string value, or <see langword="null"/> when absent or not a string.</returns>
+    public static string? GetString(ObjectInstance obj, string name)
+    {
+        var value = obj.Get(name);
+        return value.IsString() ? value.ToString() : null;
+    }
+
+    /// <summary>
+    /// Reads a numeric member from a JS config object as <see cref="int"/>.
+    /// </summary>
+    /// <param name="obj">The JS config object.</param>
+    /// <param name="name">The member name.</param>
+    /// <returns>The integer value, or <see langword="null"/> when absent or not a finite number.</returns>
+    public static int? GetInt(ObjectInstance obj, string name)
+    {
+        var value = obj.Get(name);
+        if (value is null || !value.IsNumber())
+            return null;
+        var number = value.AsNumber();
+        return double.IsNaN(number) || double.IsInfinity(number) ? null : (int)number;
+    }
+
+    /// <summary>
+    /// Reads a numeric member from a JS config object as <see cref="double"/>.
+    /// </summary>
+    /// <param name="obj">The JS config object.</param>
+    /// <param name="name">The member name.</param>
+    /// <returns>The double value, or <see langword="null"/> when absent or not a finite number.</returns>
+    public static double? GetDouble(ObjectInstance obj, string name)
+    {
+        var value = obj.Get(name);
+        if (value is null || !value.IsNumber())
+            return null;
+        var number = value.AsNumber();
+        return double.IsNaN(number) || double.IsInfinity(number) ? null : number;
+    }
+
+    /// <summary>
+    /// Reads a boolean member from a JS config object.
+    /// </summary>
+    /// <param name="obj">The JS config object.</param>
+    /// <param name="name">The member name.</param>
+    /// <returns>The boolean value, or <see langword="null"/> when absent or not a boolean.</returns>
+    public static bool? GetBool(ObjectInstance obj, string name)
+    {
+        var value = obj.Get(name);
+        return value.IsBoolean() ? value.AsBoolean() : null;
+    }
+
+    /// <summary>
+    /// Converts a JS object into a CLR record map whose values are recursively
+    /// converted through <see cref="ToClr"/>. Non-object values yield an empty map.
+    /// Keys are compared case-insensitively.
+    /// </summary>
+    /// <param name="value">The JS value.</param>
+    /// <returns>The record map.</returns>
+    public static Dictionary<string, object?> ToRecord(JsValue value)
+    {
+        var map = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (value is ObjectInstance obj and not JsArray)
+        {
+            foreach (var pair in obj.GetOwnProperties())
+            {
+                var key = pair.Key.ToString();
+                if (!string.IsNullOrEmpty(key))
+                    map[key] = ToClr(obj.Get(key));
+            }
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Converts a JS array of objects (or a single object) into a list of record maps.
+    /// </summary>
+    /// <param name="value">The JS value.</param>
+    /// <returns>The list of record maps.</returns>
+    public static List<Dictionary<string, object?>> ToRecordList(JsValue value)
+    {
+        var list = new List<Dictionary<string, object?>>();
+        if (value is JsArray array)
+        {
+            for (var i = 0; i < array.Length; i++)
+            {
+                var item = array.Get((uint)i);
+                if (item is ObjectInstance and not JsArray)
+                    list.Add(ToRecord(item));
+            }
+        }
+        else if (value is ObjectInstance and not JsArray)
+        {
+            list.Add(ToRecord(value));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Converts a JS value into a plain CLR value: primitives pass through,
+    /// <c>Date</c> becomes <see cref="DateTime"/>, arrays become
+    /// <see cref="List{T}"/> of converted elements and plain objects become
+    /// case-insensitive record dictionaries.
+    /// </summary>
+    /// <param name="value">The JS value.</param>
+    /// <returns>The converted CLR value.</returns>
+    public static object? ToClr(JsValue value)
+    {
+        if (value is null || value.IsUndefined() || value.IsNull())
+            return null;
+        if (value.IsBoolean())
+            return value.AsBoolean();
+        if (value.IsString())
+            return value.ToString();
+        if (value is JsArray array)
+        {
+            var list = new List<object?>((int)array.Length);
+            for (var i = 0; i < array.Length; i++)
+                list.Add(ToClr(array.Get((uint)i)));
+            return list;
+        }
+        if (value.ToObject() is DateTime date)
+            return date;
+        if (value.IsNumber())
+            return value.AsNumber();
+        if (value is ObjectInstance)
+            return ToRecord(value);
+        return value.ToObject();
+    }
+
+    /// <summary>
+    /// Converts a <see cref="JsEvent"/> into a plain JS object so that callbacks
+    /// can both read all members and write back <c>handled</c> and <c>value</c>
+    /// (the CLR member accessor of the engine only intercepts reads).
+    /// </summary>
+    /// <param name="host">The JS engine.</param>
+    /// <param name="jsEvent">The event to convert.</param>
+    /// <returns>The JS event object.</returns>
+    public static JsValue ToJsEventObject(JsEngineHost host, JsEvent jsEvent)
+    {
+        var obj = (ObjectInstance)host.Engine.Evaluate("({})");
+        obj.Set("type", JsValue.FromObject(host.Engine, jsEvent.Type));
+        obj.Set("target", jsEvent.Target == null ? JsValue.Null : JsValue.FromObject(host.Engine, jsEvent.Target));
+        obj.Set("x", JsValue.FromObject(host.Engine, jsEvent.X));
+        obj.Set("y", JsValue.FromObject(host.Engine, jsEvent.Y));
+        obj.Set("button", JsValue.FromObject(host.Engine, jsEvent.Button));
+        obj.Set("delta", JsValue.FromObject(host.Engine, jsEvent.Delta));
+        obj.Set("keyCode", JsValue.FromObject(host.Engine, jsEvent.KeyCode));
+        obj.Set("keyChar", JsValue.FromObject(host.Engine, jsEvent.KeyChar));
+        obj.Set("shift", JsValue.FromObject(host.Engine, jsEvent.Shift));
+        obj.Set("control", JsValue.FromObject(host.Engine, jsEvent.Control));
+        obj.Set("alt", JsValue.FromObject(host.Engine, jsEvent.Alt));
+        obj.Set("handled", JsValue.FromObject(host.Engine, jsEvent.Handled));
+        obj.Set("row", JsValue.FromObject(host.Engine, jsEvent.Row));
+        obj.Set("column", JsValue.FromObject(host.Engine, jsEvent.Column));
+        obj.Set("value", JsValue.FromObject(host.Engine, jsEvent.Value));
+        obj.Set("payload", JsValue.FromObject(host.Engine, jsEvent.Payload));
+        return obj;
+    }
+
+    /// <summary>
+    /// Reads the callback-writable members (<c>handled</c>, <c>value</c>) back
+    /// from the JS event object into the CLR event.
+    /// </summary>
+    /// <param name="jsEvent">The CLR event to update.</param>
+    /// <param name="eventObj">The JS event object passed to the callback.</param>
+    public static void ReadBackJsEvent(JsEvent jsEvent, JsValue eventObj)
+    {
+        if (eventObj is not ObjectInstance obj)
+            return;
+        var handled = obj.Get("handled");
+        if (handled.IsBoolean())
+            jsEvent.Handled = handled.AsBoolean();
+        var value = obj.Get("value");
+        if (!value.IsUndefined())
+            jsEvent.Value = value.ToObject();
+    }
+
+    /// <summary>
+    /// Converts a JS value into a data source object for data-bound controls.
+    /// A <c>JsBindingSource</c> passes through as its underlying binding source,
+    /// a <c>JsDataTable</c> as its default view, a JS array of objects as a list
+    /// of record maps; any other value is unwrapped via <c>ToObject</c>.
+    /// </summary>
+    /// <param name="value">The JS value.</param>
+    /// <returns>The CLR data source, or <see langword="null"/>.</returns>
+    public static object? ToDataSource(JsValue value)
+    {
+        if (value is null || value.IsUndefined() || value.IsNull())
+            return null;
+        if (value.ToObject() is JsBindingSource bindingSource)
+            return bindingSource.Source;
+        if (value.ToObject() is OldSchoolForms.Shared.Scripting.JsDataTable dataTable)
+            return dataTable.Table.DefaultView;
+        if (value is JsArray)
+            return ToRecordList(value);
+        return value.ToObject();
     }
 
     private static byte? GetByteMember(ObjectInstance obj, string name)

@@ -330,10 +330,11 @@ public class JsControl
     /// <param name="e">Optional CLR event args for <c>handled</c> write-back.</param>
     protected void RaiseEvent(string type, JsValue callback, JsEvent jsEvent, EventArgs? e = null)
     {
+        var eventObj = JsMarshal.ToJsEventObject(Host, jsEvent);
         try
         {
             using (Host.UseModule(OwnerModuleId))
-                Host.CallFunction(callback, JsValue.Undefined, JsValue.FromObject(Host.Engine, jsEvent));
+                Host.CallFunction(callback, JsValue.Undefined, eventObj);
         }
         catch (Exception ex)
         {
@@ -341,10 +342,23 @@ public class JsControl
         }
         finally
         {
-            if (jsEvent.Handled && e is KeyEventArgs ke)
-                ke.Handled = true;
-            if (jsEvent.Handled && e is KeyPressEventArgs kpe)
-                kpe.Handled = true;
+            JsMarshal.ReadBackJsEvent(jsEvent, eventObj);
+            if (jsEvent.Handled)
+            {
+                if (e is KeyEventArgs ke)
+                    ke.Handled = true;
+                if (e is KeyPressEventArgs kpe)
+                    kpe.Handled = true;
+                if (e is OldSchoolForms.Ui.Core.CancelEventArgs ce)
+                    ce.Cancel = true;
+                if (e is HtmlLinkEventArgs hle)
+                    hle.Handled = true;
+                if (e is DataGridViewCellFormattingEventArgs ffe)
+                {
+                    ffe.Value = jsEvent.Value;
+                    ffe.FormattingApplied = true;
+                }
+            }
         }
     }
 

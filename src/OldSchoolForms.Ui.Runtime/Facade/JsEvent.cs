@@ -65,5 +65,18 @@ public sealed class JsEvent
     /// </summary>
     public object? Payload { get; set; }
 
+    /// <summary>Row index for grid- and pivot-style cell events.</summary>
+    public int Row { get; set; }
+
+    /// <summary>Column index for grid- and pivot-style cell events.</summary>
+    public int Column { get; set; }
+
+    /// <summary>
+    /// Event value, e.g. the selected date of a calendar event or the display
+    /// value of a grid cell during formatting. For formatting events the callback
+    /// can assign a new value and set <see cref="Handled"/> to apply it.
+    /// </summary>
+    public object? Value { get; set; }
+
     internal EventArgs? Inner { get; set; }
 }

@@ -17,6 +17,8 @@
     "modules/notes",
     "modules/dialogs",
     "modules/codeui",
-    "modules/remote"
+    "modules/remote",
+    "modules/showcase",
+    "modules/reports"
   ]
 }

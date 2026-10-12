@@ -121,6 +121,13 @@ public static class JsFacadeRegistry
         Register<ToolStrip>((host, c) => new JsToolStrip(host, c));
         Register<StatusStrip>((host, c) => new JsStatusStrip(host, c));
 
+        Register<DataGridView>((host, c) => new JsDataGridView(host, c));
+        Register<CalendarView>((host, c) => new JsCalendarView(host, c));
+        Register<KanbanBoardView>((host, c) => new JsKanbanBoardView(host, c));
+        Register<PivotTable>((host, c) => new JsPivotTable(host, c));
+        Register<DiagramView>((host, c) => new JsDiagramView(host, c));
+        Register<HtmlBox>((host, c) => new JsHtmlBox(host, c));
+
         RegisterStripItem<ToolStripMenuItem>((host, i) => new JsToolStripMenuItem(host, i));
         RegisterStripItem<ToolStripButton>((host, i) => new JsToolStripButton(host, i));
         RegisterStripItem<ToolStripLabel>((host, i) => new JsToolStripLabel(host, i));

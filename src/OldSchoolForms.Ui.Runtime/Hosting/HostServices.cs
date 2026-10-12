@@ -126,6 +126,16 @@ public sealed class HostServices
     public void CloseModule(string id) => ModuleHost?.CloseModule(id);
 
     /// <summary>
+    /// Opens a report in a new tab with a <see cref="ReportViewer"/>.
+    /// </summary>
+    /// <param name="report">The report facade to display.</param>
+    public void OpenReport(Facade.Typed.JsReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        ModuleHost?.OpenReport(report.Report);
+    }
+
+    /// <summary>
     /// Loads a text file from the app package.
     /// </summary>
     /// <param name="relativePath">Relative path to the package root.</param>

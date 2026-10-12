@@ -1,0 +1,39 @@
+{
+  "format": "OldSchoolForms.Report",
+  "name": "Verkaufsbericht (Datei)",
+  "pageSetup": {
+    "portraitWidth": 21.0,
+    "portraitHeight": 29.7,
+    "landscape": false,
+    "leftMargin": 1.5,
+    "rightMargin": 1.5,
+    "topMargin": 1.5,
+    "bottomMargin": 1.5
+  },
+  "reportHeader": { "height": 0, "visible": true, "canGrow": false, "repeatOnNewPage": false, "keepTogether": false, "controls": [] },
+  "pageHeader": {
+    "height": 1.2,
+    "visible": true,
+    "canGrow": false,
+    "repeatOnNewPage": true,
+    "keepTogether": false,
+    "controls": [
+      { "type": "label", "name": "title", "text": "Verkaufsübersicht", "left": 0, "top": 0.2, "width": 18, "height": 0.8, "textAlign": "Center" }
+    ]
+  },
+  "detail": {
+    "height": 0.8,
+    "visible": true,
+    "canGrow": false,
+    "repeatOnNewPage": false,
+    "keepTogether": false,
+    "controls": [
+      { "type": "textBox", "name": "c1", "dataField": "kunde", "left": 0, "top": 0.1, "width": 8, "height": 0.6 },
+      { "type": "textBox", "name": "c2", "dataField": "artikel", "left": 8.2, "top": 0.1, "width": 6, "height": 0.6 },
+      { "type": "textBox", "name": "c3", "dataField": "betrag", "left": 14.4, "top": 0.1, "width": 3.5, "height": 0.6", "format": "N2", "textAlign": "Right" }
+    ]
+  },
+  "pageFooter": { "height": 0, "visible": true, "canGrow": false, "repeatOnNewPage": false, "keepTogether": false, "controls": [] },
+  "reportFooter": { "height": 0, "visible": true, "canGrow": false, "repeatOnNewPage": false, "keepTogether": false, "controls": [] },
+  "groups": []
+}

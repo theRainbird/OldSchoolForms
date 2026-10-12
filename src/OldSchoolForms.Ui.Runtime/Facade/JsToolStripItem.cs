@@ -203,14 +203,19 @@ public class JsToolStripItem
     /// <param name="jsEvent">The pre-built JS event.</param>
     protected void RaiseEvent(string type, JsValue callback, JsEvent jsEvent)
     {
+        var eventObj = JsMarshal.ToJsEventObject(Host, jsEvent);
         try
         {
             using (Host.UseModule(OwnerModuleId))
-                Host.CallFunction(callback, JsValue.Undefined, JsValue.FromObject(Host.Engine, jsEvent));
+                Host.CallFunction(callback, JsValue.Undefined, eventObj);
         }
         catch (Exception ex)
         {
             Host.ReportError($"Event '{type}' on strip item '{Item.Name}'", ex);
+        }
+        finally
+        {
+            JsMarshal.ReadBackJsEvent(jsEvent, eventObj);
         }
     }
 }

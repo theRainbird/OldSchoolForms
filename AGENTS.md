@@ -3,7 +3,7 @@
 ## Build & Run
 ```bash
 dotnet build                    # Build all projects
-dotnet test                     # Run tests (89 passing)
+dotnet test                     # Run tests (759 passing)
 dotnet run --project samples/OldSchoolForms.Ui.Demo  # Run demo (requires X11/display)
 ```
 
@@ -54,6 +54,19 @@ dotnet run --project samples/OldSchoolForms.Ui.Demo  # Run demo (requires X11/di
 - C# code round-trip (CodeGenerator + FormParser via RoslynDocumentService)
 - JSON layout save/load (`OldSchoolForms.Layout` format, System.Text.Json) via `IJsonLayoutService` / `JsonDocumentService` — strings, streams and files; preserves hierarchy, properties, TabPages, DataGridView columns, ToolStrip/Menu/StatusStrip items, root type, namespace/class name
 - Standalone DesignerForm dispatches by file extension (`*.cs` → C#, `*.json` → JSON)
+
+**JS Facade System (Runtime):**
+- Typed JS facades expose the full control spectrum to the Jint scripting runtime (`src/OldSchoolForms.Ui.Runtime/Facade/Typed/`)
+- `JsFacadeRegistry` maps CLR control/strip-item types to facade factories with base-type fallback; `RegisterDefaults()` registers all built-in facades
+- Base facades: `JsControl` (common props/events, `WireCustom`/`UnwireCustom` hooks), `JsToolStripItem`
+- Basic controls: Button, CheckBox, RadioButton, TextBox, MemoBox, ComboBox, ListBox, ProgressBar, Spinner, FontPicker, Label, PictureBox, DateTimePicker
+- Containers: Panel, SplitPanel, TabControl, TreeView/TreeNode, MenuStrip, ToolStrip, StatusStrip + strip-item facades (ToolStripMenuItem, ToolStripButton, ToolStripLabel, ToolStripTextBox)
+- Advanced data: DataGridView (columns/rows/cells/edit/grouping), CalendarView (+appointments), KanbanBoardView (+columns/cards), PivotTable (+fields), DiagramView (+series/axes/trendline), HtmlBox
+- Cancelable events: `e.handled = true` from JS propagates to `CancelEventArgs`/`HtmlLinkEventArgs`/cell formatting via a plain JS event object + read-back (`JsMarshal.ToJsEventObject`/`ReadBackJsEvent`)
+- Data sources: JS arrays of objects, `JsDataTable`/`JsDataSet`, or `JsBindingSource` (resolved via `DataRecord.GetValue` for uniform member access)
+- Reports: `ctx.report.create(name)` / `ctx.report.load(path)`; `JsReport` with bands, groups, page setup (cm numbers), data source, headless `exportPdf`/`exportPdfBytes`/`pageCount`; `host.openReport(report)` opens a `ReportViewer` tab
+- Report JSON format `OldSchoolForms.Report` (round-trip via `ReportJsonSerializer`): pageSetup, 5 bands with controls, nested groups, chart series, crosstab fields
+- Sample modules: `samples/RuntimeExampleApp/modules/showcase` (controls) and `modules/reports` (reports)
 
 ## Important Context
 

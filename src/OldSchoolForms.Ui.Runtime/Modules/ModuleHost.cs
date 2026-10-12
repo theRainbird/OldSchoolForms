@@ -4,6 +4,7 @@ using Jint.Native.Object;
 using OldSchoolForms.Shared.Scripting;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Reports;
 using OldSchoolForms.Ui.Runtime.Facade;
 using OldSchoolForms.Ui.Runtime.Scripting;
 using OldSchoolForms.Ui.Runtime.Serialization;
@@ -210,6 +211,26 @@ public sealed class ModuleHost
         _contentTabs.SelectedIndex = _contentTabs.TabPages.Count - 1;
         _open[id] = loaded;
         Activate(id);
+    }
+
+    /// <summary>
+    /// Opens a report in a new tab with a <see cref="ReportViewer"/>. The viewer
+    /// provides a toolbar with print/export and a scrollable page preview.
+    /// </summary>
+    /// <param name="report">The report to display.</param>
+    /// <param name="title">Optional tab title; defaults to the report name.</param>
+    /// <returns>The created tab page.</returns>
+    public TabPage OpenReport(Report report, string? title = null)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        var tab = new TabPage { Text = title ?? report.Name };
+        var viewer = new ReportViewer { Dock = DockStyle.Fill };
+        viewer.Report = report;
+        viewer.RefreshReport();
+        tab.Controls.Add(viewer);
+        _contentTabs.AddTabPage(tab);
+        _contentTabs.SelectedIndex = _contentTabs.TabPages.Count - 1;
+        return tab;
     }
 
     /// <summary>
@@ -503,8 +524,42 @@ public sealed class ModuleHost
         if (Remote != null)
             ctx.Set("remote", JsValue.FromObject(_engine.Engine, Remote));
         ctx.Set("data", BuildDataFactory(loaded));
+        ctx.Set("report", BuildReportFactory(loaded));
 
         return ctx;
+    }
+
+    /// <summary>
+    /// Builds the <c>ctx.report</c> object that exposes the <c>create</c> and
+    /// <c>load</c> factories for report definitions.
+    /// </summary>
+    /// <param name="loaded">The loaded module that owns the created reports.</param>
+    /// <returns>The <c>report</c> namespace object.</returns>
+    private ObjectInstance BuildReportFactory(LoadedModule loaded)
+    {
+        var report = _engine.NewObject();
+
+        Func<JsValue, JsValue> create = nameJs =>
+        {
+            var name = nameJs.IsUndefined() || nameJs.IsNull() ? "Report" : nameJs.ToString();
+            var r = new Report(name);
+            return JsValue.FromObject(_engine.Engine, new Facade.Typed.JsReport(_engine, r));
+        };
+
+        Func<JsValue, JsValue> load = pathJs =>
+        {
+            var rel = pathJs.IsUndefined() || pathJs.IsNull()
+                ? throw new InvalidOperationException("report.load(path) requires a path.")
+                : pathJs.ToString();
+            var path = ResolveLayoutPath(loaded.Descriptor.Directory, rel);
+            var json = _source.ReadText(path);
+            var r = ReportJsonSerializer.Load(json);
+            return JsValue.FromObject(_engine.Engine, new Facade.Typed.JsReport(_engine, r));
+        };
+
+        report.Set("create", JsValue.FromObject(_engine.Engine, create));
+        report.Set("load", JsValue.FromObject(_engine.Engine, load));
+        return report;
     }
 
     /// <summary>

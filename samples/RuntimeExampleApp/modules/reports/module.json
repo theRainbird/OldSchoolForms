@@ -1,0 +1,8 @@
+{
+  "id": "reports",
+  "title": "Berichte",
+  "titleKey": "Module_Reports",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 8
+}

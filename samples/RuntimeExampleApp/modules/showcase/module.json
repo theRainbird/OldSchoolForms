@@ -1,0 +1,8 @@
+{
+  "id": "showcase",
+  "title": "Controls",
+  "titleKey": "Module_Showcase",
+  "layout": "layout.json",
+  "script": "index.js",
+  "order": 7
+}

@@ -529,4 +529,19 @@
   <data name="Runtime_BindingSourceUnsupportedItem" xml:space="preserve">
     <value>Unsupported bound item type '{0}'.</value>
   </data>
+  <data name="Runtime_ReportJsonEmpty" xml:space="preserve">
+    <value>Report JSON is empty.</value>
+  </data>
+  <data name="Runtime_ReportFormatMismatch" xml:space="preserve">
+    <value>Expected report format '{0}' but found '{1}'.</value>
+  </data>
+  <data name="Runtime_ReportTypeMemberMissing" xml:space="preserve">
+    <value>Report control node is missing the 'type' member.</value>
+  </data>
+  <data name="Runtime_ReportControlTypeUnknown" xml:space="preserve">
+    <value>Unknown report control type '{0}'.</value>
+  </data>
+  <data name="Runtime_ReportControlTypeUnsupported" xml:space="preserve">
+    <value>Unsupported report control type '{0}'.</value>
+  </data>
 </root>

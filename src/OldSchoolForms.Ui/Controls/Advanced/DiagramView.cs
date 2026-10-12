@@ -1554,27 +1554,18 @@ public class DiagramView : ContainerControl
             foreach (var item in list)
             {
                 if (item == null) continue;
-                var itemType = item.GetType();
 
                 double value = 0;
-                var valProp = itemType.GetProperty(_valueMember);
-                if (valProp != null)
-                {
-                    var val = valProp.GetValue(item);
-                    if (val is double d) value = d;
-                    else if (val is int iv) value = iv;
-                    else if (val is float fv) value = fv;
-                    else if (val is long lv) value = lv;
-                    else if (val is decimal dec) value = (double)dec;
-                }
+                var val = DataRecord.GetValue(item, _valueMember);
+                if (val is double d) value = d;
+                else if (val is int iv) value = iv;
+                else if (val is float fv) value = fv;
+                else if (val is long lv) value = lv;
+                else if (val is decimal dec) value = (double)dec;
 
                 string? label = null;
                 if (!string.IsNullOrEmpty(_displayMember))
-                {
-                    var dispProp = itemType.GetProperty(_displayMember);
-                    if (dispProp != null)
-                        label = dispProp.GetValue(item)?.ToString();
-                }
+                    label = DataRecord.GetValue(item, _displayMember)?.ToString();
 
                 var pt = new DiagramViewDataPoint(label, value);
                 series.Add(pt);

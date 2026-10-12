@@ -1,0 +1,36 @@
+{
+  "format": "OldSchoolForms.Layout",
+  "version": 1,
+  "rootType": "Form",
+  "rootSize": { "width": 900, "height": 560 },
+  "controls": [
+    {
+      "type": "Panel",
+      "name": "leftPanel",
+      "props": { "dock": "Left", "size": { "width": 460, "height": 560 }, "borderStyle": "FixedSingle" },
+      "children": [
+        { "type": "Label", "name": "lblTitle", "props": { "text": "tr:Showcase_Title", "location": { "x": 16, "y": 12 }, "size": { "width": 420, "height": 24 } } },
+        { "type": "Button", "name": "btnClick", "props": { "text": "tr:Showcase_ClickMe", "location": { "x": 16, "y": 44 }, "size": { "width": 120, "height": 36 } } },
+        { "type": "CheckBox", "name": "chkAgree", "props": { "text": "tr:Showcase_Agree", "location": { "x": 16, "y": 92 }, "size": { "width": 220, "height": 24 } } },
+        { "type": "RadioButton", "name": "radA", "props": { "text": "A", "location": { "x": 16, "y": 122 }, "size": { "width": 60, "height": 24 } } },
+        { "type": "RadioButton", "name": "radB", "props": { "text": "B", "location": { "x": 80, "y": 122 }, "size": { "width": 60, "height": 24 } } },
+        { "type": "TextBox", "name": "txtInput", "props": { "text": "", "location": { "x": 16, "y": 156 }, "size": { "width": 260, "height": 26 } } },
+        { "type": "ComboBox", "name": "cmbPick", "props": { "location": { "x": 16, "y": 192 }, "size": { "width": 180, "height": 26 } } },
+        { "type": "ListBox", "name": "lstItems", "props": { "location": { "x": 16, "y": 228 }, "size": { "width": 180, "height": 140 } } },
+        { "type": "ProgressBar", "name": "pbar", "props": { "location": { "x": 16, "y": 384 }, "size": { "width": 260, "height": 22 } } },
+        { "type": "DateTimePicker", "name": "dtp", "props": { "location": { "x": 16, "y": 416 }, "size": { "width": 220, "height": 26 } } },
+        { "type": "Button", "name": "btnUp", "props": { "text": "+10", "location": { "x": 288, "y": 384 }, "size": { "width": 60, "height": 26 } } },
+        { "type": "Button", "name": "btnDown", "props": { "text": "-10", "location": { "x": 354, "y": 384 }, "size": { "width": 60, "height": 26 } } }
+      ]
+    },
+    {
+      "type": "Panel",
+      "name": "rightPanel",
+      "props": { "dock": "Fill", "borderStyle": "FixedSingle" },
+      "children": [
+        { "type": "Label", "name": "lblLog", "props": { "text": "tr:Showcase_Log", "location": { "x": 16, "y": 12 }, "size": { "width": 380, "height": 24 } } },
+        { "type": "MemoBox", "name": "logBox", "props": { "text": "", "location": { "x": 16, "y": 40 }, "size": { "width": 380, "height": 480 } } }
+      ]
+    }
+  ]
+}
