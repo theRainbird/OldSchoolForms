@@ -2,17 +2,16 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Core;
-using OldSchoolForms.Ui.Designer.Serialization;
-using OldSchoolForms.Ui.Reports;
+using OldSchoolForms.Ui.Serialization;
 
-namespace OldSchoolForms.Ui.Runtime.Serialization;
+namespace OldSchoolForms.Ui.Reports;
 
 /// <summary>
 /// Serializes <see cref="Report"/> definitions to and from the
 /// <c>OldSchoolForms.Report</c> JSON format. The format stores the page setup
 /// (portrait paper size, orientation, margins in centimeters), the five report
 /// bands with their controls and the (nested) group definitions. Colors and
-/// fonts are marshalled through the designer's <c>JsonValueConverter</c> so the
+/// fonts are marshalled through <see cref="OldSchoolForms.Ui.Serialization.JsonValueConverter"/> so the
 /// format stays consistent with <c>OldSchoolForms.Layout</c>. Round-trips
 /// losslessly for all supported report control types.
 /// </summary>
@@ -73,6 +72,15 @@ public static class ReportJsonSerializer
             ["reportFooter"] = BandToNode(report.ReportFooter),
             ["groups"] = GroupsToNode(report.Groups)
         };
+
+        if (report.DesignFields.Count > 0)
+        {
+            var designFields = new JsonArray();
+            foreach (var field in report.DesignFields)
+                designFields.Add((JsonNode?)field);
+            root["designFields"] = designFields;
+        }
+
         return root;
     }
 
@@ -103,6 +111,16 @@ public static class ReportJsonSerializer
         if (root["pageFooter"] is JsonObject pf) BandFromNode(report.PageFooter, pf);
         if (root["reportFooter"] is JsonObject rf) BandFromNode(report.ReportFooter, rf);
         if (root["groups"] is JsonArray groups) GroupsFromNode(report.Groups, groups);
+
+        if (root["designFields"] is JsonArray designFields)
+        {
+            foreach (var fieldNode in designFields)
+            {
+                var fieldName = fieldNode?.GetValue<string>();
+                if (!string.IsNullOrWhiteSpace(fieldName))
+                    report.DesignFields.Add(fieldName);
+            }
+        }
 
         return report;
     }

@@ -5,6 +5,7 @@ using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Designer.PropertyGrid;
 using OldSchoolForms.Ui.Designer.Services;
+using OldSchoolForms.Ui.Reports;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -51,9 +52,11 @@ public class DesignerForm : Form
         _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
         _jsonService = jsonService ?? new Serialization.JsonDocumentService();
 
-        Text = "OldSchoolForms Form Designer";
+        Text = LangRes.GetString("Designer_Title");
         Width = 1400;
         Height = 900;
+
+        Reports.ReportDocumentKind.EnsureRegistered();
 
         _toolboxService = new ToolboxService();
         _designSurface = new DesignSurface();
@@ -126,48 +129,48 @@ public class DesignerForm : Form
         var menu = new MenuStrip();
         menu.Dock = DockStyle.Top;
 
-        var fileItem = new ToolStripMenuItem("&Datei");
-        var newItem = new ToolStripMenuItem("&Neu");
+        var fileItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuFile"));
+        var newItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuNew"));
         newItem.Click += (_, _) => NewForm();
         fileItem.DropDownItems.Add(newItem);
-        var openItem = new ToolStripMenuItem("&Öffnen...");
+        var openItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuOpen"));
         openItem.Click += (_, _) => OpenForm();
         fileItem.DropDownItems.Add(openItem);
-        var saveItem = new ToolStripMenuItem("&Speichern");
+        var saveItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuSave"));
         saveItem.Click += (_, _) => SaveForm();
         fileItem.DropDownItems.Add(saveItem);
-        var saveAsItem = new ToolStripMenuItem("Speichern &unter...");
+        var saveAsItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuSaveAs"));
         saveAsItem.Click += (_, _) => SaveFormAs();
         fileItem.DropDownItems.Add(saveAsItem);
         fileItem.DropDownItems.Add(new ToolStripMenuItem("-"));
-        var exitItem = new ToolStripMenuItem("Be&enden");
+        var exitItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuExit"));
         exitItem.Click += (_, _) => Close();
         fileItem.DropDownItems.Add(exitItem);
 
-        var editItem = new ToolStripMenuItem("&Bearbeiten");
-        var undoItem = new ToolStripMenuItem("&Rückgängig");
+        var editItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuEdit"));
+        var undoItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuUndo"));
         undoItem.Click += (_, _) => _designSurface.Undo.Undo();
         editItem.DropDownItems.Add(undoItem);
-        var redoItem = new ToolStripMenuItem("&Wiederholen");
+        var redoItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuRedo"));
         redoItem.Click += (_, _) => _designSurface.Undo.Redo();
         editItem.DropDownItems.Add(redoItem);
         editItem.DropDownItems.Add(new ToolStripMenuItem("-"));
-        var deleteItem = new ToolStripMenuItem("&Löschen");
+        var deleteItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuDelete"));
         deleteItem.Click += (_, _) => _designSurface.DeleteSelected();
         editItem.DropDownItems.Add(deleteItem);
-        var selectAllItem = new ToolStripMenuItem("&Alles auswählen");
+        var selectAllItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuSelectAll"));
         selectAllItem.Click += (_, _) => _designSurface.Selection.SelectAll(_designSurface.Items);
         editItem.DropDownItems.Add(selectAllItem);
 
-        var viewItem = new ToolStripMenuItem("&Ansicht");
-        var showGridItem = new ToolStripMenuItem("&Raster anzeigen");
+        var viewItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuView"));
+        var showGridItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuShowGrid"));
         showGridItem.Click += (_, _) =>
         {
             _showGrid = !_showGrid;
             _designSurface.ShowGrid = _showGrid;
         };
         viewItem.DropDownItems.Add(showGridItem);
-        var snapGridItem = new ToolStripMenuItem("Am &Raster ausrichten");
+        var snapGridItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuSnapGrid"));
         snapGridItem.Click += (_, _) =>
         {
             _snapToGrid = !_snapToGrid;
@@ -175,18 +178,52 @@ public class DesignerForm : Form
         };
         viewItem.DropDownItems.Add(snapGridItem);
 
-        var helpItem = new ToolStripMenuItem("&Hilfe");
-        var aboutItem = new ToolStripMenuItem("&Info");
+        var reportItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuReport"));
+        var previewItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuPreview"));
+        previewItem.Click += (_, _) => ShowReportPreview();
+        reportItem.DropDownItems.Add(previewItem);
+
+        var helpItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuHelp"));
+        var aboutItem = new ToolStripMenuItem(LangRes.GetString("Designer_MenuAbout"));
         aboutItem.Click += (_, _) =>
-            MessageBox.Show("OldSchoolForms Form Designer\nVersion 1.0\n\nEin grafischer Formular-Designer für OldSchoolForms.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(LangRes.GetString("Designer_AboutText"), LangRes.GetString("Designer_MenuAbout"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         helpItem.DropDownItems.Add(aboutItem);
 
         menu.Items.Add(fileItem);
         menu.Items.Add(editItem);
         menu.Items.Add(viewItem);
+        menu.Items.Add(reportItem);
         menu.Items.Add(helpItem);
 
         return menu;
+    }
+
+    /// <summary>
+    /// Opens a modal <see cref="ReportViewer"/> previewing the report currently open in the designer.
+    /// Does nothing when the current document is not a report.
+    /// </summary>
+    private void ShowReportPreview()
+    {
+        if (_designSurface.RootControl is not Reports.DesignReport designReport)
+        {
+            _statusLabel.Text = LangRes.GetString("Designer_PreviewNotReport");
+            return;
+        }
+
+        var viewer = new ReportViewer
+        {
+            Dock = DockStyle.Fill
+        };
+        var previewForm = new Form
+        {
+            Text = string.Format(LangRes.GetString("Designer_PreviewTitle"), designReport.Report.Name),
+            Width = 1000,
+            Height = 750
+        };
+        previewForm.Controls.Add(viewer);
+        viewer.Report = designReport.Report;
+        viewer.RefreshReport();
+        previewForm.ShowDialog(this);
     }
 
     private void BuildStatusStrip()
@@ -197,7 +234,7 @@ public class DesignerForm : Form
 
         _statusLabel = new Label
         {
-            Text = "Bereit",
+            Text = LangRes.GetString("Designer_StatusReady"),
             Dock = DockStyle.Left,
             BackColor = Color.Transparent,
             Width = 400
@@ -220,15 +257,15 @@ public class DesignerForm : Form
         _toolbox.DragStarted += (_, e) =>
         {
             _designSurface.BeginExternalDrop(e.Item);
-            _statusLabel.Text = $"Platziere {e.Item.DisplayName} – Klicken Sie auf die Designfläche";
+            _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusPlacing"), e.Item.DisplayName);
         };
 
         _designSurface.SelectionChanged += (_, _) =>
         {
             var primary = _designSurface.Selection.PrimarySelection;
             _statusLabel.Text = primary != null
-                ? $"Selektiert: {primary.Control.Name ?? primary.Control.GetType().Name}"
-                : "Keine Auswahl";
+                ? string.Format(LangRes.GetString("Designer_StatusSelected"), primary.Control.Name ?? primary.Control.GetType().Name)
+                : LangRes.GetString("Designer_StatusNoSelection");
             _propertyGrid.BindObject(_designSurface.AdapterSelectedValue);
         };
 
@@ -239,18 +276,25 @@ public class DesignerForm : Form
 
         _designSurface.ContentModified += (_, _) =>
         {
-            _statusLabel.Text = "Geändert";
+            _statusLabel.Text = LangRes.GetString("Designer_StatusModified");
         };
 
         _propertyGrid.PropertyCommitted += (_, _) =>
         {
+            if (_designSurface.RootControl is Reports.DesignReport reportRoot)
+                reportRoot.RefreshGeometry();
             _designSurface.Invalidate();
         };
 
         _propertyGrid.PropertyValueChanged += (_, e) =>
         {
-            _designSurface.Undo.PushPropertyChange(e.Control, e.PropertyName, e.OldValue);
-            _statusLabel.Text = "Geändert";
+            if (e.Control != null)
+                _designSurface.Undo.PushPropertyChange(e.Control, e.PropertyName, e.OldValue);
+            else if (e.Target != null)
+                _designSurface.Undo.PushPropertyChangeOn(e.Target, e.PropertyName, e.OldValue);
+            if (_designSurface.RootControl is Reports.DesignReport reportRoot)
+                reportRoot.RefreshGeometry();
+            _statusLabel.Text = LangRes.GetString("Designer_StatusModified");
             _designSurface.Invalidate();
         };
 
@@ -278,40 +322,68 @@ public class DesignerForm : Form
 
         _designSurface.ClearAll();
         if (type == NewDocumentType.UserControl)
+        {
             _designSurface.BeginDesignUserControl();
+            _statusLabel.Text = LangRes.GetString("Designer_StatusNewUserControl");
+        }
+        else if (type == NewDocumentType.Report)
+        {
+            Reports.ReportDocumentKind.EnsureRegistered();
+            Reports.ReportDocumentKind.Instance.CreateNew(_designSurface);
+            _statusLabel.Text = LangRes.GetString("Designer_StatusNewReport");
+        }
         else
+        {
             _designSurface.BeginDesignForm();
+            _statusLabel.Text = LangRes.GetString("Designer_StatusNewForm");
+        }
 
-        _statusLabel.Text = type == NewDocumentType.UserControl
-            ? "Neues Benutzersteuerelement"
-            : "Neues Formular";
-        Text = "OldSchoolForms Form Designer - [Unbenannt]";
+        _currentFilePath = null;
+        Text = LangRes.GetString("Designer_TitleUntitled");
+        ApplyToolboxForDocument(_designSurface.RootControl is Reports.DesignReport);
+    }
+
+    /// <summary>
+    /// Swaps the toolbox palette between the standard form controls and the report
+    /// control proxies depending on the active document kind.
+    /// </summary>
+    /// <param name="isReport">Whether the active document is a report.</param>
+    private void ApplyToolboxForDocument(bool isReport)
+    {
+        _toolboxService.Clear();
+        if (isReport)
+            Reports.ReportToolbox.RegisterReportItems(_toolboxService);
+        else
+            _toolboxService.RegisterStandardControls();
     }
 
     private void OpenForm()
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Formular öffnen",
-            Filter = "Formulare (*.cs;*.json)|*.cs;*.json|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Alle Dateien (*.*)|*.*"
+            Title = LangRes.GetString("Designer_OpenTitle"),
+            Filter = "Alle Dokumente (*.cs;*.json;*.report)|*.cs;*.json;*.report|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Reports (*.report)|*.report|Alle Dateien (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             try
             {
                 _designSurface.ClearAll();
-                if (IsJsonPath(dialog.FileName))
+                if (Services.DocumentKindRegistry.TryGet(dialog.FileName, out var kind))
+                    kind.Load(_designSurface, dialog.FileName);
+                else if (IsJsonPath(dialog.FileName))
                     _jsonService.LoadFromFile(_designSurface, dialog.FileName);
                 else
                     _documentService.Load(File.ReadAllText(dialog.FileName), _designSurface);
 
                 _currentFilePath = dialog.FileName;
-                _statusLabel.Text = $"Geöffnet: {dialog.FileName}";
-                Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+                _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusOpened"), dialog.FileName);
+                Text = string.Format(LangRes.GetString("Designer_TitleWithFile"), dialog.FileName);
+                ApplyToolboxForDocument(_designSurface.RootControl is Reports.DesignReport);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler beim Öffnen: {ex.Message}", "Fehler",
+                MessageBox.Show(string.Format(LangRes.GetString("Designer_ErrorOpen"), ex.Message), LangRes.GetString("Designer_ErrorTitle"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -319,37 +391,56 @@ public class DesignerForm : Form
 
     private void SaveForm()
     {
+        if (_currentFilePath != null && Services.DocumentKindRegistry.TryGet(_currentFilePath, out var kind))
+        {
+            try
+            {
+                kind.Save(_designSurface, _currentFilePath);
+                _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusSaved"), _currentFilePath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(string.Format(LangRes.GetString("Designer_ErrorSave"), ex.Message), LangRes.GetString("Designer_ErrorTitle"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return;
+        }
+
         if (_currentFilePath != null && IsJsonPath(_currentFilePath))
         {
             try
             {
                 _jsonService.SaveToFile(_designSurface, _currentFilePath);
-                _statusLabel.Text = $"Gespeichert: {_currentFilePath}";
+                _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusSaved"), _currentFilePath);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler",
+                MessageBox.Show(string.Format(LangRes.GetString("Designer_ErrorSave"), ex.Message), LangRes.GetString("Designer_ErrorTitle"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             return;
         }
 
         string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName);
-        _statusLabel.Text = "Gespeichert (Vorschau generiert)";
+        _statusLabel.Text = LangRes.GetString("Designer_StatusSavedPreview");
     }
 
     private void SaveFormAs()
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Formular speichern",
-            Filter = "Formulare (*.cs;*.json)|*.cs;*.json|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Alle Dateien (*.*)|*.*"
+            Title = LangRes.GetString("Designer_SaveTitle"),
+            Filter = "Alle Dokumente (*.cs;*.json;*.report)|*.cs;*.json;*.report|C# Dateien (*.cs)|*.cs|JSON Layouts (*.json)|*.json|Reports (*.report)|*.report|Alle Dateien (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             try
             {
-                if (IsJsonPath(dialog.FileName))
+                if (Services.DocumentKindRegistry.TryGet(dialog.FileName, out var kind))
+                {
+                    kind.Save(_designSurface, dialog.FileName);
+                }
+                else if (IsJsonPath(dialog.FileName))
                 {
                     _jsonService.SaveToFile(_designSurface, dialog.FileName);
                 }
@@ -360,12 +451,12 @@ public class DesignerForm : Form
                 }
 
                 _currentFilePath = dialog.FileName;
-                _statusLabel.Text = $"Gespeichert: {dialog.FileName}";
-                Text = $"OldSchoolForms Form Designer - [{dialog.FileName}]";
+                _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusSaved"), dialog.FileName);
+                Text = string.Format(LangRes.GetString("Designer_TitleWithFile"), dialog.FileName);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler",
+                MessageBox.Show(string.Format(LangRes.GetString("Designer_ErrorSave"), ex.Message), LangRes.GetString("Designer_ErrorTitle"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

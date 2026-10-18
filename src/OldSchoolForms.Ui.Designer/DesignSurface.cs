@@ -4,7 +4,9 @@ using System.Linq;
 using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Designer.Reports;
 using OldSchoolForms.Ui.Designer.Services;
+using OldSchoolForms.Ui.Reports;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -170,6 +172,8 @@ public class DesignSurface : ContainerControl
         _dragService.DragCompleted += (s, e) =>
         {
             ClearResizeCursor();
+            if (RootControl is DesignReport completedRoot)
+                completedRoot.SyncControlProxies();
             ContentModified?.Invoke(this, e);
         };
 
@@ -217,6 +221,8 @@ public class DesignSurface : ContainerControl
             adapter.SelectedItemChanged += (_, _) => AdapterSelectionChanged?.Invoke(this, EventArgs.Empty);
             return adapter;
         });
+        _adapterRegistry.Register<DesignReport>(c => new ReportRootAdapter(c, this));
+        _adapterRegistry.Register<DesignBand>(c => new BandDesignAdapter(c, this));
     }
 
     /// <summary>
@@ -235,6 +241,8 @@ public class DesignSurface : ContainerControl
         {
             var control = _selectionService.PrimarySelection?.Control;
             if (control == null) return null;
+            if (control is DesignReportControl reportProxy)
+                return reportProxy.Wrapped;
             return _adapterRegistry.GetAdapter(control)?.GetSelectedValue();
         }
     }
@@ -265,8 +273,26 @@ public class DesignSurface : ContainerControl
         SetRoot(new DesignUserControl { Location = _rootOffset });
     }
 
+    /// <summary>
+    /// Begins designing a report. The current content is cleared and a
+    /// <see cref="DesignReport"/> root wrapping the given report model is installed.
+    /// The root renders the page sheet, margins, and band layout; its child space is
+    /// the printable area where band content is placed.
+    /// </summary>
+    /// <param name="report">The report model to design. Must not be null.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="report"/> is null.</exception>
+    public void BeginDesignReport(Report report)
+    {
+        if (report == null) throw new ArgumentNullException(nameof(report));
+        var root = new DesignReport(report) { Location = _rootOffset };
+        SetRoot(root);
+        root.AttachSurface(this);
+    }
+
     private void SetRoot(ContainerControl root)
     {
+        ReportDesignContext.Current = root as DesignReport;
+
         // Remove every existing item and its underlying control.
         _selectionService.DeselectAll();
         foreach (var item in _designItems.ToArray())
@@ -304,7 +330,7 @@ public class DesignSurface : ContainerControl
     public DesignItem AddControl(Control control, Point location)
     {
         if (_rootControl == null)
-            throw new InvalidOperationException("No design has been begun. Call BeginDesignForm or BeginDesignUserControl first.");
+            throw new InvalidOperationException(LangRes.GetString("Designer_NoDesignStarted"));
         return RegisterItem(control, parent: _rootControl, ToRootLocal(location));
     }
 
@@ -342,7 +368,18 @@ public class DesignSurface : ContainerControl
         item.ParentItem = parent != null ? FindItem(parent) : null;
         _designItems.Add(item);
 
-        _selectionService.Select(item);
+        if (control is DesignReportControl && RootControl is DesignReport reportRoot)
+            reportRoot.SyncControlProxies();
+
+        var stillRegistered = FindItem(control) != null;
+
+        // Syncing proxies can orphan a freshly placed proxy (for example when the drop
+        // landed outside any band, so the cleanup detaches it from the model and the
+        // tree). Only select the item when it is still a registered design item;
+        // selecting a deregistered phantom would leave the property grid bound to a
+        // control that is no longer visible on the surface.
+        if (stillRegistered)
+            _selectionService.Select(item);
         _undoService.Clear();
         ContentModified?.Invoke(this, EventArgs.Empty);
         Invalidate();
@@ -382,12 +419,50 @@ public class DesignSurface : ContainerControl
     }
 
     /// <summary>
+    /// Registers a structural design item that is positioned by its container rather than by
+    /// user interaction. Unlike <see cref="AddControl(Control, ContainerControl, Point)"/> this
+    /// does not select the item nor clear the undo history, so layout synchronization (for
+    /// example report band containers) does not disturb the user's selection or history.
+    /// </summary>
+    /// <param name="control">The control to track as a design item.</param>
+    /// <param name="parent">The container control the control is parented to.</param>
+    /// <returns>The newly created design item.</returns>
+    internal DesignItem RegisterStructuralItem(Control control, ContainerControl parent)
+    {
+        if (control == null) throw new ArgumentNullException(nameof(control));
+        if (parent == null) throw new ArgumentNullException(nameof(parent));
+
+        control.Parent = parent;
+        var item = new DesignItem(control);
+        item.ParentItem = FindItem(parent);
+        _designItems.Add(item);
+        return item;
+    }
+
+    /// <summary>
+    /// Removes a structural design item previously added via <see cref="RegisterStructuralItem"/>.
+    /// Deselects the item if it is currently selected and removes its control from the tree.
+    /// </summary>
+    /// <param name="control">The control whose design item should be removed.</param>
+    internal void UnregisterStructuralItem(Control control)
+    {
+        var item = FindItem(control);
+        if (item == null) return;
+        _selectionService.Deselect(item);
+        control.Parent?.Controls.Remove(control);
+        _designItems.Remove(item);
+    }
+
+    /// <summary>
     /// Removes a design item and its underlying control from the surface.
     /// </summary>
     /// <param name="item">The item to remove.</param>
     public void RemoveControl(DesignItem item)
     {
         if (item == null) return;
+
+        if (item.Control is DesignReportControl reportProxy)
+            reportProxy.DetachWrappedFromBands();
 
         _undoService.PushSnapshot(item.Control);
         _selectionService.Deselect(item);
@@ -793,8 +868,11 @@ public class DesignSurface : ContainerControl
         if (_dragService.IsDragging)
         {
             _dragService.EndDrag();
-            // Fix 4: DragCompleted event handler calls Invalidate() + ClearResizeCursor()
-            // No need to call them here again.
+            // The mouse button is physically released here, so clear the pressed flag.
+            // Leaving it set would leak into the next click (e.g. a toolbox drop) and make
+            // the click-selection block below run with a stale state.
+            _leftButtonPressed = false;
+            ClearResizeCursor();
             return;
         }
 
@@ -1011,7 +1089,7 @@ public class DesignSurface : ContainerControl
             g.FillRectangle(bannerColor, 0, 0, Width, bannerHeight);
             var borderColor = Color.FromArgb(160, 200, 200, 200);
             g.FillRectangle(borderColor, 0, bannerHeight - 1, Width, 1);
-            var msg = $"Klicken Sie, um einen {_pendingDropItem.DisplayName} zu platzieren. ESC zum Abbrechen.";
+            var msg = string.Format(LangRes.GetString("Designer_DropHint"), _pendingDropItem.DisplayName);
             g.DrawString(msg, ThemeManager.CurrentTheme.DefaultFont,
                 Color.FromArgb(0, 80, 160), 10, 10);
         }
@@ -1346,6 +1424,12 @@ public class DesignSurface : ContainerControl
         else if (primary?.Control is DesignUserControl)
         {
             _dragService.MinResizeSize = new Size(80, 60);
+        }
+        else if (primary?.Control is DesignReport)
+        {
+            // The page size is driven by the report's page setup; the root snaps
+            // back to it after any resize attempt, so forbid shrinking entirely.
+            _dragService.MinResizeSize = primary.Control.Size;
         }
         else
         {

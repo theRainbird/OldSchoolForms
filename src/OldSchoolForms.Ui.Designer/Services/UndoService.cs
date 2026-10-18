@@ -39,6 +39,13 @@ public class UndoSnapshot
     public object? RestoreValue { get; }
 
     /// <summary>
+    /// Gets the object instance a property snapshot writes back to. For control property
+    /// snapshots this is the control; for report model snapshots (bands, controls, page
+    /// setup) it is the model object. Null for bounds/text and action snapshots.
+    /// </summary>
+    public object? PropertyTarget { get; }
+
+    /// <summary>
     /// Initializes a new snapshot for the given control.
     /// </summary>
     public UndoSnapshot(Control control)
@@ -55,6 +62,15 @@ public class UndoSnapshot
         Text = control.Text;
         PropertyName = propertyName;
         RestoreValue = restoreValue;
+        PropertyTarget = control;
+    }
+
+    internal UndoSnapshot(object propertyTarget, string propertyName, object? restoreValue)
+    {
+        Control = null!;
+        PropertyName = propertyName;
+        RestoreValue = restoreValue;
+        PropertyTarget = propertyTarget;
     }
 
     /// <summary>
@@ -94,21 +110,25 @@ public class UndoSnapshot
             UndoAction();
             return;
         }
+        if (PropertyName != null)
+        {
+            if (PropertyTarget != null)
+                RestoreProperty(PropertyTarget, PropertyName, RestoreValue);
+            return;
+        }
         Control.Bounds = Bounds;
         if (Text != null)
             Control.Text = Text;
-        if (PropertyName != null)
-            RestoreProperty(Control, PropertyName, RestoreValue);
     }
 
-    private static void RestoreProperty(Control control, string propertyName, object? value)
+    private static void RestoreProperty(object target, string propertyName, object? value)
     {
         try
         {
-            var prop = control.GetType().GetProperty(propertyName,
+            var prop = target.GetType().GetProperty(propertyName,
                 BindingFlags.Public | BindingFlags.Instance);
             if (prop != null && prop.CanWrite)
-                prop.SetValue(control, value);
+                prop.SetValue(target, value);
         }
         catch { }
     }
@@ -194,6 +214,33 @@ public class UndoService
     }
 
     /// <summary>
+    /// Captures a single property change on an arbitrary object (such as a report band or
+    /// report control) and pushes it onto the undo stack, clearing the redo stack since a new
+    /// action invalidates redo history. Used for model objects that are not controls.
+    /// </summary>
+    /// <param name="target">The object whose property changed.</param>
+    /// <param name="propertyName">The name of the modified property.</param>
+    /// <param name="oldValue">The previous property value, restored on undo.</param>
+    public void PushPropertyChangeOn(object? target, string propertyName, object? oldValue)
+    {
+        if (target == null || string.IsNullOrEmpty(propertyName)) return;
+
+        var snapshot = new UndoSnapshot(target, propertyName, oldValue);
+        _undoStack.Push(new[] { snapshot });
+        _redoStack.Clear();
+
+        if (_undoStack.Count > MaxUndoDepth)
+        {
+            var temp = new Stack<UndoSnapshot[]>(_undoStack.ToArray()[..MaxUndoDepth]);
+            _undoStack.Clear();
+            foreach (var item in temp)
+                _undoStack.Push(item);
+        }
+
+        OnStateChanged();
+    }
+
+    /// <summary>
     /// Pushes an action-based undo entry that stores explicit undo/redo delegates instead of
     /// control state. Used for collection mutations such as adding or removing tool strip items.
     /// Clears the redo stack since a new action invalidates redo history.
@@ -235,8 +282,9 @@ public class UndoService
             redoSnapshots[i] = snapshots[i].UndoAction != null
                 ? new UndoSnapshot(snapshots[i].RedoAction!, snapshots[i].UndoAction!)
                 : snapshots[i].PropertyName != null
-                    ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
-                        CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                    ? new UndoSnapshot(snapshots[i].PropertyTarget ?? snapshots[i].Control,
+                        snapshots[i].PropertyName!,
+                        CurrentValueOf(snapshots[i].PropertyTarget ?? snapshots[i].Control, snapshots[i].PropertyName))
                     : new UndoSnapshot(snapshots[i].Control);
         _redoStack.Push(redoSnapshots);
 
@@ -261,8 +309,9 @@ public class UndoService
             undoSnapshots[i] = snapshots[i].UndoAction != null
                 ? new UndoSnapshot(snapshots[i].RedoAction!, snapshots[i].UndoAction!)
                 : snapshots[i].PropertyName != null
-                    ? new UndoSnapshot(snapshots[i].Control, snapshots[i].PropertyName!,
-                        CurrentValueOf(snapshots[i].Control, snapshots[i].PropertyName))
+                    ? new UndoSnapshot(snapshots[i].PropertyTarget ?? snapshots[i].Control,
+                        snapshots[i].PropertyName!,
+                        CurrentValueOf(snapshots[i].PropertyTarget ?? snapshots[i].Control, snapshots[i].PropertyName))
                     : new UndoSnapshot(snapshots[i].Control);
         _undoStack.Push(undoSnapshots);
 
@@ -272,14 +321,14 @@ public class UndoService
         OnStateChanged();
     }
 
-    private static object? CurrentValueOf(Control control, string propertyName)
+    private static object? CurrentValueOf(object target, string propertyName)
     {
         try
         {
-            var prop = control.GetType().GetProperty(propertyName,
+            var prop = target.GetType().GetProperty(propertyName,
                 BindingFlags.Public | BindingFlags.Instance);
             if (prop != null)
-                return prop.GetValue(control);
+                return prop.GetValue(target);
         }
         catch { }
         return null;

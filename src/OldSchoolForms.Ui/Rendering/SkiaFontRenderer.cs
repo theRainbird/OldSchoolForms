@@ -39,7 +39,8 @@ namespace OldSchoolForms.Ui.Rendering;
         if (string.IsNullOrEmpty(text)) return;
 
         var typeface = GetOrLoadTypeface(font.Name, font.Style);
-        if (typeface == null) return;
+        if (typeface == null)
+            return;
 
         float scaledSize = font.Size * zoom;
         using var paint = new SKPaint

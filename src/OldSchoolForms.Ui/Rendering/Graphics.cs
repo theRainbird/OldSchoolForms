@@ -69,6 +69,13 @@ namespace OldSchoolForms.Ui.Rendering;
     /// Gets the current clip bounds as the intersection of all active clip regions.
     /// Returns null if no clip is active.
     /// </summary>
+    /// <remarks>
+    /// When the active clip regions do not overlap, the intersection is empty and this
+    /// returns <see cref="Rectangle.Empty"/>. Every draw command created while the clip
+    /// is empty renders nothing. An unexpectedly empty <see cref="ClipBounds"/> in a
+    /// region that should be visible is the signature of a clip leak - see the pairing
+    /// rule on <see cref="SetClip"/>.
+    /// </remarks>
     public Rectangle? ClipBounds
     {
         get
@@ -91,9 +98,33 @@ namespace OldSchoolForms.Ui.Rendering;
     }
 
     /// <summary>
-    /// Sets the clipping region to the specified rectangle.
+    /// Pushes a clipping region onto the clip stack. All subsequent drawing is limited
+    /// to the intersection of the active clip regions.
     /// </summary>
     /// <param name="rect">The clipping rectangle.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>Pairing rule:</b> every <c>SetClip</c> must be matched by an explicit
+    /// <see cref="ResetClip"/> before the enclosing <see cref="Restore"/> call.
+    /// <see cref="Save"/>/<see cref="Restore"/> only cover the transform stack - they
+    /// never pop clips.
+    /// </para>
+    /// <para>
+    /// The canonical pattern is:
+    /// <code>
+    /// g.Save();
+    /// g.SetClip(rect);
+    /// // ... draw ...
+    /// g.ResetClip();  // pop the clip - Restore() does NOT do this
+    /// g.Restore();    // pop the transform
+    /// </code>
+    /// </para>
+    /// <para>
+    /// An unbalanced <c>SetClip</c> leaks the clip into everything rendered afterwards
+    /// on the same graphics object. Draw commands whose region is disjoint from the
+    /// leaked clip get an empty <see cref="ClipBounds"/> and silently disappear.
+    /// </para>
+    /// </remarks>
     public void SetClip(Rectangle rect)
     {
         _clipStack.Add(new Rectangle(
@@ -104,8 +135,13 @@ namespace OldSchoolForms.Ui.Rendering;
     }
 
     /// <summary>
-    /// Removes the current clipping region.
+    /// Removes the most recently pushed clipping region from the clip stack.
+    /// No-op when no clip is active.
     /// </summary>
+    /// <remarks>
+    /// Must be called once for every <see cref="SetClip"/> before the matching
+    /// <see cref="Restore"/>. See the pairing rule on <see cref="SetClip"/>.
+    /// </remarks>
     public void ResetClip()
     {
         if (_clipStack.Count > 0)
@@ -124,16 +160,30 @@ namespace OldSchoolForms.Ui.Rendering;
     }
 
     /// <summary>
-    /// Saves the current graphics state (transform and offset).
+    /// Saves the current graphics state (transform and offset) onto the transform stack.
     /// </summary>
+    /// <remarks>
+    /// <b>Important:</b> only the transform (offset/zoom) is saved. The clip stack is
+    /// <b>not</b> part of the saved state: clips pushed with <see cref="SetClip"/> stay
+    /// active across <see cref="Restore"/> and leak into all later drawing on this
+    /// graphics object until they are removed with <see cref="ResetClip"/>.
+    /// </remarks>
     public void Save()
     {
         _transforms.Push(new Matrix(_offsetX, _offsetY));
     }
 
     /// <summary>
-    /// Restores the graphics state to the previously saved state.
+    /// Restores the transform state to the previously saved state.
     /// </summary>
+    /// <remarks>
+    /// Only the transform (offset/zoom) is restored - active clip regions are NOT
+    /// removed. Call <see cref="ResetClip"/> once for every <see cref="SetClip"/>
+    /// before calling <see cref="Restore"/>. Otherwise the clip leaks into subsequent
+    /// rendering, and draw commands in regions disjoint from the leaked clip become
+    /// invisible because their <see cref="ClipBounds"/> intersection is
+    /// <see cref="Rectangle.Empty"/>.
+    /// </remarks>
     public void Restore()
     {
         if (_transforms.Count > 0)

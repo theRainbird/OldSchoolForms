@@ -152,7 +152,13 @@ public class PropertyGrid : ContainerControl
 
     private void OnSelectionChanged(object? sender, EventArgs e)
     {
-        TargetControl = _selectionService?.PrimarySelection?.Control;
+        var control = _selectionService?.PrimarySelection?.Control;
+        TargetControl = control;
+        // A report control proxy is not itself a bindable model object; bind to the
+        // wrapped report control so the grid shows the model's properties even if
+        // the external BindObject driver has not run yet for this selection.
+        if (control is Reports.DesignReportControl proxy)
+            _boundObject = proxy.Wrapped;
         RebuildRows();
         Invalidate();
     }
@@ -161,7 +167,8 @@ public class PropertyGrid : ContainerControl
     {
         _rows.Clear();
         var target = _boundObject ?? (object?)TargetControl;
-        if (target == null) return;
+        if (target == null)
+            return;
 
         var properties = _propertyService.GetPropertiesFor(target);
 
@@ -1207,6 +1214,21 @@ public class PropertyGrid : ContainerControl
 
     public override void Render(Graphics g)
     {
+        try
+        {
+            RenderCore(g);
+        }
+        catch (Exception ex)
+        {
+            // A failing paint must not take down the designer, but it must not be
+            // silent either - surface it for diagnosis.
+            System.Diagnostics.Debug.WriteLine(
+                $"[PropertyGrid] Paint failed: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private void RenderCore(Graphics g)
+    {
         var theme = ThemeManager.CurrentTheme;
 
         // Keep the scrollbar range in sync with the current content.
@@ -1370,6 +1392,13 @@ public sealed class PropertyValueChangedEventArgs : EventArgs
     public Control? Control { get; }
 
     /// <summary>
+    /// Gets the object instance the modified property belongs to. For control properties this
+    /// equals <see cref="Control"/>; for report model objects (bands, controls, page setup)
+    /// it is the model object itself.
+    /// </summary>
+    public object? Target { get; }
+
+    /// <summary>
     /// Gets the name of the modified property.
     /// </summary>
     public string PropertyName { get; }
@@ -1391,11 +1420,13 @@ public sealed class PropertyValueChangedEventArgs : EventArgs
     /// <param name="propertyName">The name of the modified property.</param>
     /// <param name="oldValue">The previous property value.</param>
     /// <param name="newValue">The new property value.</param>
-    public PropertyValueChangedEventArgs(Control? control, string propertyName, object? oldValue, object? newValue)
+    /// <param name="target">The object owning the property; defaults to <paramref name="control"/> when null.</param>
+    public PropertyValueChangedEventArgs(Control? control, string propertyName, object? oldValue, object? newValue, object? target = null)
     {
         Control = control;
         PropertyName = propertyName;
         OldValue = oldValue;
         NewValue = newValue;
+        Target = target ?? control;
     }
 }

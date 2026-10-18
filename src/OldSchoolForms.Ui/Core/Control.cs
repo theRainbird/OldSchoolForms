@@ -170,6 +170,20 @@ public class Control : Component, IThemeChangeSubscriber, INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Clears this control's parent reference without re-entering the owning
+    /// <see cref="ControlCollection.Remove"/>. Called by the collection when a control
+    /// is removed so it no longer reports a stale parent (which would otherwise keep
+    /// parent-walking logic, such as a report proxy's band resolution, pointing at a
+    /// container it has already left).
+    /// </summary>
+    internal void ClearParentReference()
+    {
+        if (_parent == null) return;
+        _parent = null;
+        InvalidateCachedForm();
+    }
+
+    /// <summary>
     /// Gets or sets the bounds (position and size) of the control.
     /// </summary>
     public Rectangle Bounds
@@ -1595,6 +1609,7 @@ public class ControlCollection : IEnumerable<Control>
     {
         if (_controls.Remove(control))
         {
+            control.ClearParentReference();
             _owner.MarkLayoutDirty();
             if (_updateSuspendCount == 0)
             {
@@ -1614,6 +1629,7 @@ public class ControlCollection : IEnumerable<Control>
         {
             var control = _controls[index];
             _controls.RemoveAt(index);
+            control.ClearParentReference();
             _owner.MarkLayoutDirty();
             if (_updateSuspendCount == 0)
             {
@@ -1628,6 +1644,8 @@ public class ControlCollection : IEnumerable<Control>
     /// </summary>
     public void Clear()
     {
+        foreach (var control in _controls)
+            control.ClearParentReference();
         _controls.Clear();
         _owner.MarkLayoutDirty();
         if (_updateSuspendCount == 0)

@@ -114,6 +114,15 @@ public class ToolboxService
     }
 
     /// <summary>
+    /// Removes all registered toolbox items.
+    /// </summary>
+    public void Clear()
+    {
+        _items.Clear();
+        OnToolboxChanged();
+    }
+
+    /// <summary>
     /// Creates a control instance for the specified toolbox item.
     /// The control is assigned a default name based on its type.
     /// </summary>
@@ -140,7 +149,10 @@ public class ToolboxService
         return null;
     }
 
-    private void RegisterStandardControls()
+    /// <summary>
+    /// Registers the standard set of OldSchoolForms controls in the toolbox.
+    /// </summary>
+    public void RegisterStandardControls()
     {
         Register(new ToolboxItem("Button", "Basic", typeof(Button), new Size(120, 40)));
         Register(new ToolboxItem("Label", "Basic", typeof(Label), new Size(150, 28)));

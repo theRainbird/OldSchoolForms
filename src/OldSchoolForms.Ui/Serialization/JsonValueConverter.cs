@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using OldSchoolForms.Ui.Core;
 
-namespace OldSchoolForms.Ui.Designer.Serialization;
+namespace OldSchoolForms.Ui.Serialization;
 
 /// <summary>
 /// Converts the value types used by designed controls to and from JSON nodes.
@@ -12,7 +12,7 @@ namespace OldSchoolForms.Ui.Designer.Serialization;
 /// (serialized by name, flags as a comma-separated list) and images
 /// (<see cref="SvgImage"/> / <see cref="RasterImage"/>).
 /// </summary>
-internal static class JsonValueConverter
+public static class JsonValueConverter
 {
     /// <summary>
     /// Determines whether values of the given type can be represented in the layout JSON format.

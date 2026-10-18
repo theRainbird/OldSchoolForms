@@ -1396,17 +1396,21 @@ public static class Platform
         g.MeasureText = (text, font, zoom) => fontRenderer.MeasureText(text, font, zoom);
         form.Render(g);
 
-        foreach (var cmd in g.GetCommands())
-        {
-            ExecuteDrawCommand(cmd, renderer, fontRenderer);
-        }
+        var mainCommands = g.GetCommands();
 
         using var gOverlay = new Graphics();
         gOverlay.Zoom = form.Zoom;
         gOverlay.MeasureText = (text, font, zoom) => fontRenderer.MeasureText(text, font, zoom);
         form.RenderOverlay(gOverlay);
 
-        foreach (var cmd in gOverlay.GetCommands())
+        var overlayCommands = gOverlay.GetCommands();
+
+        foreach (var cmd in mainCommands)
+        {
+            ExecuteDrawCommand(cmd, renderer, fontRenderer);
+        }
+
+        foreach (var cmd in overlayCommands)
         {
             ExecuteDrawCommand(cmd, renderer, fontRenderer);
         }

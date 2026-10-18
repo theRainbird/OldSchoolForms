@@ -544,4 +544,394 @@
   <data name="Runtime_ReportControlTypeUnsupported" xml:space="preserve">
     <value>Nicht unterstützter Report-Steuerelementtyp '{0}'.</value>
   </data>
+  <data name="Designer_Title" xml:space="preserve">
+    <value>OldSchoolForms Form Designer</value>
+  </data>
+  <data name="Designer_MenuFile" xml:space="preserve">
+    <value>&amp;Datei</value>
+  </data>
+  <data name="Designer_MenuNew" xml:space="preserve">
+    <value>&amp;Neu</value>
+  </data>
+  <data name="Designer_MenuOpen" xml:space="preserve">
+    <value>&amp;Öffnen...</value>
+  </data>
+  <data name="Designer_MenuSave" xml:space="preserve">
+    <value>&amp;Speichern</value>
+  </data>
+  <data name="Designer_MenuSaveAs" xml:space="preserve">
+    <value>Speichern &amp;unter...</value>
+  </data>
+  <data name="Designer_MenuExit" xml:space="preserve">
+    <value>Be&amp;enden</value>
+  </data>
+  <data name="Designer_MenuEdit" xml:space="preserve">
+    <value>&amp;Bearbeiten</value>
+  </data>
+  <data name="Designer_MenuUndo" xml:space="preserve">
+    <value>&amp;Rückgängig</value>
+  </data>
+  <data name="Designer_MenuRedo" xml:space="preserve">
+    <value>&amp;Wiederholen</value>
+  </data>
+  <data name="Designer_MenuDelete" xml:space="preserve">
+    <value>&amp;Löschen</value>
+  </data>
+  <data name="Designer_MenuSelectAll" xml:space="preserve">
+    <value>&amp;Alles auswählen</value>
+  </data>
+  <data name="Designer_MenuView" xml:space="preserve">
+    <value>&amp;Ansicht</value>
+  </data>
+  <data name="Designer_MenuShowGrid" xml:space="preserve">
+    <value>&amp;Raster anzeigen</value>
+  </data>
+  <data name="Designer_MenuSnapGrid" xml:space="preserve">
+    <value>Am &amp;Raster ausrichten</value>
+  </data>
+  <data name="Designer_MenuReport" xml:space="preserve">
+    <value>&amp;Report</value>
+  </data>
+  <data name="Designer_MenuPreview" xml:space="preserve">
+    <value>&amp;Vorschau</value>
+  </data>
+  <data name="Designer_MenuHelp" xml:space="preserve">
+    <value>&amp;Hilfe</value>
+  </data>
+  <data name="Designer_MenuAbout" xml:space="preserve">
+    <value>&amp;Info</value>
+  </data>
+  <data name="Designer_AboutText" xml:space="preserve">
+    <value>OldSchoolForms Form Designer
+Version 1.0
+
+Ein grafischer Formular-Designer für OldSchoolForms.</value>
+  </data>
+  <data name="Designer_PreviewNotReport" xml:space="preserve">
+    <value>Vorschau ist nur für Reports verfügbar</value>
+  </data>
+  <data name="Designer_PreviewTitle" xml:space="preserve">
+    <value>Vorschau – {0}</value>
+  </data>
+  <data name="Designer_StatusReady" xml:space="preserve">
+    <value>Bereit</value>
+  </data>
+  <data name="Designer_StatusPlacing" xml:space="preserve">
+    <value>Platziere {0} – Klicken Sie auf die Designfläche</value>
+  </data>
+  <data name="Designer_StatusSelected" xml:space="preserve">
+    <value>Selektiert: {0}</value>
+  </data>
+  <data name="Designer_StatusNoSelection" xml:space="preserve">
+    <value>Keine Auswahl</value>
+  </data>
+  <data name="Designer_StatusModified" xml:space="preserve">
+    <value>Geändert</value>
+  </data>
+  <data name="Designer_StatusNewForm" xml:space="preserve">
+    <value>Neues Formular</value>
+  </data>
+  <data name="Designer_StatusNewUserControl" xml:space="preserve">
+    <value>Neues Benutzersteuerelement</value>
+  </data>
+  <data name="Designer_StatusNewReport" xml:space="preserve">
+    <value>Neuer Report</value>
+  </data>
+  <data name="Designer_StatusOpened" xml:space="preserve">
+    <value>Geöffnet: {0}</value>
+  </data>
+  <data name="Designer_StatusSaved" xml:space="preserve">
+    <value>Gespeichert: {0}</value>
+  </data>
+  <data name="Designer_StatusSavedPreview" xml:space="preserve">
+    <value>Gespeichert (Vorschau generiert)</value>
+  </data>
+  <data name="Designer_TitleUntitled" xml:space="preserve">
+    <value>OldSchoolForms Form Designer - [Unbenannt]</value>
+  </data>
+  <data name="Designer_TitleWithFile" xml:space="preserve">
+    <value>OldSchoolForms Form Designer - [{0}]</value>
+  </data>
+  <data name="Designer_OpenTitle" xml:space="preserve">
+    <value>Dokument öffnen</value>
+  </data>
+  <data name="Designer_SaveTitle" xml:space="preserve">
+    <value>Dokument speichern</value>
+  </data>
+  <data name="Designer_ErrorTitle" xml:space="preserve">
+    <value>Fehler</value>
+  </data>
+  <data name="Designer_ErrorOpen" xml:space="preserve">
+    <value>Fehler beim Öffnen: {0}</value>
+  </data>
+  <data name="Designer_ErrorSave" xml:space="preserve">
+    <value>Fehler beim Speichern: {0}</value>
+  </data>
+  <data name="Designer_NoDesignStarted" xml:space="preserve">
+    <value>Es wurde kein Design begonnen. Rufen Sie zuerst BeginDesignForm, BeginDesignUserControl oder BeginDesignReport auf.</value>
+  </data>
+  <data name="Toolbox_Title" xml:space="preserve">
+    <value>Toolbox</value>
+  </data>
+  <data name="NewDocumentDialog_Title" xml:space="preserve">
+    <value>Neues Element</value>
+  </data>
+  <data name="NewDocumentDialog_Question" xml:space="preserve">
+    <value>Welches Element soll erstellt werden?</value>
+  </data>
+  <data name="NewDocumentDialog_Form" xml:space="preserve">
+    <value>Formular</value>
+  </data>
+  <data name="NewDocumentDialog_UserControl" xml:space="preserve">
+    <value>Benutzersteuerelement</value>
+  </data>
+  <data name="NewDocumentDialog_Report" xml:space="preserve">
+    <value>Report</value>
+  </data>
+  <data name="NewDocumentDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="NewDocumentDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="ReportDesigner_DocumentName" xml:space="preserve">
+    <value>Report</value>
+  </data>
+  <data name="ReportDesigner_NoReportOnSurface" xml:space="preserve">
+    <value>Die Designfläche enthält kein Report-Dokument.</value>
+  </data>
+  <data name="ReportDesigner_ZoomRange" xml:space="preserve">
+    <value>PageZoom muss zwischen 0,25 und 4,0 liegen.</value>
+  </data>
+  <data name="ReportDesigner_BandNotInReport" xml:space="preserve">
+    <value>Das Band gehört nicht zu diesem Report.</value>
+  </data>
+  <data name="ReportDesigner_BandReportHeader" xml:space="preserve">
+    <value>Reportkopf</value>
+  </data>
+  <data name="ReportDesigner_BandPageHeader" xml:space="preserve">
+    <value>Seitenkopf</value>
+  </data>
+  <data name="ReportDesigner_BandGroupHeader" xml:space="preserve">
+    <value>Gruppenkopf</value>
+  </data>
+  <data name="ReportDesigner_BandDetail" xml:space="preserve">
+    <value>Detail</value>
+  </data>
+  <data name="ReportDesigner_BandGroupFooter" xml:space="preserve">
+    <value>Gruppenfuß</value>
+  </data>
+  <data name="ReportDesigner_BandPageFooter" xml:space="preserve">
+    <value>Seitenfuß</value>
+  </data>
+  <data name="ReportDesigner_BandReportFooter" xml:space="preserve">
+    <value>Reportfuß</value>
+  </data>
+  <data name="ReportDesigner_BandHiddenSuffix" xml:space="preserve">
+    <value> (ausgeblendet)</value>
+  </data>
+  <data name="ReportDesigner_GroupAdd" xml:space="preserve">
+    <value>Neue Gruppe</value>
+  </data>
+  <data name="ReportDesigner_GroupDelete" xml:space="preserve">
+    <value>Gruppe löschen</value>
+  </data>
+  <data name="ReportDesigner_GroupMoveUp" xml:space="preserve">
+    <value>Nach oben</value>
+  </data>
+  <data name="ReportDesigner_GroupMoveDown" xml:space="preserve">
+    <value>Nach unten</value>
+  </data>
+  <data name="ReportDesigner_GroupDefaultName" xml:space="preserve">
+    <value>Gruppe{0}</value>
+  </data>
+  <data name="ReportDesigner_DefaultLabel" xml:space="preserve">
+    <value>Beschriftung</value>
+  </data>
+  <data name="ReportDesigner_DefaultCheckBox" xml:space="preserve">
+    <value>Auswahl</value>
+  </data>
+  <data name="ReportDesigner_ImagePlaceholder" xml:space="preserve">
+    <value>Bild</value>
+  </data>
+  <data name="ReportDesigner_DefaultSeriesName" xml:space="preserve">
+    <value>Serie1</value>
+  </data>
+  <data name="DataFieldDialog_Title" xml:space="preserve">
+    <value>Datenfeld</value>
+  </data>
+  <data name="DataFieldDialog_FieldName" xml:space="preserve">
+    <value>Feldname</value>
+  </data>
+  <data name="DataFieldDialog_AvailableFields" xml:space="preserve">
+    <value>Verfügbare Felder</value>
+  </data>
+  <data name="DataFieldDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="DataFieldDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="ExpressionDialog_Title" xml:space="preserve">
+    <value>Ausdruck</value>
+  </data>
+  <data name="ExpressionDialog_ExpressionLabel" xml:space="preserve">
+    <value>Ausdruck (z. B. "Gesamt: {Betrag:C}")</value>
+  </data>
+  <data name="ExpressionDialog_AvailableFields" xml:space="preserve">
+    <value>Verfügbare Felder</value>
+  </data>
+  <data name="ExpressionDialog_Insert" xml:space="preserve">
+    <value>Einfügen</value>
+  </data>
+  <data name="ExpressionDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="ExpressionDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="DesignFieldsDialog_Title" xml:space="preserve">
+    <value>Designfelder</value>
+  </data>
+  <data name="DesignFieldsDialog_FieldNames" xml:space="preserve">
+    <value>Feldnamen</value>
+  </data>
+  <data name="DesignFieldsDialog_Add" xml:space="preserve">
+    <value>Hinzufügen</value>
+  </data>
+  <data name="DesignFieldsDialog_Remove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="DesignFieldsDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="DesignFieldsDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="PageSetupDialog_Title" xml:space="preserve">
+    <value>Seite einrichten</value>
+  </data>
+  <data name="PageSetupDialog_PaperFormat" xml:space="preserve">
+    <value>Papierformat</value>
+  </data>
+  <data name="PageSetupDialog_Custom" xml:space="preserve">
+    <value>Benutzerdefiniert</value>
+  </data>
+  <data name="PageSetupDialog_Landscape" xml:space="preserve">
+    <value>Querformat</value>
+  </data>
+  <data name="PageSetupDialog_MarginsLabel" xml:space="preserve">
+    <value>Ränder in cm</value>
+  </data>
+  <data name="PageSetupDialog_Left" xml:space="preserve">
+    <value>Links</value>
+  </data>
+  <data name="PageSetupDialog_Right" xml:space="preserve">
+    <value>Rechts</value>
+  </data>
+  <data name="PageSetupDialog_Top" xml:space="preserve">
+    <value>Oben</value>
+  </data>
+  <data name="PageSetupDialog_Bottom" xml:space="preserve">
+    <value>Unten</value>
+  </data>
+  <data name="PageSetupDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PageSetupDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="ChartSeriesDialog_Title" xml:space="preserve">
+    <value>Diagramm-Serien</value>
+  </data>
+  <data name="ChartSeriesDialog_Series" xml:space="preserve">
+    <value>Serien</value>
+  </data>
+  <data name="ChartSeriesDialog_AddSeries" xml:space="preserve">
+    <value>Serie hinzufügen</value>
+  </data>
+  <data name="ChartSeriesDialog_RemoveSeries" xml:space="preserve">
+    <value>Serie entfernen</value>
+  </data>
+  <data name="ChartSeriesDialog_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ChartSeriesDialog_PointsLabel" xml:space="preserve">
+    <value>Datenpunkte (Label;Wert pro Zeile)</value>
+  </data>
+  <data name="ChartSeriesDialog_UnnamedSeries" xml:space="preserve">
+    <value>(Serie)</value>
+  </data>
+  <data name="ChartSeriesDialog_DefaultSeriesName" xml:space="preserve">
+    <value>Serie{0}</value>
+  </data>
+  <data name="ChartSeriesDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="ChartSeriesDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Title" xml:space="preserve">
+    <value>Kreuztabellen-Felder</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Fields" xml:space="preserve">
+    <value>Felder</value>
+  </data>
+  <data name="CrossTabFieldsDialog_AddField" xml:space="preserve">
+    <value>Feld hinzufügen</value>
+  </data>
+  <data name="CrossTabFieldsDialog_RemoveField" xml:space="preserve">
+    <value>Feld entfernen</value>
+  </data>
+  <data name="CrossTabFieldsDialog_DataField" xml:space="preserve">
+    <value>Datenfeld</value>
+  </data>
+  <data name="CrossTabFieldsDialog_HeaderText" xml:space="preserve">
+    <value>Kopfzeile</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Usage" xml:space="preserve">
+    <value>Verwendung</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Aggregation" xml:space="preserve">
+    <value>Aggregation</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="CrossTabFieldsDialog_UnnamedField" xml:space="preserve">
+    <value>(Feld)</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="CrossTabFieldsDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="CrossTabFields_UsageRow" xml:space="preserve">
+    <value>Zeile</value>
+  </data>
+  <data name="CrossTabFields_UsageColumn" xml:space="preserve">
+    <value>Spalte</value>
+  </data>
+  <data name="CrossTabFields_UsageValue" xml:space="preserve">
+    <value>Wert</value>
+  </data>
+  <data name="CrossTabFields_AggSum" xml:space="preserve">
+    <value>Summe</value>
+  </data>
+  <data name="CrossTabFields_AggCount" xml:space="preserve">
+    <value>Anzahl</value>
+  </data>
+  <data name="CrossTabFields_AggAvg" xml:space="preserve">
+    <value>Durchschnitt</value>
+  </data>
+  <data name="CrossTabFields_AggMin" xml:space="preserve">
+    <value>Minimum</value>
+  </data>
+  <data name="CrossTabFields_AggMax" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="Designer_DropHint" xml:space="preserve">
+    <value>Klicken Sie, um einen {0} zu platzieren. ESC zum Abbrechen.</value>
+  </data>
 </root>

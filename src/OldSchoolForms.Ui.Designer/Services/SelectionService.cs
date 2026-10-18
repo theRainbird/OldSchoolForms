@@ -44,7 +44,12 @@ public class SelectionService
         if (item == null) return;
         if (_selectedItems.Count == 1 && _selectedItems[0] == item) return;
 
-        DeselectAll();
+        // Clear the previous selection without raising an intermediate empty-selection
+        // event, then raise exactly one event for the final selection. Raising an empty
+        // event first would let observers (e.g. a property grid driven both by this
+        // service and by an external host) transiently bind to nothing and, if a later
+        // step short-circuits, remain bound to null.
+        ClearSelectionSilent();
         _selectedItems.Add(item);
         item.Selected = true;
         OnSelectionChanged();
@@ -79,10 +84,20 @@ public class SelectionService
     {
         if (_selectedItems.Count == 0) return;
 
+        ClearSelectionSilent();
+        OnSelectionChanged();
+    }
+
+    /// <summary>
+    /// Clears the selected set and resets each item's selected flag without raising
+    /// <see cref="SelectionChanged"/>. Used to make multi-step selection changes
+    /// (such as <see cref="Select"/>) atomic with respect to observers.
+    /// </summary>
+    private void ClearSelectionSilent()
+    {
         foreach (var item in _selectedItems)
             item.Selected = false;
         _selectedItems.Clear();
-        OnSelectionChanged();
     }
 
     /// <summary>
@@ -107,7 +122,7 @@ public class SelectionService
     public void SelectAll(IEnumerable<DesignItem> items)
     {
         if (items == null) return;
-        DeselectAll();
+        ClearSelectionSilent();
         foreach (var item in items)
         {
             if (!_selectedItems.Contains(item))

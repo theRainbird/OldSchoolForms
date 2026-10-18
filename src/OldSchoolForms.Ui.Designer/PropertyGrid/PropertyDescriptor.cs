@@ -104,7 +104,7 @@ public class PropertyDescriptor
     private void OnValueChanged(object? oldValue, object? newValue)
     {
         ValueChanged?.Invoke(this, new PropertyValueChangedEventArgs(
-            _target as Control, _property.Name, oldValue, newValue));
+            _target as Control, _property.Name, oldValue, newValue, _target));
     }
 
     private static object? ConvertValue(object? value, Type targetType)

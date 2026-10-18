@@ -115,6 +115,14 @@ public class Report
     public object? DataSource { get; set; }
 
     /// <summary>
+    /// Gets the design-time list of data field names available for data binding.
+    /// This list is a designer aid for the field picker and the WYSIWYG sample-data
+    /// preview; the render engine ignores it. Persisted as the optional
+    /// <c>designFields</c> member of the <c>OldSchoolForms.Report</c> format.
+    /// </summary>
+    public List<string> DesignFields { get; } = new();
+
+    /// <summary>
     /// Gets the report header band (rendered once at the beginning of the report).
     /// </summary>
     public ReportBand ReportHeader { get; } = new(ReportBandType.ReportHeader);

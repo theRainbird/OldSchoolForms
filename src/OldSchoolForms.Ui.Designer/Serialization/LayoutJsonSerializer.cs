@@ -8,6 +8,7 @@ using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Controls.Separators;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Layout;
+using OldSchoolForms.Ui.Serialization;
 
 namespace OldSchoolForms.Ui.Designer.Serialization;
 

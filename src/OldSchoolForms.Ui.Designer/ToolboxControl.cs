@@ -96,6 +96,14 @@ public class ToolboxControl : Panel
         };
         Controls.Add(_searchBox);
 
+        _toolboxService.ToolboxChanged += (_, _) =>
+        {
+            BuildFilteredList();
+            UpdateScrollBar();
+            _vScrollBar.ScrollTo(0);
+            Invalidate();
+        };
+
         BuildFilteredList();
     }
 
@@ -235,7 +243,7 @@ public class ToolboxControl : Panel
 
         g.FillRectangle(theme.ControlLight, 0, 0, Width, Height);
         g.FillRectangle(theme.ActiveCaption, 0, 0, Width, HeaderHeight);
-        g.DrawString("Toolbox", theme.DefaultFont, theme.ActiveCaptionText, 6, 4);
+        g.DrawString(LangRes.GetString("Toolbox_Title"), theme.DefaultFont, theme.ActiveCaptionText, 6, 4);
 
         int scroll = _vScrollBar.Value;
         var layout = BuildLayout();

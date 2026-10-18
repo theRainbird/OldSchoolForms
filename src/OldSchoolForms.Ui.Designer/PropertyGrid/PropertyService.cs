@@ -6,6 +6,7 @@ using OldSchoolForms.Ui.Controls.Advanced;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Design;
+using OldSchoolForms.Ui.Reports;
 
 namespace OldSchoolForms.Ui.Designer.PropertyGrid;
 
@@ -125,9 +126,12 @@ public class PropertyService
 
         var readOnlyNames = GetReadOnlyPropertyNames(target);
         var noiseNames = GetNoisePropertyNames(target);
-        var properties = target is ToolStripItem
-            ? EnumerateToolStripItemProperties(target.GetType())
-            : target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        var properties = target switch
+        {
+            ToolStripItem => EnumerateToolStripItemProperties(target.GetType()),
+            ReportControl => EnumerateReportControlProperties(target.GetType()),
+            _ => target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+        };
 
         return properties
             .Where(p => p.CanRead && !noiseNames.Contains(p.Name))
@@ -157,9 +161,31 @@ public class PropertyService
         }
     }
 
+    /// <summary>
+    /// Enumerates the declared public properties of a <see cref="ReportControl"/>-derived type,
+    /// walking up the inheritance chain until <see cref="ReportControl"/> itself (inclusive) so
+    /// the shared report control properties (Left, Top, Width, Height, colors, font, ...) are
+    /// browsable as well.
+    /// </summary>
+    /// <param name="type">The concrete report control type to enumerate.</param>
+    /// <returns>The deduplicated property set from the type up to and including <see cref="ReportControl"/>.</returns>
+    private static IEnumerable<PropertyInfo> EnumerateReportControlProperties(Type type)
+    {
+        var seen = new HashSet<string>();
+        for (var t = type; t != null && typeof(ReportControl).IsAssignableFrom(t); t = t.BaseType)
+        {
+            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (seen.Add(p.Name))
+                    yield return p;
+            }
+        }
+    }
+
     private static HashSet<string> GetReadOnlyPropertyNames(object target) => target switch
     {
         DataGridViewColumn => new HashSet<string> { "ButtonIcon", "HeaderCell" },
+        ReportBand => new HashSet<string> { "BandType" },
         _ => new HashSet<string>()
     };
 
@@ -173,6 +199,18 @@ public class PropertyService
     private static HashSet<string> GetNoisePropertyNames(object target) => target switch
     {
         ToolStripItem => new HashSet<string> { "IsHovered", "IsPressed", "DisplayText", "Mnemonic" },
+        Report => new HashSet<string>
+        {
+            "PageWidth", "PageHeight", "ReportHeader", "PageHeader", "Detail",
+            "PageFooter", "ReportFooter", "Groups", "DataSource", "PageSettings"
+        },
+        ReportBand => new HashSet<string> { "Controls" },
+        ReportChartControl => new HashSet<string>
+        {
+            "XAxis", "YAxis", "TrendLine", "Palette", "ChartPadding",
+            "Right", "Bottom", "EffectiveFont"
+        },
+        ReportControl => new HashSet<string> { "Right", "Bottom", "EffectiveFont" },
         _ => new HashSet<string>()
     };
 

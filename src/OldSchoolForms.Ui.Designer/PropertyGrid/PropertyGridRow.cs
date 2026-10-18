@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
+using System.Globalization;
 using System.Reflection;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Reports;
 using PlatformHelper = OldSchoolForms.Ui.Platform.Platform;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
@@ -1005,10 +1007,38 @@ public class PropertyGridRow
             {
                 _descriptor.SetValue(ParseScalar(_editBuffer));
             }
+            else if (_descriptor.PropertyType == typeof(Cm))
+            {
+                if (TryParseCm(_editBuffer, out var cm))
+                    _descriptor.SetValue(cm);
+            }
         }
         catch { }
 
         _isEditing = false;
+    }
+
+    /// <summary>
+    /// Parses a centimeter value from an edit buffer. Accepts a plain number or a number
+    /// followed by an optional "cm" suffix, in the current culture.
+    /// </summary>
+    /// <param name="text">The edit buffer text.</param>
+    /// <param name="value">Receives the parsed centimeter value.</param>
+    /// <returns>true if parsing succeeded; otherwise false.</returns>
+    internal static bool TryParseCm(string? text, out Cm value)
+    {
+        value = Cm.Zero;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var trimmed = text.Trim();
+        if (trimmed.EndsWith("cm", StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[..^2].Trim();
+        if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.CurrentCulture, out var v)
+            || double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+        {
+            value = new Cm(v);
+            return true;
+        }
+        return false;
     }
 
     /// <summary>

@@ -113,6 +113,14 @@ dotnet run --project samples/OldSchoolForms.Ui.Demo  # Run demo (requires X11/di
 - Events must describe when they are raised
 - Methods must describe their functionality and parameters
 
+**Graphics clip discipline (Save/Restore vs SetClip/ResetClip):**
+- `Graphics.Save()`/`Restore()` save and restore ONLY the transform (offset/zoom) stack. They never touch the clip stack.
+- Every `Graphics.SetClip(rect)` must be paired with an explicit `Graphics.ResetClip()` before the matching `Restore()`:
+  `Save → SetClip → draw → ResetClip → Restore`
+- An unbalanced `SetClip` leaks the clip into everything rendered afterwards on the same `Graphics` instance. Draw commands whose region is disjoint from the leaked clip get `ClipBounds == Rectangle.Empty` and render invisibly - text and fills silently disappear although the command list looks complete.
+- When rendering a subtree into a shared `Graphics` (e.g. a WYSIWYG report proxy importing offscreen commands), always `ResetClip()` before `Restore()`.
+- Historical bug (fixed Oct 2026): `DesignReportControl.Render`/`DesignReportLine.Render` called `SetClip` without `ResetClip`; the leaked page-bounds clip blanked the property grid and label captions in the report designer. Regression coverage: `ReportDesignerClipRegressionTests` in `tests/OldSchoolForms.Ui.Designer.Tests`.
+
 **Tool Call Format (Qwen AI Agents):**
 - Use ONLY OpenAI-compatible JSON format for tool calls: `{"name": "tool_name", "arguments": {"param1": "value"}}`
 - NEVER use XML format for tool calls (e.g., `<tool_call>`, `<function=...>`, or similar XML tags)

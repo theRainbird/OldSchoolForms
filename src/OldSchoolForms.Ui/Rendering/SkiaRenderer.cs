@@ -539,7 +539,11 @@ public class SkiaRenderer : IDisposable
                 _gl.DrawArrays(GLEnum.TriangleStrip, 0, 4);
                 _gl.BindVertexArray(0);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkiaRendererFallback] BlitToScreen failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private void InitBlitShader()
@@ -567,15 +571,33 @@ public class SkiaRenderer : IDisposable
             uint vs = _gl.CreateShader(GLEnum.VertexShader);
             _gl.ShaderSource(vs, vertexShaderSource);
             _gl.CompileShader(vs);
+            _gl.GetShader(vs, GLEnum.CompileStatus, out var vsCompiled);
+            if (vsCompiled == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkiaRendererFallback] Blit shader vertex compile failed: {_gl.GetShaderInfoLog(vs)}");
+            }
 
             uint fs = _gl.CreateShader(GLEnum.FragmentShader);
             _gl.ShaderSource(fs, fragmentShaderSource);
             _gl.CompileShader(fs);
+            _gl.GetShader(fs, GLEnum.CompileStatus, out var fsCompiled);
+            if (fsCompiled == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkiaRendererFallback] Blit shader fragment compile failed: {_gl.GetShaderInfoLog(fs)}");
+            }
 
             _shaderProgram = _gl.CreateProgram();
             _gl.AttachShader(_shaderProgram, vs);
             _gl.AttachShader(_shaderProgram, fs);
             _gl.LinkProgram(_shaderProgram);
+            _gl.GetProgram(_shaderProgram, GLEnum.LinkStatus, out var linked);
+            if (linked == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SkiaRendererFallback] Blit shader link failed: {_gl.GetProgramInfoLog(_shaderProgram)}");
+            }
 
             _gl.DeleteShader(vs);
             _gl.DeleteShader(fs);

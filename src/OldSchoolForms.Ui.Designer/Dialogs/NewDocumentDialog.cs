@@ -14,7 +14,10 @@ public enum NewDocumentType
     Form,
 
     /// <summary>A <see cref="OldSchoolForms.Ui.Designer.DesignUserControl"/> without a title bar.</summary>
-    UserControl
+    UserControl,
+
+    /// <summary>A <see cref="OldSchoolForms.Ui.Designer.Reports.DesignReport"/> page for banded reports.</summary>
+    Report
 }
 
 /// <summary>
@@ -25,6 +28,7 @@ public class NewDocumentDialog : Form
 {
     private RadioButton _formRadio = null!;
     private RadioButton _userControlRadio = null!;
+    private RadioButton _reportRadio = null!;
 
     private NewDocumentType _selectedType;
 
@@ -49,7 +53,7 @@ public class NewDocumentDialog : Form
     private NewDocumentDialog(NewDocumentType initial)
     {
         _selectedType = initial;
-        Text = "Neues Element";
+        Text = LangRes.GetString("NewDocumentDialog_Title");
         Width = 360;
         Height = 220;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -57,7 +61,7 @@ public class NewDocumentDialog : Form
 
         var instruction = new Label
         {
-            Text = "Welches Element soll erstellt werden?",
+            Text = LangRes.GetString("NewDocumentDialog_Question"),
             X = 24,
             Y = 28,
             Width = 310,
@@ -67,21 +71,30 @@ public class NewDocumentDialog : Form
 
         _formRadio = new RadioButton
         {
-            Text = "Form",
+            Text = LangRes.GetString("NewDocumentDialog_Form"),
             X = 40,
-            Y = 72,
+            Y = 64,
             Width = 280,
             Height = 28,
             Checked = initial == NewDocumentType.Form
         };
         _userControlRadio = new RadioButton
         {
-            Text = "UserControl",
+            Text = LangRes.GetString("NewDocumentDialog_UserControl"),
             X = 40,
-            Y = 104,
+            Y = 96,
             Width = 280,
             Height = 28,
-            Checked = initial != NewDocumentType.Form
+            Checked = initial == NewDocumentType.UserControl
+        };
+        _reportRadio = new RadioButton
+        {
+            Text = LangRes.GetString("NewDocumentDialog_Report"),
+            X = 40,
+            Y = 128,
+            Width = 280,
+            Height = 28,
+            Checked = initial == NewDocumentType.Report
         };
         _formRadio.CheckedChanged += (_, _) =>
         {
@@ -93,8 +106,14 @@ public class NewDocumentDialog : Form
             if (_userControlRadio.Checked)
                 _selectedType = NewDocumentType.UserControl;
         };
+        _reportRadio.CheckedChanged += (_, _) =>
+        {
+            if (_reportRadio.Checked)
+                _selectedType = NewDocumentType.Report;
+        };
         Controls.Add(_formRadio);
         Controls.Add(_userControlRadio);
+        Controls.Add(_reportRadio);
 
         var buttonPanel = new Panel
         {
@@ -104,7 +123,7 @@ public class NewDocumentDialog : Form
         };
         var okButton = new Button
         {
-            Text = "OK",
+            Text = LangRes.GetString("NewDocumentDialog_Ok"),
             Width = 75,
             Height = 30,
             X = 112,
@@ -114,7 +133,7 @@ public class NewDocumentDialog : Form
 
         var cancelButton = new Button
         {
-            Text = "Abbrechen",
+            Text = LangRes.GetString("NewDocumentDialog_Cancel"),
             Width = 75,
             Height = 30,
             X = 197,
