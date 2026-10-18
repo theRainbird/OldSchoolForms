@@ -106,6 +106,18 @@ public class Form : ContainerControl, INativeWindow
     }
 
     /// <summary>
+    /// Gets or sets the button that is clicked when the user presses ENTER while
+    /// this form has keyboard focus. Typically the OK button of a dialog.
+    /// </summary>
+    public Controls.Basic.Button? AcceptButton { get; set; }
+
+    /// <summary>
+    /// Gets or sets the button that is clicked when the user presses ESCAPE while
+    /// this form has keyboard focus. Typically the Cancel button of a dialog.
+    /// </summary>
+    public Controls.Basic.Button? CancelButton { get; set; }
+
+    /// <summary>
     /// Gets or sets the current window state (normal, minimized, or maximized).
     /// </summary>
     public FormWindowState WindowState
@@ -305,6 +317,18 @@ public class Form : ContainerControl, INativeWindow
                 Platform.Platform.EstablishModalRelationship(this, _ownerForm, dialogCtx, ownerCtx);
         }
 
+        // Give the dialog keyboard focus immediately: set the first focusable control
+        // as ActiveControl and raise the native window. Without this, the window manager
+        // may keep focus on the owner window and the user has to click the dialog once
+        // before any keyboard input reaches it.
+        ActivateFirstFocusableControl(this);
+        Platform.Platform.FocusWindow(this);
+
+        // Some window managers ignore focus requests issued before the window is fully
+        // mapped. Re-assert the focus during the first event pump iterations until the
+        // native window reports it (bounded to avoid an endless retry loop).
+        int focusRetriesLeft = 5;
+
         while (_modal && Application.Running)
         {
             Platform.Platform.ProcessEvents(Application.Instance);
@@ -314,6 +338,19 @@ public class Form : ContainerControl, INativeWindow
                 if (_dialogResult == DialogResult.None)
                     _dialogResult = DialogResult.Cancel;
                 _modal = false;
+            }
+
+            if (focusRetriesLeft > 0 && _modal)
+            {
+                if (!Platform.Platform.IsWindowFocused(this))
+                {
+                    focusRetriesLeft--;
+                    Platform.Platform.FocusWindow(this);
+                }
+                else
+                {
+                    focusRetriesLeft = 0;
+                }
             }
         }
 
@@ -983,6 +1020,26 @@ public class Form : ContainerControl, INativeWindow
             {
                 ActiveControl.OnKeyDown(e);
                 if (e.Handled) return;
+            }
+
+            // Dialog-level Enter/Escape handling: trigger the AcceptButton/CancelButton
+            // when no control consumed the key. Skip when Ctrl/Alt modifiers are held
+            // so shortcuts like Ctrl+Enter or Alt+mnemonic are not intercepted.
+            if (!e.Handled && !e.Modifiers.HasFlag(ModifierKeys.Control) && !e.Modifiers.HasFlag(ModifierKeys.Alt))
+            {
+                if (e.KeyCode == Keys.Enter && AcceptButton != null && AcceptButton.Enabled && AcceptButton.Visible)
+                {
+                    e.Handled = true;
+                    AcceptButton.PerformClick();
+                    return;
+                }
+
+                if (e.KeyCode == Keys.Escape && CancelButton != null && CancelButton.Enabled && CancelButton.Visible)
+                {
+                    e.Handled = true;
+                    CancelButton.PerformClick();
+                    return;
+                }
             }
 
             if (e.Modifiers.HasFlag(ModifierKeys.Control) && !e.Handled)

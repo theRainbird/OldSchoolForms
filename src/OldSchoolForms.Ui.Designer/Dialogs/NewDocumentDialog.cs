@@ -141,6 +141,9 @@ public class NewDocumentDialog : Form
         };
         cancelButton.Click += (_, _) => CloseDialog(false);
 
+        AcceptButton = okButton;
+        CancelButton = cancelButton;
+
         buttonPanel.Controls.AddRange([okButton, cancelButton]);
         Controls.Add(buttonPanel);
     }

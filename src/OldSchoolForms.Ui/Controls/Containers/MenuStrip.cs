@@ -212,8 +212,11 @@ public class MenuStrip : ContainerControl
                 var ddResult = HitTestDropDown(args.X, args.Y);
                 if (ddResult != null)
                 {
-                    ddResult.PerformClick();
+                    // Close the dropdown before dispatching the click so handlers
+                    // that open modal dialogs (e.g. File > New) do not leave the
+                    // menu painted open behind the dialog until it is closed.
                     CloseDropDownKeepCapture();
+                    ddResult.PerformClick();
                     return;
                 }
 
@@ -380,9 +383,9 @@ public class MenuStrip : ContainerControl
                     OpenDropDown(match);
                 else
                 {
-                    match.PerformClick();
                     CloseDropDown();
                     MenuMode = false;
+                    match.PerformClick();
                 }
                 e.Handled = true;
                 return;
@@ -426,9 +429,10 @@ public class MenuStrip : ContainerControl
                 case Keys.Enter:
                     if (_selectedDropDownIndex >= 0 && _selectedDropDownIndex < _openItem.DropDownItems.Count)
                     {
-                        _openItem.DropDownItems[_selectedDropDownIndex].PerformClick();
+                        var enterItem = _openItem.DropDownItems[_selectedDropDownIndex];
                         CloseDropDown();
                         MenuMode = false;
+                        enterItem.PerformClick();
                         e.Handled = true;
                         return;
                     }
@@ -506,10 +510,10 @@ public class MenuStrip : ContainerControl
                             OpenDropDown(item);
                         else
                         {
-                            item.PerformClick();
                             MenuMode = false;
                             _selectedTopLevelIndex = -1;
                             Invalidate();
+                            item.PerformClick();
                         }
                         e.Handled = true;
                         return;
@@ -546,8 +550,8 @@ public class MenuStrip : ContainerControl
                 OpenDropDown(match);
             else
             {
-                match.PerformClick();
                 CloseDropDown();
+                match.PerformClick();
             }
             return true;
         }

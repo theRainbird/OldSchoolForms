@@ -353,11 +353,43 @@ public static class Platform
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int XFlushDelegate(IntPtr display);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate IntPtr XDefaultRootWindowDelegate(IntPtr display);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XSendEventDelegate(IntPtr display, IntPtr window, int propagate, long eventMask, ref XClientMessageEvent evt);
+
+    /// <summary>
+    /// Managed layout of the X11 XClientMessageEvent (64-bit). Field order and natural
+    /// alignment match the C struct so the marshalled bytes are wire-compatible.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct XClientMessageEvent
+    {
+        public int type;
+        public IntPtr serial;
+        public int sendEvent;
+        public IntPtr display;
+        public IntPtr window;
+        public IntPtr messageType;
+        public int format;
+        public long l0;
+        public long l1;
+        public long l2;
+        public long l3;
+        public long l4;
+    }
+
+    private const int ClientMessageEventType = 33;
+    private const long SubstructureNotifyMask = 1L << 17;
+
     private static readonly XSetTransientForHintDelegate? _xSetTransientForHint = ResolveX11Func<XSetTransientForHintDelegate>("XSetTransientForHint");
     private static readonly XInternAtomDelegate? _xInternAtom = ResolveX11Func<XInternAtomDelegate>("XInternAtom");
     private static readonly XChangePropertyDelegate? _xChangeProperty = ResolveX11Func<XChangePropertyDelegate>("XChangeProperty");
     private static readonly XDeletePropertyDelegate? _xDeleteProperty = ResolveX11Func<XDeletePropertyDelegate>("XDeleteProperty");
     private static readonly XFlushDelegate? _xFlush = ResolveX11Func<XFlushDelegate>("XFlush");
+    private static readonly XDefaultRootWindowDelegate? _xDefaultRootWindow = ResolveX11Func<XDefaultRootWindowDelegate>("XDefaultRootWindow");
+    private static readonly XSendEventDelegate? _xSendEvent = ResolveX11Func<XSendEventDelegate>("XSendEvent");
 
     private const int PropModeReplace = 0;
     private const int NETWmStateModalAtomIndex = 0; // Index within _NET_WM_STATE
@@ -404,6 +436,10 @@ public static class Platform
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     private static extern IntPtr GetWindowLongPtrW(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     private const int GWL_EXSTYLE = -20;
     private static readonly IntPtr WS_EX_DLGMODALFRAME = new IntPtr(0x00000001);
@@ -791,6 +827,9 @@ public static class Platform
             {
                 if (focused)
                 {
+                    if (_contexts.TryGetValue(windowId, out var focusCtx))
+                        focusCtx.HasFocus = true;
+
                     // Always trigger a re-render when focus is regained (Alt+Tab back, etc.)
                     form.Invalidate();
 
@@ -807,6 +846,9 @@ public static class Platform
                 }
                 else
                 {
+                    if (_contexts.TryGetValue(windowId, out var focusCtx))
+                        focusCtx.HasFocus = false;
+
                     form.Focused = false;
                     form.OnLostFocus(EventArgs.Empty);
                     // Clear the global focused window on focus loss to prevent stale references.
@@ -1060,6 +1102,109 @@ public static class Platform
         {
             try { ctx.Window.Focus(); } catch { }
         }
+    }
+
+    /// <summary>
+    /// Gives the native window of the specified form keyboard focus.
+    /// Used by modal dialogs to ensure the dialog window receives input focus
+    /// immediately after creation, even when the window manager does not
+    /// focus new windows automatically.
+    /// </summary>
+    /// <param name="form">The form whose native window should receive keyboard focus.</param>
+    internal static void FocusWindow(Form form)
+    {
+        var ctx = GetFormContext(form);
+        if (ctx == null)
+            return;
+
+        // Window managers with focus-stealing prevention ignore plain XSetInputFocus
+        // (what glfwFocusWindow does) because it carries no user-action source
+        // indication. Send the EWMH _NET_ACTIVE_WINDOW client message to the root
+        // window instead, which is the approved way to request activation, and on
+        // Windows use SetForegroundWindow for the same purpose.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                var hwnd = GetNativeWindowHandle(form);
+                if (hwnd != IntPtr.Zero)
+                    SetForegroundWindow(hwnd);
+            }
+            catch { }
+        }
+        else if (IsX11())
+        {
+            TryActivateX11Window(ctx);
+        }
+
+        try { ctx.Window.Focus(); } catch { }
+    }
+
+    /// <summary>
+    /// Sends an EWMH _NET_ACTIVE_WINDOW client message to the X11 root window to
+    /// request that the window manager activate (focus) the given window. The source
+    /// indication is set to 1 (user initiated via explicit action such as a menu or
+    /// button click), which window managers accept even with focus-stealing prevention.
+    /// </summary>
+    /// <param name="ctx">The window context whose native window should be activated.</param>
+    /// <returns><see langword="true"/> when the activation request was sent.</returns>
+    private static bool TryActivateX11Window(WindowContext ctx)
+    {
+        if (_xSendEvent == null || _xDefaultRootWindow == null || _xInternAtom == null ||
+            _xFlush == null || _glfwGetX11Display == null || _glfwGetX11Window == null)
+            return false;
+
+        try
+        {
+            var display = _glfwGetX11Display();
+            if (display == IntPtr.Zero)
+                return false;
+
+            var xid = _glfwGetX11Window(ctx.Window.Handle);
+            if (xid == IntPtr.Zero)
+                return false;
+
+            var root = _xDefaultRootWindow(display);
+            if (root == IntPtr.Zero)
+                return false;
+
+            var netActiveWindow = InternAtom(display, "_NET_ACTIVE_WINDOW");
+            if (netActiveWindow == IntPtr.Zero)
+                return false;
+
+            var evt = new XClientMessageEvent
+            {
+                type = ClientMessageEventType,
+                display = display,
+                window = xid,
+                messageType = netActiveWindow,
+                format = 32,
+                l0 = 1, // source indication: user initiated
+                l1 = 0, // timestamp: CurrentTime
+                l2 = 0,
+                l3 = 0,
+                l4 = 0
+            };
+
+            _xSendEvent(display, root, 0, SubstructureNotifyMask, ref evt);
+            _xFlush(display);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether the native window of the specified form currently reports keyboard focus.
+    /// </summary>
+    /// <param name="form">The form to check.</param>
+    /// <returns><see langword="true"/> when the form's native window has focus.</returns>
+    internal static bool IsWindowFocused(Form form)
+    {
+        var ctx = GetFormContext(form);
+        return ctx != null && ctx.HasFocus;
     }
 
     /// <summary>

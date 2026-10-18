@@ -63,6 +63,13 @@ internal sealed class WindowContext : IDisposable
     public bool ForceRender { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the native window currently has keyboard focus.
+    /// Updated by the window's FocusChanged callback; Silk.NET's IWindow does not
+    /// expose a focus query, so the state is tracked here.
+    /// </summary>
+    public bool HasFocus { get; set; }
+
+    /// <summary>
     /// Initializes a new WindowContext with the specified window and form.
     /// Renderer initialization is deferred until InitializeRenderer is called.
     /// </summary>
