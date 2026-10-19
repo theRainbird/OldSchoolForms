@@ -112,12 +112,14 @@ public sealed class BandDesignAdapter : ControlDesignAdapter
         => _popup.TryGetOverlay(out localBounds, out labels, out hoveredIndex);
 
     /// <summary>
-    /// Deletes the group of a selected group band. Fixed report bands cannot be deleted.
+    /// Deletes the group of a selected group band. Fixed report bands cannot be deleted:
+    /// the delete is reported as handled without removing anything so the band area and
+    /// its drop target survive.
     /// </summary>
-    /// <returns>true if a group was deleted; otherwise false.</returns>
+    /// <returns>true in all cases; for fixed bands the delete is a no-op.</returns>
     public override bool TryDeleteSelection()
     {
-        if (_band.OwnerGroup == null) return false;
+        if (_band.OwnerGroup == null) return true;
         DeleteGroup(_band.OwnerGroup);
         return true;
     }

@@ -474,10 +474,24 @@ public class DesignSurface : ContainerControl
 
     /// <summary>
     /// Removes all currently selected controls.
+    /// <para>
+    /// The primary selection's design adapter is consulted first, mirroring the
+    /// Delete-key behavior: a selected group band deletes its whole group instead of
+    /// raw-removing the container, and a fixed band swallows the delete. Remaining
+    /// selected band containers are never removed - a band's area is structural and
+    /// must stay available for placing controls.
+    /// </para>
     /// </summary>
     public void DeleteSelected()
     {
-        var items = _selectionService.SelectedItems.ToArray();
+        var primaryControl = _selectionService.PrimarySelection?.Control;
+        var adapter = primaryControl != null ? _adapterRegistry.GetAdapter(primaryControl) : null;
+        if (adapter != null && adapter.TryDeleteSelection())
+            return;
+
+        var items = _selectionService.SelectedItems
+            .Where(i => i.Control is not DesignBand)
+            .ToArray();
         if (items.Length == 0) return;
 
         _undoService.PushSnapshot(items.Select(i => i.Control).ToArray());
@@ -485,6 +499,11 @@ public class DesignSurface : ContainerControl
 
         foreach (var item in items)
         {
+            // Mirror RemoveControl: a report proxy must detach its wrapped model
+            // control, otherwise the next proxy sync would resurrect it.
+            if (item.Control is DesignReportControl reportProxy)
+                reportProxy.DetachWrappedFromBands();
+
             item.Control.Parent?.Controls.Remove(item.Control);
             _designItems.Remove(item);
         }
@@ -956,13 +975,8 @@ public class DesignSurface : ContainerControl
 
         if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
         {
-            var primaryControl = _selectionService.PrimarySelection?.Control;
-            var delAdapter = primaryControl != null ? _adapterRegistry.GetAdapter(primaryControl) : null;
-            if (delAdapter != null && delAdapter.TryDeleteSelection())
-            {
-                e.Handled = true;
-                return;
-            }
+            // DeleteSelected routes through the primary selection's adapter first,
+            // so band deletion semantics match the toolbar/menu delete action.
             DeleteSelected();
             e.Handled = true;
             return;

@@ -90,6 +90,80 @@ public class ReportDesignerTests
     }
 
     [Fact]
+    public void DeleteSelected_FixedBand_KeepsBandContainer_AndPushesNoUndo()
+    {
+        var (surface, root, report) = CreateReportSurface();
+        var detail = root.GetBandContainer(report.Detail)!;
+        surface.Selection.Select(surface.FindItem(detail)!);
+        Assert.False(surface.Undo.CanUndo);
+
+        surface.DeleteSelected();
+
+        // The band area must survive: same live container, still in tree and surface.
+        Assert.Same(detail, root.GetBandContainer(report.Detail));
+        Assert.Same(root, detail.Parent);
+        Assert.NotNull(surface.FindItem(detail));
+        Assert.False(surface.Undo.CanUndo);
+    }
+
+    [Fact]
+    public void DeleteSelected_GroupBand_DeletesWholeGroup()
+    {
+        var (surface, root, report) = CreateReportSurface();
+        var group = new ReportGroup("Kunde", "KundenGruppe");
+        report.Groups.Add(group);
+        root.RefreshGeometry();
+        var header = root.GetBandContainer(group.Header)!;
+        surface.Selection.Select(surface.FindItem(header)!);
+
+        surface.DeleteSelected();
+
+        Assert.Empty(report.Groups);
+        Assert.Null(root.GetBandContainer(group.Header));
+        Assert.Null(root.GetBandContainer(group.Footer));
+    }
+
+    [Fact]
+    public void DeleteSelected_MixedBandAndControl_RemovesOnlyControl()
+    {
+        var (surface, root, report) = CreateReportSurface();
+        var detail = root.GetBandContainer(report.Detail)!;
+        var proxy = new DesignReportLabel();
+        surface.AddControl(proxy, detail, new Point(0, 0));
+
+        // Band first, control last: the control is the primary selection, so the
+        // delete removes it while the band container is filtered out.
+        surface.Selection.Select(surface.FindItem(detail)!);
+        surface.Selection.ToggleSelection(surface.FindItem(proxy)!);
+
+        surface.DeleteSelected();
+
+        Assert.Null(surface.FindItem(proxy));
+        Assert.Empty(report.Detail.Controls);
+        Assert.Same(detail, root.GetBandContainer(report.Detail));
+        Assert.Same(root, detail.Parent);
+    }
+
+    [Fact]
+    public void StaleBandContainer_RefreshGeometry_RecreatesLiveContainer()
+    {
+        var (surface, root, report) = CreateReportSurface();
+        var stale = root.GetBandContainer(report.Detail)!;
+
+        // Simulate a raw tear-out that bypassed the band layout.
+        root.Controls.Remove(stale);
+
+        root.RefreshGeometry();
+
+        var fresh = root.GetBandContainer(report.Detail);
+        Assert.NotNull(fresh);
+        Assert.NotSame(stale, fresh);
+        Assert.Same(root, fresh!.Parent);
+        Assert.NotNull(surface.FindItem(fresh));
+        Assert.Null(surface.FindItem(stale));
+    }
+
+    [Fact]
     public void AddGroup_RefreshGeometry_CreatesGroupBandContainers_WithOwnerGroup()
     {
         var (_, root, report) = CreateReportSurface();

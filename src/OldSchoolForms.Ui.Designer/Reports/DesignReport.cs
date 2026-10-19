@@ -243,7 +243,11 @@ public class DesignReport : ContainerControl
             for (int i = _bandContainers.Count - 1; i >= 0; i--)
             {
                 var container = _bandContainers[i];
-                if (!bands.Contains(container.Band))
+                // A container whose parent is no longer this root is stale: it was torn
+                // out of the control tree by some path that did not go through the
+                // band layout. Dropping it here lets the pass below recreate and
+                // re-register a live container so the band area comes back.
+                if (!bands.Contains(container.Band) || !ReferenceEquals(container.Parent, this))
                 {
                     if (Surface != null)
                         Surface.UnregisterStructuralItem(container);
