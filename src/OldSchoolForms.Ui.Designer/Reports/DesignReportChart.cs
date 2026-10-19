@@ -8,6 +8,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// Design-time proxy for a <see cref="ReportChartControl"/>. Renders the live chart via the
 /// shared WYSIWYG offscreen render pipeline and exposes the chart model for editing.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_chart.svg")]
 public class DesignReportChart : DesignReportControl
 {
     /// <summary>

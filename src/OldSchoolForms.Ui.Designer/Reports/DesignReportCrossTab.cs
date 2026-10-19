@@ -1,3 +1,4 @@
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Reports;
 
 namespace OldSchoolForms.Ui.Designer.Reports;
@@ -6,6 +7,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// Design-time proxy for a <see cref="ReportCrossTab"/>. Renders the live cross-tab via the
 /// shared WYSIWYG offscreen render pipeline and exposes the cross-tab model for editing.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_crosstab.svg")]
 public class DesignReportCrossTab : DesignReportControl
 {
     /// <summary>

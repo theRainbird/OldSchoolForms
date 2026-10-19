@@ -6,6 +6,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// <summary>
 /// Design-time proxy for a data-bound <see cref="ReportCheckBox"/>.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_checkbox.svg")]
 public class DesignReportCheckBox : DesignReportControl
 {
     /// <summary>

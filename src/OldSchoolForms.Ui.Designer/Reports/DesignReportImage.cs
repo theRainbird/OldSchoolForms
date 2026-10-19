@@ -7,6 +7,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// <summary>
 /// Design-time proxy for a <see cref="ReportImage"/>.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_picturebox.svg")]
 public class DesignReportImage : DesignReportControl
 {
     /// <summary>

@@ -1,3 +1,4 @@
+using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Reports;
 
 namespace OldSchoolForms.Ui.Designer.Reports;
@@ -5,6 +6,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// <summary>
 /// Design-time proxy for a data-bound <see cref="ReportTextBox"/>.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_textbox.svg")]
 public class DesignReportTextBox : DesignReportControl
 {
     /// <summary>

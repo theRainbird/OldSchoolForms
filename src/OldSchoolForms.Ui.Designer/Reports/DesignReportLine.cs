@@ -10,6 +10,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// to the line's start point (Left/Top) and end point (X2/Y2); horizontal and
 /// vertical lines keep their orientation when resized.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_report_line.svg")]
 public class DesignReportLine : DesignReportControl
 {
     private bool _horizontal = true;

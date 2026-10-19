@@ -6,6 +6,7 @@ namespace OldSchoolForms.Ui.Designer.Reports;
 /// <summary>
 /// Design-time proxy for a <see cref="ReportLabel"/>.
 /// </summary>
+[ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_label.svg")]
 public class DesignReportLabel : DesignReportControl
 {
     /// <summary>
