@@ -32,6 +32,7 @@ public class DesignReport : ContainerControl
     private bool _syncingProxies;
     private float _pageZoom = 1f;
     private ReportRenderContext? _designContext;
+    private Dictionary<string, DesignRecord>? _designRecords;
     private readonly List<DesignBand> _bandContainers = new();
 
     /// <summary>
@@ -119,15 +120,57 @@ public class DesignReport : ContainerControl
     {
         if (_designContext == null)
         {
-            _designContext = new ReportRenderContext(Report)
+            var ctx = new ReportRenderContext(Report)
             {
                 RenderDpi = BaseDpi,
                 PageNumber = 1,
-                TotalPages = 1,
-                CurrentRecord = DesignRecord.Build(Report)
+                TotalPages = 1
             };
+            // Seed synthetic first records for every declared source so qualified
+            // cross-source expressions render readable placeholders at design time.
+            foreach (var source in Report.DataSources)
+                ctx.SeedFirstRecord(source.Name, GetDesignRecord(source));
+            _designContext = ctx;
         }
         return _designContext;
+    }
+
+    /// <summary>
+    /// Gets a design-time render context prepared for rendering a control in the
+    /// given band: the current source name and current record are bound to the
+    /// band's resolved data source so unqualified fields show that source's
+    /// placeholders and qualified cross-source references resolve against the
+    /// seeded first records.
+    /// </summary>
+    /// <param name="band">The band whose controls are being rendered (may be null).</param>
+    /// <returns>A render context bound to the band's data source.</returns>
+    internal ReportRenderContext GetDesignContextForBand(ReportBand? band)
+    {
+        var ctx = GetDesignContext();
+        var source = ctx.ResolveSource(band?.DataSourceName);
+        ctx.CurrentSourceName = source?.Name;
+        ctx.CurrentRecord = GetDesignRecord(source);
+        return ctx;
+    }
+
+    /// <summary>
+    /// Gets (and caches) the synthetic design record for a data source. When the
+    /// source is null or schema-less, the legacy all-referenced-fields record is
+    /// returned so existing single-source reports keep their WYSIWYG placeholders.
+    /// </summary>
+    private DesignRecord GetDesignRecord(ReportDataSource? source)
+    {
+        var key = source?.Name ?? "\0all";
+        if (_designRecords == null)
+            _designRecords = new Dictionary<string, DesignRecord>(StringComparer.OrdinalIgnoreCase);
+        if (!_designRecords.TryGetValue(key, out var record))
+        {
+            record = source != null && source.Fields.Count > 0
+                ? DesignRecord.BuildForSource(Report, source)
+                : DesignRecord.Build(Report);
+            _designRecords[key] = record;
+        }
+        return record;
     }
 
     /// <summary>
@@ -194,6 +237,7 @@ public class DesignReport : ContainerControl
     public void RefreshGeometry()
     {
         _designContext = null;
+        _designRecords = null;
         var size = ComputePageSize();
         if (_applyingGeometry) return;
         _applyingGeometry = true;

@@ -632,6 +632,12 @@ public class Form : ContainerControl, INativeWindow
     }
 
     /// <summary>
+    /// The deepest control currently under the pointer, tracked so a <c>MouseLeave</c>
+    /// can be synthesized when the pointer transitions to a different control.
+    /// </summary>
+    private Control? _mouseHoverControl;
+
+    /// <summary>
     /// Raises the MouseMove event for the capturing control.
     /// </summary>
     /// <param name="e">The event arguments.</param>
@@ -655,7 +661,59 @@ public class Form : ContainerControl, INativeWindow
             return;
         }
 
+        // Synthesize MouseLeave on the previously hovered control when the pointer
+        // transitions to a different control. The container routing delivers moves to
+        // the deepest child but never notifies the control the pointer left, so hover
+        // state (e.g. tooltips) would otherwise persist after moving away.
+        if (args != null)
+        {
+            var newTarget = GetDeepestChildAtPoint(new Point(args.X, args.Y), out _);
+            if (!ReferenceEquals(newTarget, _mouseHoverControl))
+            {
+                var oldControl = _mouseHoverControl;
+                _mouseHoverControl = newTarget;
+                for (var c = oldControl; c != null; c = c.Parent)
+                {
+                    // Stop as soon as we reach a control that is still under the pointer.
+                    if (newTarget != null && IsAncestorOrSelf(c, newTarget))
+                        break;
+                    c.RaiseMouseLeaveInternal();
+                }
+            }
+        }
+
         base.OnMouseMove(e);
+    }
+
+    /// <summary>
+    /// Clears the hover tracker and notifies the last hovered control when the pointer
+    /// leaves the window, so transient overlays (tooltips) disappear.
+    /// </summary>
+    /// <param name="e">An EventArgs that contains the event data.</param>
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        var old = _mouseHoverControl;
+        _mouseHoverControl = null;
+        if (old != null)
+            old.RaiseMouseLeaveInternal();
+        base.OnMouseLeave(e);
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="candidate"/> is <paramref name="node"/> itself
+    /// or one of its ancestors.
+    /// </summary>
+    /// <param name="candidate">The control to look for.</param>
+    /// <param name="node">The node whose ancestor chain is searched.</param>
+    /// <returns>true if <paramref name="candidate"/> is <paramref name="node"/> or an ancestor of it.</returns>
+    private static bool IsAncestorOrSelf(Control candidate, Control node)
+    {
+        for (var c = node; c != null; c = c.Parent)
+        {
+            if (ReferenceEquals(c, candidate))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

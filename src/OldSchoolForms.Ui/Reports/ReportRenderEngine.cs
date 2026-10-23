@@ -1,3 +1,4 @@
+using OldSchoolForms.Ui.Data;
 using OldSchoolForms.Ui.Rendering;
 
 namespace OldSchoolForms.Ui.Reports;
@@ -55,7 +56,7 @@ public class ReportRenderEngine
         _context = new ReportRenderContext(report) { RenderDpi = renderDpi, TotalPages = totalPages };
         _pages = new List<ReportPage>();
 
-        var records = GetRecords(report.DataSource);
+        var records = GetRecordsForBand(_context, report.Detail);
 
         if (report.Groups.Count > 0)
             records = SortByGroups(records, report.Groups);
@@ -78,7 +79,7 @@ public class ReportRenderEngine
     private int CountPages(Report report, float renderDpi)
     {
         var ctx = new ReportRenderContext(report) { RenderDpi = renderDpi };
-        var records = GetRecords(report.DataSource);
+        var records = GetRecordsForBand(ctx, report.Detail);
         if (report.Groups.Count > 0)
             records = SortByGroups(records, report.Groups);
 
@@ -86,12 +87,12 @@ public class ReportRenderEngine
         Cm currentY = report.TopMargin;
         Cm pageBottom = report.PageHeight - report.BottomMargin;
 
-        Cm pageHeaderH = report.PageHeader.Visible ? report.PageHeader.MeasureHeight(ctx) : Cm.Zero;
-        Cm footerH = report.PageFooter.Visible ? report.PageFooter.MeasureHeight(ctx) : Cm.Zero;
-        Cm reportFooterH = report.ReportFooter.Visible ? report.ReportFooter.MeasureHeight(ctx) : Cm.Zero;
+        Cm pageHeaderH = MeasureHeaderFooterWithFirstRecord(ctx, report.PageHeader);
+        Cm footerH = MeasureHeaderFooterWithFirstRecord(ctx, report.PageFooter);
+        Cm reportFooterH = MeasureHeaderFooterWithFirstRecord(ctx, report.ReportFooter);
 
         if (report.ReportHeader.Visible)
-            currentY += report.ReportHeader.MeasureHeight(ctx);
+            currentY += MeasureHeaderFooterWithFirstRecord(ctx, report.ReportHeader);
         currentY += pageHeaderH;
 
         Cm groupHeaderH = Cm.Zero;
@@ -134,79 +135,138 @@ public class ReportRenderEngine
         var previous = records[index - 1];
         foreach (var g in groups)
         {
-            var curVal = GetFieldValue(current, g.GroupField);
-            var prevVal = GetFieldValue(previous, g.GroupField);
+            var curVal = DataRecord.GetValue(current, g.GroupField);
+            var prevVal = DataRecord.GetValue(previous, g.GroupField);
             if (!Equals(curVal, prevVal)) return true;
         }
         return false;
     }
 
-    private static object? GetFieldValue(object record, string fieldName)
+    /// <summary>
+    /// Resolves the record list a band renders against: the named data source's data,
+    /// falling back to the first defined source, then to the legacy
+    /// <see cref="Report.DataSource"/> when the resolved source carries no data.
+    /// </summary>
+    private static List<object> GetRecordsForBand(ReportRenderContext context, ReportBand band)
     {
-        if (string.IsNullOrEmpty(fieldName) || record == null) return null;
-        var type = record.GetType();
-        var prop = type.GetProperty(fieldName);
-        if (prop != null) return prop.GetValue(record);
-        var field = type.GetField(fieldName);
-        if (field != null) return field.GetValue(record);
-        return null;
+        var source = context.ResolveSource(band.DataSourceName);
+        var data = source?.Data ?? context.Report.DataSource;
+        return GetRecords(data);
+    }
+
+    /// <summary>
+    /// Binds the context to the first record of the band's resolved data source,
+    /// measures the band, then restores the previous record binding so the
+    /// first-record binding never leaks into other bands.
+    /// </summary>
+    private static Cm MeasureHeaderFooterWithFirstRecord(ReportRenderContext context, ReportBand band)
+    {
+        if (!band.Visible) return Cm.Zero;
+        var savedRecord = context.CurrentRecord;
+        var savedSource = context.CurrentSourceName;
+        var source = context.ResolveSource(band.DataSourceName);
+        context.CurrentSourceName = source?.Name;
+        context.CurrentRecord = context.FirstRecordOf(band.DataSourceName);
+        Cm h = band.MeasureHeight(context);
+        context.CurrentRecord = savedRecord;
+        context.CurrentSourceName = savedSource;
+        return h;
+    }
+
+    /// <summary>
+    /// Binds the context to the first record of the band's resolved data source.
+    /// </summary>
+    private void BindFirstRecordOf(ReportBand band)
+    {
+        var source = _context.ResolveSource(band.DataSourceName);
+        _context.CurrentSourceName = source?.Name;
+        _context.CurrentRecord = _context.FirstRecordOf(band.DataSourceName);
     }
 
     private void RenderReportHeader()
     {
         var band = _report.ReportHeader;
         if (!band.Visible) return;
+        var savedRecord = _context.CurrentRecord;
+        var savedSource = _context.CurrentSourceName;
+        BindFirstRecordOf(band);
         Cm h = band.MeasureHeight(_context);
-        if (h <= Cm.Zero) return;
-        band.Render(_state.Graphics, _context, _state.CurrentY, h);
-        _state.Page.Bands.Add(band);
-        _state.CurrentY += h;
+        if (h > Cm.Zero)
+        {
+            band.Render(_state.Graphics, _context, _state.CurrentY, h);
+            _state.Page.Bands.Add(band);
+            _state.CurrentY += h;
+        }
+        _context.CurrentRecord = savedRecord;
+        _context.CurrentSourceName = savedSource;
     }
 
     private void RenderReportFooter()
     {
         var band = _report.ReportFooter;
         if (!band.Visible) return;
+        var savedRecord = _context.CurrentRecord;
+        var savedSource = _context.CurrentSourceName;
+        BindFirstRecordOf(band);
         Cm h = band.MeasureHeight(_context);
-        if (h <= Cm.Zero) return;
-        EnsureSpace(h);
-        band.Render(_state.Graphics, _context, _state.CurrentY, h);
-        _state.Page.Bands.Add(band);
-        _state.CurrentY += h;
+        if (h > Cm.Zero)
+        {
+            EnsureSpace(h);
+            band.Render(_state.Graphics, _context, _state.CurrentY, h);
+            _state.Page.Bands.Add(band);
+            _state.CurrentY += h;
+        }
+        _context.CurrentRecord = savedRecord;
+        _context.CurrentSourceName = savedSource;
     }
 
     private void RenderPageHeader()
     {
         var band = _report.PageHeader;
         if (!band.Visible) return;
+        var savedRecord = _context.CurrentRecord;
+        var savedSource = _context.CurrentSourceName;
+        BindFirstRecordOf(band);
         Cm h = band.MeasureHeight(_context);
-        if (h <= Cm.Zero) return;
-        band.Render(_state.Graphics, _context, _state.CurrentY, h);
-        _state.Page.Bands.Add(band);
-        _state.CurrentY += h;
+        if (h > Cm.Zero)
+        {
+            band.Render(_state.Graphics, _context, _state.CurrentY, h);
+            _state.Page.Bands.Add(band);
+            _state.CurrentY += h;
+        }
+        _context.CurrentRecord = savedRecord;
+        _context.CurrentSourceName = savedSource;
     }
 
     private void RenderPageFooter()
     {
         var band = _report.PageFooter;
         if (!band.Visible) return;
+        var savedRecord = _context.CurrentRecord;
+        var savedSource = _context.CurrentSourceName;
+        BindFirstRecordOf(band);
         Cm h = band.MeasureHeight(_context);
-        if (h <= Cm.Zero) return;
+        if (h > Cm.Zero)
+        {
+            Cm pageBottom = _report.PageHeight - _report.BottomMargin;
+            Cm footerY = pageBottom - h;
 
-        Cm pageBottom = _report.PageHeight - _report.BottomMargin;
-        Cm footerY = pageBottom - h;
+            if (footerY < _state.CurrentY)
+                footerY = _state.CurrentY;
 
-        if (footerY < _state.CurrentY)
-            footerY = _state.CurrentY;
-
-        band.Render(_state.Graphics, _context, footerY, h);
-        _state.Page.Bands.Add(band);
+            band.Render(_state.Graphics, _context, footerY, h);
+            _state.Page.Bands.Add(band);
+        }
+        _context.CurrentRecord = savedRecord;
+        _context.CurrentSourceName = savedSource;
     }
 
     private void RenderUngrouped(List<object> records)
     {
         var detail = _report.Detail;
         if (!detail.Visible) return;
+
+        _context.CurrentSourceName = _context.ResolveSource(detail.DataSourceName)?.Name;
 
         for (int i = 0; i < records.Count; i++)
         {
@@ -220,6 +280,9 @@ public class ReportRenderEngine
     {
         var trackers = _report.Groups.Select(g => new GroupTracker(g)).ToArray();
         var detail = _report.Detail;
+
+        // Group headers/footers automatically use the detail band's data source.
+        _context.CurrentSourceName = _context.ResolveSource(detail.DataSourceName)?.Name;
 
         for (int i = 0; i < records.Count; i++)
         {
@@ -386,12 +449,10 @@ public class ReportRenderEngine
 
         var sorted = records.OrderBy(r =>
         {
-            var type = r.GetType();
             var sb = new System.Text.StringBuilder();
             foreach (var f in fields)
             {
-                var prop = type.GetProperty(f);
-                var val = prop?.GetValue(r)?.ToString() ?? "";
+                var val = DataRecord.GetValue(r, f)?.ToString() ?? "";
                 sb.Append(val.PadLeft(20));
             }
             return sb.ToString();

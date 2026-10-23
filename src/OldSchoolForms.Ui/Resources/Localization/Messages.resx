@@ -934,4 +934,79 @@ A graphical form designer for OldSchoolForms.</value>
   <data name="Designer_DropHint" xml:space="preserve">
     <value>Click to place a {0}. Press ESC to cancel.</value>
   </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DataSourceTree_Title" xml:space="preserve">
+    <value>Data Sources</value>
+  </data>
+  <data name="DataSourceTree_AddSource" xml:space="preserve">
+    <value>+ Source</value>
+  </data>
+  <data name="DataSourceTree_RemoveSource" xml:space="preserve">
+    <value>- Source</value>
+  </data>
+  <data name="DataSourceTree_AddField" xml:space="preserve">
+    <value>+ Field</value>
+  </data>
+  <data name="DataSourceTree_RemoveField" xml:space="preserve">
+    <value>- Field</value>
+  </data>
+  <data name="DataSourceTree_Unnamed" xml:space="preserve">
+    <value>(unnamed)</value>
+  </data>
+  <data name="DataSourceTree_SourcePrefix" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="DataSourceTree_AddSourceTitle" xml:space="preserve">
+    <value>Add Data Source</value>
+  </data>
+  <data name="DataSourceTree_SourceNamePrompt" xml:space="preserve">
+    <value>Data source name</value>
+  </data>
+  <data name="DataSourceTree_AddFieldTitle" xml:space="preserve">
+    <value>Add Field</value>
+  </data>
+  <data name="DataSourceTree_RenameSourceTitle" xml:space="preserve">
+    <value>Rename Data Source</value>
+  </data>
+  <data name="DataSourceTree_RenameFieldTitle" xml:space="preserve">
+    <value>Rename Field</value>
+  </data>
+  <data name="DataSourceTree_TipAddSource" xml:space="preserve">
+    <value>Add a new data source</value>
+  </data>
+  <data name="DataSourceTree_TipRenameSource" xml:space="preserve">
+    <value>Rename the selected data source</value>
+  </data>
+  <data name="DataSourceTree_TipRemoveSource" xml:space="preserve">
+    <value>Remove the selected data source</value>
+  </data>
+  <data name="DataSourceTree_TipAddField" xml:space="preserve">
+    <value>Add a field to the selected data source</value>
+  </data>
+  <data name="DataSourceTree_TipRenameField" xml:space="preserve">
+    <value>Rename the selected field</value>
+  </data>
+  <data name="DataSourceTree_TipRemoveField" xml:space="preserve">
+    <value>Remove the selected field</value>
+  </data>
+  <data name="DataSourceDialog_FieldName" xml:space="preserve">
+    <value>Field name</value>
+  </data>
+  <data name="DataSourceDialog_FieldType" xml:space="preserve">
+    <value>Field type</value>
+  </data>
+  <data name="DataSourceNameDialog_Title" xml:space="preserve">
+    <value>Select Data Source</value>
+  </data>
+  <data name="DataSourceNameDialog_Prompt" xml:space="preserve">
+    <value>Data source for this band</value>
+  </data>
+  <data name="DataSourceNameDialog_Default" xml:space="preserve">
+    <value>(default)</value>
+  </data>
 </root>

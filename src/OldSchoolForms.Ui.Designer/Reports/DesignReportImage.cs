@@ -39,6 +39,7 @@ public class DesignReportImage : DesignReportControl
     /// <param name="g">The graphics context positioned at the proxy's origin.</param>
     protected override void RenderDesignHints(Graphics g)
     {
+        base.RenderDesignHints(g);
         if (Image.Image != null) return;
 
         var placeholder = Color.FromArgb(160, 128, 128, 128);

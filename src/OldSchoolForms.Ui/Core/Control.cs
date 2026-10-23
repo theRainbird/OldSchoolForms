@@ -1236,6 +1236,17 @@ if (_controls == null || _controls.Count == 0) return;
     }
 
     /// <summary>
+    /// Internal helper that raises <see cref="OnMouseLeave"/> from the form-level hover
+    /// tracker when the pointer transitions between controls. The container routing
+    /// delivers mouse-move events to the deepest child but never notifies the control
+    /// the pointer left, so hover state (e.g. tooltips) would otherwise persist.
+    /// </summary>
+    internal void RaiseMouseLeaveInternal()
+    {
+        OnMouseLeave(EventArgs.Empty);
+    }
+
+    /// <summary>
     /// Raises the MouseMove event.
     /// </summary>
     /// <param name="e">An EventArgs that contains the event data.</param>

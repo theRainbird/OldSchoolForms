@@ -2,13 +2,14 @@
   "format": "OldSchoolForms.Layout",
   "version": 1,
   "rootType": "Form",
-  "rootSize": { "width": 640, "height": 420 },
+  "rootSize": { "width": 640, "height": 460 },
   "controls": [
     { "type": "Label", "name": "lblTitle", "props": { "text": "tr:Reports_Title", "location": { "x": 16, "y": 12 }, "size": { "width": 600, "height": 24 } } },
     { "type": "Button", "name": "btnOpen", "props": { "text": "tr:Reports_Open", "location": { "x": 16, "y": 48 }, "size": { "width": 180, "height": 36 } } },
     { "type": "Button", "name": "btnExport", "props": { "text": "tr:Reports_Export", "location": { "x": 208, "y": 48 }, "size": { "width": 180, "height": 36 } } },
     { "type": "Button", "name": "btnLoad", "props": { "text": "tr:Reports_Load", "location": { "x": 400, "y": 48 }, "size": { "width": 180, "height": 36 } } },
-    { "type": "Label", "name": "lblInfo", "props": { "text": "tr:Reports_Info", "location": { "x": 16, "y": 100 }, "size": { "width": 600, "height": 24 } } },
-    { "type": "MemoBox", "name": "infoBox", "props": { "text": "", "location": { "x": 16, "y": 132 }, "size": { "width": 600, "height": 260 } } }
+    { "type": "Button", "name": "btnMulti", "props": { "text": "tr:Reports_OpenMulti", "location": { "x": 16, "y": 92 }, "size": { "width": 240, "height": 36 } } },
+    { "type": "Label", "name": "lblInfo", "props": { "text": "tr:Reports_Info", "location": { "x": 16, "y": 144 }, "size": { "width": 600, "height": 24 } } },
+    { "type": "MemoBox", "name": "infoBox", "props": { "text": "", "location": { "x": 16, "y": 176 }, "size": { "width": 600, "height": 260 } } }
   ]
 }

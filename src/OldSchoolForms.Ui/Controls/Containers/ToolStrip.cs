@@ -31,6 +31,7 @@ public class ToolStrip : ContainerControl
 {
     private readonly ToolStripItemCollection _items;
     private ToolStripItem? _hoveredItem;
+    private Point _lastMousePoint;
     private ToolStripItem? _openDropDownItem;
     private bool _dropDownVisible;
     private int _selectedDropDownIndex = -1;
@@ -248,6 +249,66 @@ public class ToolStrip : ContainerControl
         {
             RenderDropDownOverlay(g, tsButton, tsButton.DropDownItems.Cast<ToolStripItem>().ToList());
         }
+        else
+        {
+            RenderToolTip(g);
+        }
+    }
+
+    /// <summary>
+    /// Renders a small tooltip box near the hovered item when it has tooltip text.
+    /// </summary>
+    /// <param name="g">The Graphics object to use for rendering.</param>
+    private void RenderToolTip(Graphics g)
+    {
+        var item = _hoveredItem;
+        if (item == null || string.IsNullOrEmpty(item.ToolTipText)) return;
+
+        var theme = ThemeManager.CurrentTheme;
+        var font = Font ?? Font.Default;
+        string text = item.ToolTipText!;
+
+        int textWidth = MeasureTextWidthPublic(text, font);
+        int tipWidth = textWidth + 12;
+        int tipHeight = (int)font.Size + 8;
+
+        // Position the tooltip below the cursor with a clearance gap so it never covers
+        // the element the cursor is currently hovering.
+        const int gap = 18;
+        int tipX = _lastMousePoint.X + 12;
+        int tipY = _lastMousePoint.Y + gap;
+
+        if (tipX + tipWidth > Width) tipX = Math.Max(0, Width - tipWidth);
+
+        // Flip above the cursor only when the tooltip would overflow the top-level form's
+        // bottom edge. The overlay pass is not clipped to the tool strip, so the tooltip
+        // may render below the strip; the strip's own small Height must not force a flip.
+        var form = FindForm();
+        if (form != null)
+        {
+            int cursorAbsY = _lastMousePoint.Y + Bounds.Top;
+            for (var p = Parent; p != null && !ReferenceEquals(p, form); p = p.Parent)
+                cursorAbsY += p.Bounds.Top;
+            if (cursorAbsY + gap + tipHeight > form.Height)
+                tipY = _lastMousePoint.Y - tipHeight - gap;
+        }
+
+        g.FillRectangle(theme.MenuDropdownBackground, tipX, tipY, tipWidth, tipHeight);
+        g.DrawRectangle(theme.MenuDropdownBorder, tipX, tipY, tipWidth, tipHeight, 1);
+        g.DrawString(text, font, theme.ToolStripItemText, tipX + 6, tipY + 4);
+    }
+
+    /// <summary>
+    /// Measures the pixel width of the given text using the specified font.
+    /// </summary>
+    /// <param name="text">The text to measure.</param>
+    /// <param name="font">The font to measure with.</param>
+    /// <returns>The measured width in pixels.</returns>
+    private int MeasureTextWidthPublic(string text, Font font)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+        var measured = Platform.Platform.MeasureText(text, font, EffectiveZoom);
+        return (int)(measured.width / EffectiveZoom);
     }
 
     private void RenderDropDownOverlay(Graphics g, ToolStripItem ownerItem, List<ToolStripItem> dropDownItems)
@@ -399,7 +460,15 @@ public class ToolStrip : ContainerControl
     {
         if (e is MouseEventArgs args)
         {
+            var previousHover = _hoveredItem;
+            _lastMousePoint = new Point(args.X, args.Y);
             _hoveredItem = HitTestTopItem(args.X, args.Y);
+
+            if (!ReferenceEquals(previousHover, _hoveredItem)
+                || (!string.IsNullOrEmpty(_hoveredItem?.ToolTipText) && !_dropDownVisible))
+            {
+                Invalidate();
+            }
 
             if (_dropDownVisible && _openDropDownItem is ToolStripButton tsButton)
             {
@@ -442,6 +511,7 @@ public class ToolStrip : ContainerControl
         {
             item.IsHovered = false;
         }
+        Invalidate();
         base.OnMouseLeave(e);
     }
 

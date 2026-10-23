@@ -102,6 +102,8 @@
   "Reports_Open": "Build & open report",
   "Reports_Export": "Export PDF bytes",
   "Reports_Load": "Load report from file",
+  "Reports_OpenMulti": "Build multi-source order report",
+  "Reports_MultiOpened": "Opened multi-source report '{0}' ({1} page(s))",
   "Reports_Info": "Info",
   "Reports_Ready": "Use the buttons to build, open or export a report",
   "Reports_Opened": "Opened '{0}' ({1} page(s))",

@@ -23,6 +23,7 @@ public class ComboBox : Control
     private BindingSource? _boundBindingSource;
     private IBindingList? _previousBindingList;
     private int _dropDownHeight = 120;
+    private int _dropDownTop;
     private int _scrollOffset;
     private int _hoveredIndex = -1;
     private readonly ScrollBarEngine _dropScrollBar = new();
@@ -715,6 +716,36 @@ public class ComboBox : Control
     }
 
     /// <summary>
+    /// Computes the vertical offset (relative to the control's top) at which the dropdown
+    /// list should be rendered. Normally the list drops down below the control. When there is
+    /// not enough room below within the owning form but there is more room above, the list is
+    /// flipped upward so it remains fully visible. In overlay dialog mode the overlay pass is
+    /// not clipped to the dialog, so the list may extend beyond the dialog and no flip is needed.
+    /// </summary>
+    /// <returns>The dropdown top offset in pixels.</returns>
+    private int ComputeDropDownTop()
+    {
+        if (_dropDownStyle == DropDownStyle.Simple)
+            return GetTextBoxHeight();
+
+        // In overlay mode the dropdown is drawn on the owner's surface and is not clipped to
+        // the dialog bounds, so it can always drop down beyond the dialog.
+        if (Platform.Platform.ShouldUseOverlay())
+            return Height;
+
+        var form = FindForm();
+        if (form == null)
+            return Height;
+
+        int spaceBelow = form.Height - Bounds.Bottom;
+        int spaceAbove = Bounds.Top;
+        if (spaceBelow < _dropDownHeight && spaceAbove > spaceBelow)
+            return -(_dropDownHeight + 2);
+
+        return Height;
+    }
+
+    /// <summary>
     /// Renders the dropdown list below the combo box when visible.
     /// </summary>
     /// <param name="g">The Graphics object to use for rendering.</param>
@@ -739,7 +770,7 @@ public class ComboBox : Control
         var scrollBarWidth = 16;
         var needsScrollbar = totalHeight > _dropDownHeight;
         var listWidth = needsScrollbar ? Width - scrollBarWidth : Width;
-        int dropY = Height;
+        int dropY = _dropDownTop;
 
         g.FillRectangle(theme.MenuDropdownBackground, 0, dropY, Width, _dropDownHeight);
         g.DrawRectangle(theme.MenuDropdownBorder, 0, dropY, Width, _dropDownHeight, 1);
@@ -797,7 +828,7 @@ public class ComboBox : Control
         if (_droppedDown && _dropDownStyle != DropDownStyle.Simple)
         {
             int dropWidth = GetDropDownWidth();
-            var dropBounds = new Rectangle(X, Y + Height, dropWidth, _dropDownHeight);
+            var dropBounds = new Rectangle(X, Y + _dropDownTop, dropWidth, _dropDownHeight);
             if (dropBounds.Contains(point))
                 return true;
         }
@@ -915,7 +946,7 @@ public class ComboBox : Control
         if (_droppedDown)
         {
             var itemHeight = GetItemHeight();
-            int dropY = Height;
+            int dropY = _dropDownTop;
             int dropWidth = GetDropDownWidth();
             int totalHeight = _items.Count * itemHeight;
             bool needsScrollbar = _dropScrollBar.NeedsScrollbar;
@@ -958,6 +989,7 @@ public class ComboBox : Control
         if (args.X >= Width - 17)
         {
             _droppedDown = true;
+            _dropDownTop = ComputeDropDownTop();
             CapturingMouse = true;
             EnsureSelectedVisible();
             Invalidate();
@@ -974,7 +1006,7 @@ public class ComboBox : Control
         if (_droppedDown)
         {
             var itemHeight = GetItemHeight();
-            int dropY = Height;
+            int dropY = _dropDownTop;
             int dropWidth = GetDropDownWidth();
             int totalHeight = _items.Count * itemHeight;
             bool needsScrollbar = _dropScrollBar.NeedsScrollbar;
@@ -1017,6 +1049,7 @@ public class ComboBox : Control
         if (args.X >= Width - 17)
         {
             _droppedDown = true;
+            _dropDownTop = ComputeDropDownTop();
             CapturingMouse = true;
             EnsureSelectedVisible();
             Invalidate();
@@ -1083,7 +1116,7 @@ public class ComboBox : Control
             if (args != null)
             {
                 var itemHeight = GetItemHeight();
-                int dropY = _dropDownStyle == DropDownStyle.Simple ? GetTextBoxHeight() : Height;
+                int dropY = _dropDownStyle == DropDownStyle.Simple ? GetTextBoxHeight() : _dropDownTop;
                 int viewHeight = _dropDownStyle == DropDownStyle.Simple ? Height - dropY : _dropDownHeight;
                 int headerOffset = GetHeaderOffset();
                 int totalHeight = _items.Count * itemHeight;
@@ -1172,6 +1205,7 @@ public class ComboBox : Control
                 _droppedDown = !_droppedDown;
                 if (_droppedDown)
                 {
+                    _dropDownTop = ComputeDropDownTop();
                     CapturingMouse = true;
                     EnsureSelectedVisible();
                 }
@@ -1546,7 +1580,7 @@ public class ComboBox : Control
         int dropDownWidth = GetDropDownWidth();
         int viewHeight = Math.Min(_dropDownHeight, totalContentHeight);
 
-        int dropY = Height;
+        int dropY = _dropDownTop;
 
         g.FillRectangle(theme.MenuDropdownBackground, 0, dropY, dropDownWidth, _dropDownHeight);
         g.DrawRectangle(theme.MenuDropdownBorder, 0, dropY, dropDownWidth, _dropDownHeight, 1);

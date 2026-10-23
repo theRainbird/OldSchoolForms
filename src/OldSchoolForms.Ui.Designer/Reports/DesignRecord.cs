@@ -28,6 +28,29 @@ internal sealed class DesignRecord : Dictionary<string, object>
         return record;
     }
 
+    /// <summary>
+    /// Builds a synthetic record from the schema of a single data source: every
+    /// declared field name maps to itself so bound controls show a readable
+    /// placeholder. Falls back to <see cref="Build"/> when the source is
+    /// <see langword="null"/> or declares no fields (legacy mode).
+    /// </summary>
+    /// <param name="report">The report (used for the legacy fallback).</param>
+    /// <param name="source">The data source whose schema defines the placeholder fields.</param>
+    /// <returns>A record mapping each schema field name to itself.</returns>
+    public static DesignRecord BuildForSource(Report report, ReportDataSource? source)
+    {
+        if (source == null || source.Fields.Count == 0)
+            return Build(report);
+
+        var record = new DesignRecord();
+        foreach (var field in source.Fields)
+        {
+            if (!string.IsNullOrWhiteSpace(field.Name))
+                record[field.Name] = field.Name;
+        }
+        return record;
+    }
+
     private static void CollectFromGroups(ReportGroupCollection groups, DesignRecord record)
     {
         foreach (var group in groups)

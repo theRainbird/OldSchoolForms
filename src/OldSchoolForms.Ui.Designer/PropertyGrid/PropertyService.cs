@@ -185,6 +185,8 @@ public class PropertyService
     private static HashSet<string> GetReadOnlyPropertyNames(object target) => target switch
     {
         DataGridViewColumn => new HashSet<string> { "ButtonIcon", "HeaderCell" },
+        ReportBand band when band.BandType is ReportBandType.GroupHeader or ReportBandType.GroupFooter
+            => new HashSet<string> { "BandType", "DataSourceName" },
         ReportBand => new HashSet<string> { "BandType" },
         _ => new HashSet<string>()
     };
@@ -202,7 +204,7 @@ public class PropertyService
         Report => new HashSet<string>
         {
             "PageWidth", "PageHeight", "ReportHeader", "PageHeader", "Detail",
-            "PageFooter", "ReportFooter", "Groups", "DataSource", "PageSettings"
+            "PageFooter", "ReportFooter", "Groups", "DataSource", "DataSources", "PageSettings"
         },
         ReportBand => new HashSet<string> { "Controls" },
         ReportChartControl => new HashSet<string>

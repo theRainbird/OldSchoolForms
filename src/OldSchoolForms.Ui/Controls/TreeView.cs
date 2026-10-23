@@ -77,6 +77,18 @@ public class TreeView : Control
     public TreeNode? SelectedNode { get; private set; }
 
     /// <summary>
+    /// Selects the given node and raises <see cref="AfterSelect"/>.
+    /// </summary>
+    /// <param name="node">The node to select.</param>
+    public void SelectNode(TreeNode node)
+    {
+        if (node == null) return;
+        SelectedNode = node;
+        AfterSelect?.Invoke(this, EventArgs.Empty);
+        Invalidate();
+    }
+
+    /// <summary>
     /// Optional image list for node icons.
     /// </summary>
     public ImageList? ImageList { get; set; }

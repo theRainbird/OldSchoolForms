@@ -22,6 +22,7 @@ public class JsReport
     private readonly JsReportBand _pageFooter;
     private readonly JsReportBand _reportFooter;
     private readonly JsReportGroupCollection _groups;
+    private readonly JsReportDataSourceCollection _dataSources;
 
     /// <summary>The wrapped report.</summary>
     public Report Report { get; }
@@ -45,6 +46,7 @@ public class JsReport
         _pageFooter = new JsReportBand(host, report.PageFooter);
         _reportFooter = new JsReportBand(host, report.ReportFooter);
         _groups = new JsReportGroupCollection(host, report.Groups);
+        _dataSources = new JsReportDataSourceCollection(host, report.DataSources);
     }
 
     /// <summary>The report name.</summary>
@@ -76,41 +78,23 @@ public class JsReport
     public JsReportGroupCollection Groups => _groups;
 
     /// <summary>
-    /// The report data source. Accepts a <c>JsDataTable</c> (uses its default
-    /// view), a <c>JsDataSet</c> (uses the first table's default view), a JS
+    /// The named data source definitions of this report. Each source carries a
+    /// schema and its runtime data; bands select a source via
+    /// <c>band.dataSourceName</c>.
+    /// </summary>
+    public JsReportDataSourceCollection DataSources => _dataSources;
+
+    /// <summary>
+    /// The legacy single report data source. Accepts a <c>JsDataTable</c> (uses its
+    /// default view), a <c>JsDataSet</c> (uses the first table's default view), a JS
     /// array of objects (converted to record maps) or any CLR object.
+    /// Used when bands have no explicit <c>dataSourceName</c> and no named
+    /// <c>dataSources</c> are defined.
     /// </summary>
     public JsValue DataSource
     {
         get => JsValue.FromObject(_host.Engine, Report.DataSource);
-        set
-        {
-            if (value is null || value.IsUndefined() || value.IsNull())
-            {
-                Report.DataSource = null;
-                return;
-            }
-
-            if (value.ToObject() is JsDataTable table)
-            {
-                Report.DataSource = table.Table.DefaultView;
-                return;
-            }
-
-            if (value.ToObject() is JsDataSet set)
-            {
-                Report.DataSource = set.Set.Tables.Count > 0 ? set.Set.Tables[0].DefaultView : null;
-                return;
-            }
-
-            if (value is JsArray)
-            {
-                Report.DataSource = JsMarshal.ToRecordList(value);
-                return;
-            }
-
-            Report.DataSource = value.ToObject();
-        }
+        set => Report.DataSource = JsReportDataSource.ConvertDataSourceValue(value);
     }
 
     /// <summary>

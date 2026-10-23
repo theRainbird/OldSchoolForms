@@ -177,7 +177,7 @@ public abstract class DesignReportControl : Control
         var report = OwnerReport;
         if (report != null)
         {
-            var context = report.GetDesignContext();
+            var context = report.GetDesignContextForBand(OwnerBand?.Band);
             var offscreen = new Graphics { MeasureText = g.MeasureText };
 
             // Guarantee a text-measure callback before rendering. The wrapped control's
@@ -230,11 +230,22 @@ public abstract class DesignReportControl : Control
 
     /// <summary>
     /// Renders design-time-only hints (placeholders, markers) on top of the WYSIWYG
-    /// content. The base implementation draws nothing.
+    /// content. The base implementation draws a dotted light-gray border along the
+    /// proxy's bounds so the control's dimensions stay visible even when it is not
+    /// selected. The border is drawn directly on the live designer graphics and never
+    /// reaches the report render engine, so it does not appear in previews or exports.
     /// </summary>
     /// <param name="g">The graphics context positioned at the proxy's origin.</param>
     protected virtual void RenderDesignHints(Graphics g)
     {
+        var border = Color.LightGray;
+        var dots = new[] { 1f, 2f };
+        float right = Math.Max(1f, Width - 0.5f);
+        float bottom = Math.Max(1f, Height - 0.5f);
+        g.DrawLine(border, 0.5f, 0.5f, right, 0.5f, 1f, dots);
+        g.DrawLine(border, right, 0.5f, right, bottom, 1f, dots);
+        g.DrawLine(border, right, bottom, 0.5f, bottom, 1f, dots);
+        g.DrawLine(border, 0.5f, bottom, 0.5f, 0.5f, 1f, dots);
     }
 
     /// <summary>

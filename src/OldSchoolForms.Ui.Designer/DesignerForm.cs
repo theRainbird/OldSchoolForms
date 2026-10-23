@@ -25,6 +25,8 @@ public class DesignerForm : Form
     private string? _currentFilePath;
     private ToolboxControl _toolbox = null!;
     private Panel _toolboxPanel = null!;
+    private SplitPanel _sidebarSplit = null!;
+    private Reports.DataSourceTreeControl _dataSourceTree = null!;
     private StatusStripPanel _statusPanel = null!;
     private Label _statusLabel = null!;
     private Label _positionLabel = null!;
@@ -87,6 +89,25 @@ public class DesignerForm : Form
         };
         _toolboxPanel.Controls.Add(_toolbox);
         Controls.Add(_toolboxPanel);
+
+        // Sidebar split shown only for report documents: toolbox on top, the
+        // data source tree below. Created here but attached on demand so form
+        // documents keep the plain full-height toolbox.
+        _sidebarSplit = new SplitPanel
+        {
+            Dock = DockStyle.Fill,
+            Orientation = SplitOrientation.Vertical,
+            SplitterWidth = 6,
+            Panel1MinSize = 80,
+            Panel2MinSize = 80
+        };
+        _dataSourceTree = new Reports.DataSourceTreeControl { Dock = DockStyle.Fill };
+        _dataSourceTree.Modified += (_, _) =>
+        {
+            _statusLabel.Text = LangRes.GetString("Designer_StatusModified");
+            _designSurface.Invalidate();
+        };
+        _sidebarSplit.Panel2.Controls.Add(_dataSourceTree);
 
         var mainContentSplit = new SplitPanel
         {
@@ -355,6 +376,46 @@ public class DesignerForm : Form
             Reports.ReportToolbox.RegisterReportItems(_toolboxService);
         else
             _toolboxService.RegisterStandardControls();
+
+        ApplySidebarForDocument(isReport);
+    }
+
+    /// <summary>
+    /// Swaps the left sidebar between the plain full-height toolbox (form
+    /// documents) and the toolbox-over-data-source-tree split (report documents).
+    /// </summary>
+    /// <param name="isReport">Whether the active document is a report.</param>
+    private void ApplySidebarForDocument(bool isReport)
+    {
+        if (isReport)
+        {
+            if (_toolbox.Parent != _sidebarSplit.Panel1)
+            {
+                _toolbox.Parent?.Controls.Remove(_toolbox);
+                _toolbox.Dock = DockStyle.Fill;
+                _sidebarSplit.Panel1.Controls.Add(_toolbox);
+            }
+            if (!_toolboxPanel.Controls.Contains(_sidebarSplit))
+                _toolboxPanel.Controls.Add(_sidebarSplit);
+
+            var root = _designSurface.RootControl as Reports.DesignReport;
+            _dataSourceTree.BindReport(root, _designSurface);
+            // Default the split so the toolbox keeps roughly the upper half.
+            _sidebarSplit.SplitterDistance = Math.Max(
+                _sidebarSplit.Panel1MinSize,
+                _toolboxPanel.Height / 2);
+        }
+        else
+        {
+            _dataSourceTree.BindReport(null, null);
+            if (_toolbox.Parent != _toolboxPanel)
+            {
+                _toolbox.Parent?.Controls.Remove(_toolbox);
+                _toolbox.Dock = DockStyle.Fill;
+                _toolboxPanel.Controls.Add(_toolbox);
+            }
+            _toolboxPanel.Controls.Remove(_sidebarSplit);
+        }
     }
 
     private void OpenForm()

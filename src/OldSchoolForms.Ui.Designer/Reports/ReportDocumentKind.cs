@@ -37,6 +37,7 @@ public class ReportDocumentKind : IDesignDocumentKind
         ValueEditorRegistry.Register(new ReportPageSetupEditor());
         ValueEditorRegistry.Register(new ReportChartSeriesEditor());
         ValueEditorRegistry.Register(new ReportCrossTabFieldsEditor());
+        ValueEditorRegistry.Register(new ReportBandDataSourceEditor());
         _registered = true;
     }
 
@@ -51,7 +52,11 @@ public class ReportDocumentKind : IDesignDocumentKind
     {
         if (surface == null) throw new ArgumentNullException(nameof(surface));
         surface.ClearAll();
-        surface.BeginDesignReport(new Report(LangRes.GetString("ReportDesigner_DocumentName")));
+        var report = new Report(LangRes.GetString("ReportDesigner_DocumentName"));
+        // Seed an initial default data source so the data source tree starts
+        // usable and bands have a source to bind to out of the box.
+        report.DataSources.Add(new ReportDataSource("Data"));
+        surface.BeginDesignReport(report);
     }
 
     /// <inheritdoc />

@@ -73,6 +73,9 @@ public static class ReportJsonSerializer
             ["groups"] = GroupsToNode(report.Groups)
         };
 
+        if (report.DataSources.Count > 0)
+            root["dataSources"] = DataSourcesToNode(report.DataSources);
+
         if (report.DesignFields.Count > 0)
         {
             var designFields = new JsonArray();
@@ -112,6 +115,9 @@ public static class ReportJsonSerializer
         if (root["reportFooter"] is JsonObject rf) BandFromNode(report.ReportFooter, rf);
         if (root["groups"] is JsonArray groups) GroupsFromNode(report.Groups, groups);
 
+        if (root["dataSources"] is JsonArray dataSources)
+            DataSourcesFromNode(report.DataSources, dataSources);
+
         if (root["designFields"] is JsonArray designFields)
         {
             foreach (var fieldNode in designFields)
@@ -138,6 +144,8 @@ public static class ReportJsonSerializer
         };
         if (band.GroupField != null)
             node["groupField"] = band.GroupField;
+        if (band.DataSourceName != null)
+            node["dataSourceName"] = band.DataSourceName;
 
         var controls = new JsonArray();
         foreach (var control in band.Controls)
@@ -155,6 +163,8 @@ public static class ReportJsonSerializer
         if (node["keepTogether"] is JsonNode kt) band.KeepTogether = kt.GetValue<bool>();
         if (node["backColor"] is JsonNode bc) band.BackColor = (Color)JsonValueConverter.FromNode(bc, typeof(Color))!;
         if (node["groupField"] is JsonNode gf) band.GroupField = gf.GetValue<string>();
+        if (node["dataSourceName"] is JsonNode dsn && dsn.GetValueKind() == JsonValueKind.String)
+            band.DataSourceName = dsn.GetValue<string>();
 
         if (node["controls"] is JsonArray controls)
         {
@@ -196,6 +206,49 @@ public static class ReportJsonSerializer
             if (go["footer"] is JsonObject footer) BandFromNode(group.Footer, footer);
             if (go["groups"] is JsonArray nested) GroupsFromNode(group.Groups, nested);
             target.Add(group);
+        }
+    }
+
+    private static JsonArray DataSourcesToNode(ReportDataSourceCollection sources)
+    {
+        var array = new JsonArray();
+        foreach (var source in sources)
+        {
+            var fields = new JsonArray();
+            foreach (var field in source.Fields)
+            {
+                fields.Add(new JsonObject
+                {
+                    ["name"] = field.Name,
+                    ["type"] = field.DataType.ToJsonName()
+                });
+            }
+            array.Add(new JsonObject
+            {
+                ["name"] = source.Name,
+                ["fields"] = fields
+            });
+        }
+        return array;
+    }
+
+    private static void DataSourcesFromNode(ReportDataSourceCollection target, JsonArray array)
+    {
+        foreach (var node in array)
+        {
+            if (node is not JsonObject so) continue;
+            var source = new ReportDataSource(so["name"]?.GetValue<string>() ?? string.Empty);
+            if (so["fields"] is JsonArray fields)
+            {
+                foreach (var fieldNode in fields)
+                {
+                    if (fieldNode is not JsonObject fo) continue;
+                    var name = fo["name"]?.GetValue<string>() ?? string.Empty;
+                    var type = ReportDataTypeMapper.ParseOrString(fo["type"]?.GetValue<string>());
+                    source.Fields.Add(new ReportDataSourceField(name, type));
+                }
+            }
+            target.Add(source);
         }
     }
 

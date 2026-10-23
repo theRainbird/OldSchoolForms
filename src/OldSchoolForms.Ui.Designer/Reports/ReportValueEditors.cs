@@ -39,10 +39,20 @@ public sealed class ReportDataFieldEditor : IValueEditor
         }
 
         var report = ReportDesignContext.Current?.Report;
-        var fields = report != null
-            ? ReportDesignContext.GetAvailableFields(report)
-            : Array.Empty<string>();
         var owner = ReportDesignContext.Current?.FindForm();
+
+        IReadOnlyList<string> fields;
+        if (report != null && target is ReportControl control)
+        {
+            var band = ReportDesignContext.GetBandForControl(report, control);
+            fields = ReportDesignContext.GetFieldsForBand(report, band);
+        }
+        else
+        {
+            fields = report != null
+                ? ReportDesignContext.GetAvailableFields(report)
+                : Array.Empty<string>();
+        }
 
         var current = descriptor.GetValue() as string;
         var result = DataFieldDialog.ShowDialog(current, fields, owner);
@@ -82,10 +92,25 @@ public sealed class ReportExpressionEditor : IValueEditor
         }
 
         var report = ReportDesignContext.Current?.Report;
-        var fields = report != null
-            ? ReportDesignContext.GetAvailableFields(report)
-            : Array.Empty<string>();
         var owner = ReportDesignContext.Current?.FindForm();
+
+        IReadOnlyList<string> fields;
+        if (report != null && target is ReportControl control)
+        {
+            var band = ReportDesignContext.GetBandForControl(report, control);
+            var combined = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in ReportDesignContext.GetFieldsForBand(report, band))
+                combined.Add(f);
+            foreach (var q in ReportDesignContext.GetQualifiedFields(report))
+                combined.Add(q);
+            fields = combined.ToList();
+        }
+        else
+        {
+            fields = report != null
+                ? ReportDesignContext.GetAvailableFields(report)
+                : Array.Empty<string>();
+        }
 
         var current = descriptor.GetValue() as string;
         var result = ExpressionDialog.ShowDialog(current, fields, owner);
@@ -342,5 +367,55 @@ public sealed class ReportCrossTabFieldsEditor : IValueEditor
             });
         }
         ReportDesignContext.Current?.Surface?.Invalidate();
+    }
+}
+
+/// <summary>
+/// Value editor for the <see cref="ReportBand.DataSourceName"/> property. Opens a
+/// dialog listing the report's declared data sources plus a <em>(default)</em>
+/// entry that clears the binding. The value is written through the property
+/// descriptor so undo and dirty tracking work.
+/// </summary>
+public sealed class ReportBandDataSourceEditor : IValueEditor
+{
+    /// <inheritdoc />
+    public string ButtonText => "…";
+
+    /// <inheritdoc />
+    public bool Handles(PropertyInfo property)
+        => property.Name == nameof(ReportBand.DataSourceName)
+           && property.DeclaringType == typeof(ReportBand);
+
+    /// <inheritdoc />
+    public void Open(object target)
+    {
+    }
+
+    /// <inheritdoc />
+    public void Open(object target, object? context)
+    {
+        if (context is not PropertyDescriptor descriptor)
+        {
+            Open(target);
+            return;
+        }
+
+        var report = ReportDesignContext.Current?.Report;
+        var owner = ReportDesignContext.Current?.FindForm();
+
+        var names = new List<string>();
+        if (report != null)
+        {
+            foreach (var source in report.DataSources)
+            {
+                if (!string.IsNullOrWhiteSpace(source.Name))
+                    names.Add(source.Name);
+            }
+        }
+
+        var current = descriptor.GetValue() as string;
+        var result = DataSourceNameDialog.ShowDialog(current, names, owner);
+        if (result != current)
+            descriptor.SetValue(result);
     }
 }

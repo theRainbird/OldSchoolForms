@@ -713,13 +713,13 @@ Ein grafischer Formular-Designer für OldSchoolForms.</value>
     <value>Seitenkopf</value>
   </data>
   <data name="ReportDesigner_BandGroupHeader" xml:space="preserve">
-    <value>Gruppenkopf</value>
+    <value>Gr. Kopf</value>
   </data>
   <data name="ReportDesigner_BandDetail" xml:space="preserve">
     <value>Detail</value>
   </data>
   <data name="ReportDesigner_BandGroupFooter" xml:space="preserve">
-    <value>Gruppenfuß</value>
+    <value>Gr. Fuß</value>
   </data>
   <data name="ReportDesigner_BandPageFooter" xml:space="preserve">
     <value>Seitenfuß</value>
@@ -933,5 +933,80 @@ Ein grafischer Formular-Designer für OldSchoolForms.</value>
   </data>
   <data name="Designer_DropHint" xml:space="preserve">
     <value>Klicken Sie, um einen {0} zu platzieren. ESC zum Abbrechen.</value>
+  </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="DataSourceTree_Title" xml:space="preserve">
+    <value>Datenquellen</value>
+  </data>
+  <data name="DataSourceTree_AddSource" xml:space="preserve">
+    <value>+ Quelle</value>
+  </data>
+  <data name="DataSourceTree_RemoveSource" xml:space="preserve">
+    <value>- Quelle</value>
+  </data>
+  <data name="DataSourceTree_AddField" xml:space="preserve">
+    <value>+ Feld</value>
+  </data>
+  <data name="DataSourceTree_RemoveField" xml:space="preserve">
+    <value>- Feld</value>
+  </data>
+  <data name="DataSourceTree_Unnamed" xml:space="preserve">
+    <value>(unbenannt)</value>
+  </data>
+  <data name="DataSourceTree_SourcePrefix" xml:space="preserve">
+    <value>Datenquelle</value>
+  </data>
+  <data name="DataSourceTree_AddSourceTitle" xml:space="preserve">
+    <value>Datenquelle hinzufügen</value>
+  </data>
+  <data name="DataSourceTree_SourceNamePrompt" xml:space="preserve">
+    <value>Name der Datenquelle</value>
+  </data>
+  <data name="DataSourceTree_AddFieldTitle" xml:space="preserve">
+    <value>Feld hinzufügen</value>
+  </data>
+  <data name="DataSourceTree_RenameSourceTitle" xml:space="preserve">
+    <value>Datenquelle umbenennen</value>
+  </data>
+  <data name="DataSourceTree_RenameFieldTitle" xml:space="preserve">
+    <value>Feld umbenennen</value>
+  </data>
+  <data name="DataSourceTree_TipAddSource" xml:space="preserve">
+    <value>Neue Datenquelle hinzufügen</value>
+  </data>
+  <data name="DataSourceTree_TipRenameSource" xml:space="preserve">
+    <value>Ausgewählte Datenquelle umbenennen</value>
+  </data>
+  <data name="DataSourceTree_TipRemoveSource" xml:space="preserve">
+    <value>Ausgewählte Datenquelle entfernen</value>
+  </data>
+  <data name="DataSourceTree_TipAddField" xml:space="preserve">
+    <value>Feld zur ausgewählten Datenquelle hinzufügen</value>
+  </data>
+  <data name="DataSourceTree_TipRenameField" xml:space="preserve">
+    <value>Ausgewähltes Feld umbenennen</value>
+  </data>
+  <data name="DataSourceTree_TipRemoveField" xml:space="preserve">
+    <value>Ausgewähltes Feld entfernen</value>
+  </data>
+  <data name="DataSourceDialog_FieldName" xml:space="preserve">
+    <value>Feldname</value>
+  </data>
+  <data name="DataSourceDialog_FieldType" xml:space="preserve">
+    <value>Feldtyp</value>
+  </data>
+  <data name="DataSourceNameDialog_Title" xml:space="preserve">
+    <value>Datenquelle auswählen</value>
+  </data>
+  <data name="DataSourceNameDialog_Prompt" xml:space="preserve">
+    <value>Datenquelle für dieses Band</value>
+  </data>
+  <data name="DataSourceNameDialog_Default" xml:space="preserve">
+    <value>(Standard)</value>
   </data>
 </root>

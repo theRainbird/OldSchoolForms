@@ -57,6 +57,16 @@ public class ReportBand
     public string? GroupField { get; set; }
 
     /// <summary>
+    /// Gets or sets the name of the <see cref="ReportDataSource"/> this band binds its
+    /// controls to. <c>null</c> or empty means the default data source: the first source
+    /// defined in <see cref="Report.DataSources"/>, falling back to the legacy
+    /// <see cref="Report.DataSource"/> when no sources are defined.
+    /// Group header/footer bands ignore this property and automatically use the
+    /// data source of the report's detail band.
+    /// </summary>
+    public string? DataSourceName { get; set; }
+
+    /// <summary>
     /// Gets the list of report controls within this band.
     /// </summary>
     public List<ReportControl> Controls => _controls;

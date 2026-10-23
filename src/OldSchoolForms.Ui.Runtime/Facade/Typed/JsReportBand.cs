@@ -75,6 +75,18 @@ public class JsReportBand
         set => Band.KeepTogether = value;
     }
 
+    /// <summary>
+    /// The name of the data source this band binds its controls to.
+    /// <c>null</c> means the default source (first defined source, falling back
+    /// to the legacy <c>report.dataSource</c>). Group header/footer bands
+    /// automatically use the detail band's data source.
+    /// </summary>
+    public string? DataSourceName
+    {
+        get => Band.DataSourceName;
+        set => Band.DataSourceName = value;
+    }
+
     /// <summary>The band's control collection facade.</summary>
     public JsReportControlCollection Controls => _controls;
 }

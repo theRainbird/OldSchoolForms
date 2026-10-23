@@ -96,6 +96,12 @@ public abstract class ToolStripItem : Component
     }
 
     /// <summary>
+    /// Gets or sets the tooltip text shown when the mouse hovers over this item.
+    /// When <see langword="null"/> or empty, no tooltip is displayed.
+    /// </summary>
+    public string? ToolTipText { get; set; }
+
+    /// <summary>
     /// Gets or sets the text displayed on the item.
     /// </summary>
     public string Text

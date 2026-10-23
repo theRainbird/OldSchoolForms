@@ -80,4 +80,15 @@ public class TreeNode
         IsExpanded = !IsExpanded;
         OnInvalidate?.Invoke();
     }
+
+    /// <summary>
+    /// Sets the expanded state explicitly.
+    /// </summary>
+    /// <param name="expanded">Whether the node should be expanded.</param>
+    public void SetExpanded(bool expanded)
+    {
+        if (IsExpanded == expanded) return;
+        IsExpanded = expanded;
+        OnInvalidate?.Invoke();
+    }
 }

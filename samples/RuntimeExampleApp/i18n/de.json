@@ -102,6 +102,8 @@
   "Reports_Open": "Bericht erstellen & öffnen",
   "Reports_Export": "PDF exportieren (Bytes)",
   "Reports_Load": "Bericht aus Datei laden",
+  "Reports_OpenMulti": "Mehrfachquellen-Auftragsbericht",
+  "Reports_MultiOpened": "Mehrfachquellen-Bericht '{0}' geöffnet ({1} Seite(n))",
   "Reports_Info": "Info",
   "Reports_Ready": "Nutze die Buttons zum Erstellen, Öffnen oder Exportieren eines Berichts",
   "Reports_Opened": "'{0}' geöffnet ({1} Seite(n))",

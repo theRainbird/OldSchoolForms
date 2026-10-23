@@ -109,8 +109,21 @@ public class Report
     public PageSettings? PageSettings { get; set; }
 
     /// <summary>
-    /// Gets or sets the data source for this report.
+    /// Gets the named data source definitions of this report. Each source carries a
+    /// schema (<see cref="ReportDataSource.Fields"/>) plus runtime data
+    /// (<see cref="ReportDataSource.Data"/>). Bands select their source via
+    /// <see cref="ReportBand.DataSourceName"/>. Persisted as the optional
+    /// <c>dataSources</c> member of the <c>OldSchoolForms.Report</c> format.
+    /// </summary>
+    public ReportDataSourceCollection DataSources { get; } = new();
+
+    /// <summary>
+    /// Gets or sets the legacy single data source for this report.
     /// Must be an IEnumerable (list, array, or any enumerable collection of records).
+    /// Kept as a migration path: when a band has no <see cref="ReportBand.DataSourceName"/>
+    /// and no named source is defined in <see cref="DataSources"/>, the render engine
+    /// falls back to this property. New reports should define explicit
+    /// <see cref="DataSources"/> entries instead.
     /// </summary>
     public object? DataSource { get; set; }
 
