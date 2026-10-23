@@ -613,6 +613,9 @@ Ein grafischer Formular-Designer für OldSchoolForms.</value>
   <data name="Designer_PreviewTitle" xml:space="preserve">
     <value>Vorschau – {0}</value>
   </data>
+  <data name="Designer_PreviewSampleData" xml:space="preserve">
+    <value>Vorschau: Beispieldaten für {0} Datenquelle(n) generiert</value>
+  </data>
   <data name="Designer_StatusReady" xml:space="preserve">
     <value>Bereit</value>
   </data>

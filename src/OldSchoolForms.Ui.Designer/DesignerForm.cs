@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
@@ -221,6 +223,9 @@ public class DesignerForm : Form
 
     /// <summary>
     /// Opens a modal <see cref="ReportViewer"/> previewing the report currently open in the designer.
+    /// Before rendering, sample data is generated for the report's data sources so the
+    /// layout can be tested with real rows even when no live data is attached. The
+    /// generated data is runtime-only and never persisted with the report.
     /// Does nothing when the current document is not a report.
     /// </summary>
     private void ShowReportPreview()
@@ -231,19 +236,39 @@ public class DesignerForm : Form
             return;
         }
 
+        var report = designReport.Report;
+
+        // For legacy single-source reports (no named data sources) derive the field
+        // names from the declared design fields and the fields referenced by the
+        // report's controls and groups.
+        IEnumerable<(string Name, ReportDataType Type)>? legacyFields = null;
+        if (report.DataSources.Count == 0)
+        {
+            legacyFields = Reports.ReportDesignContext
+                .GetAvailableFields(report)
+                .Select(name => (name, ReportDataType.String))
+                .ToList();
+        }
+
+        int populated = ReportSampleData.EnsurePreviewData(report, legacyFields);
+
         var viewer = new ReportViewer
         {
             Dock = DockStyle.Fill
         };
         var previewForm = new Form
         {
-            Text = string.Format(LangRes.GetString("Designer_PreviewTitle"), designReport.Report.Name),
+            Text = string.Format(LangRes.GetString("Designer_PreviewTitle"), report.Name),
             Width = 1000,
             Height = 750
         };
         previewForm.Controls.Add(viewer);
-        viewer.Report = designReport.Report;
+        viewer.Report = report;
         viewer.RefreshReport();
+
+        if (populated > 0)
+            _statusLabel.Text = string.Format(LangRes.GetString("Designer_PreviewSampleData"), populated);
+
         previewForm.ShowDialog(this);
     }
 
