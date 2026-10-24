@@ -63,7 +63,10 @@ public class ReportRenderEngine
 
         _state = StartNewPage();
 
+        // The report header prints once at the very top of the first page,
+        // above the page header. The page header then follows on the first page.
         RenderReportHeader();
+        RenderPageHeader();
 
         if (report.Groups.Count > 0)
             RenderWithGroups(records);
@@ -91,6 +94,10 @@ public class ReportRenderEngine
         Cm footerH = MeasureHeaderFooterWithFirstRecord(ctx, report.PageFooter);
         Cm reportFooterH = MeasureHeaderFooterWithFirstRecord(ctx, report.ReportFooter);
 
+        // The page header always occupies the first page; on later pages only
+        // when it is configured to repeat there.
+        Cm repeatedPageHeaderH = report.PageHeader.RepeatOnNewPage ? pageHeaderH : Cm.Zero;
+
         if (report.ReportHeader.Visible)
             currentY += MeasureHeaderFooterWithFirstRecord(ctx, report.ReportHeader);
         currentY += pageHeaderH;
@@ -113,7 +120,7 @@ public class ReportRenderEngine
             if (currentY + detailH + extraH + footerH + reportFooterH > pageBottom)
             {
                 pageCount++;
-                currentY = report.TopMargin + pageHeaderH + extraH;
+                currentY = report.TopMargin + repeatedPageHeaderH + extraH;
             }
             else
             {
@@ -413,11 +420,6 @@ public class ReportRenderEngine
 
         _state = state;
         _pages.Add(page);
-
-        if (_pages.Count > 1 || _state.CurrentY <= _report.TopMargin)
-        {
-            RenderPageHeader();
-        }
 
         return state;
     }

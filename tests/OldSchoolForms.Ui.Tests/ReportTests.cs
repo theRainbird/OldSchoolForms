@@ -325,6 +325,144 @@ public class ReportTests
     }
 
     [Fact]
+    public void ReportRenderEngine_FirstPage_ReportHeaderRendersBeforePageHeader()
+    {
+        var records = new List<TestRecord>
+        {
+            new() { Name = "Row 1", Value = 1 }
+        };
+
+        var report = new Report("HeaderOrder")
+        {
+            PageWidth = 21.0,
+            PageHeight = 29.7,
+            TopMargin = 1.0,
+            BottomMargin = 1.0,
+            DataSource = records
+        };
+
+        report.ReportHeader.Height = 1.0;
+        report.ReportHeader.Controls.Add(new ReportLabel
+        {
+            Text = "Report Header",
+            Left = 0, Top = 0, Width = 10, Height = 1.0
+        });
+
+        report.PageHeader.Height = 0.8;
+        report.PageHeader.RepeatOnNewPage = true;
+        report.PageHeader.Controls.Add(new ReportLabel
+        {
+            Text = "Page Header",
+            Left = 0, Top = 0, Width = 10, Height = 0.8
+        });
+
+        report.Detail.Height = 0.5;
+        report.Detail.Controls.Add(new ReportTextBox
+        {
+            DataField = "Name",
+            Left = 0, Top = 0, Width = 8, Height = 0.5
+        });
+
+        var engine = new ReportRenderEngine();
+        var pages = engine.Render(report, 96f);
+
+        Assert.Single(pages);
+        var bands = pages[0].Bands;
+        int reportHeaderIndex = bands.IndexOf(report.ReportHeader);
+        int pageHeaderIndex = bands.IndexOf(report.PageHeader);
+        Assert.True(reportHeaderIndex >= 0, "Report header should render on the first page.");
+        Assert.True(pageHeaderIndex >= 0, "Page header should render on the first page.");
+        Assert.True(reportHeaderIndex < pageHeaderIndex,
+            "Report header must render above the page header on the first page.");
+    }
+
+    [Fact]
+    public void ReportRenderEngine_ReportHeader_OnlyOnFirstPage()
+    {
+        var records = new List<TestRecord>();
+        for (int i = 0; i < 50; i++)
+            records.Add(new TestRecord { Name = $"Record {i}", Value = i });
+
+        var report = new Report("ReportHeaderOnce")
+        {
+            PageWidth = 21.0,
+            PageHeight = 5.0,
+            TopMargin = 0.5,
+            BottomMargin = 0.5,
+            DataSource = records
+        };
+
+        report.ReportHeader.Height = 1.0;
+        report.ReportHeader.Controls.Add(new ReportLabel
+        {
+            Text = "Report Header",
+            Left = 0, Top = 0, Width = 10, Height = 1.0
+        });
+
+        report.PageHeader.Height = 0.8;
+        report.PageHeader.RepeatOnNewPage = true;
+        report.PageHeader.Controls.Add(new ReportLabel
+        {
+            Text = "Page Header",
+            Left = 0, Top = 0, Width = 10, Height = 0.8
+        });
+
+        report.Detail.Height = 0.6;
+        report.Detail.Controls.Add(new ReportTextBox
+        {
+            DataField = "Name",
+            Left = 0, Top = 0, Width = 8, Height = 0.5
+        });
+
+        var engine = new ReportRenderEngine();
+        var pages = engine.Render(report, 96f);
+
+        Assert.True(pages.Count >= 2, $"Expected multiple pages, got {pages.Count}");
+        Assert.Contains(report.ReportHeader, pages[0].Bands);
+        foreach (var page in pages.Skip(1))
+            Assert.DoesNotContain(report.ReportHeader, page.Bands);
+    }
+
+    [Fact]
+    public void ReportRenderEngine_PageHeader_RendersExactlyOncePerPageWhenRepeating()
+    {
+        var records = new List<TestRecord>();
+        for (int i = 0; i < 50; i++)
+            records.Add(new TestRecord { Name = $"Record {i}", Value = i });
+
+        var report = new Report("PageHeaderOnce")
+        {
+            PageWidth = 21.0,
+            PageHeight = 5.0,
+            TopMargin = 0.5,
+            BottomMargin = 0.5,
+            DataSource = records
+        };
+
+        report.PageHeader.Height = 0.8;
+        report.PageHeader.RepeatOnNewPage = true;
+        report.PageHeader.Controls.Add(new ReportLabel
+        {
+            Text = "Page Header",
+            Left = 0, Top = 0, Width = 10, Height = 0.8
+        });
+
+        report.Detail.Height = 0.6;
+        report.Detail.Controls.Add(new ReportTextBox
+        {
+            DataField = "Name",
+            Left = 0, Top = 0, Width = 8, Height = 0.5
+        });
+
+        var engine = new ReportRenderEngine();
+        var pages = engine.Render(report, 96f);
+
+        Assert.True(pages.Count >= 2, $"Expected multiple pages, got {pages.Count}");
+        foreach (var page in pages)
+            Assert.Equal(1, page.Bands.Count(b => b == report.PageHeader));
+    }
+
+    [Fact]
     public void ReportRenderEngine_WithGrouping_DetectsGroupChanges()
     {
         var records = new List<TestRecord>
