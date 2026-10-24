@@ -10,6 +10,7 @@ namespace OldSchoolForms.Ui.Design;
 /// </summary>
 public static class ValueEditorRegistry
 {
+    private static readonly object _sync = new();
     private static readonly List<IValueEditor> _editors = new();
 
     /// <summary>
@@ -20,7 +21,10 @@ public static class ValueEditorRegistry
     public static void Register(IValueEditor editor)
     {
         if (editor == null) return;
-        _editors.Add(editor);
+        lock (_sync)
+        {
+            _editors.Add(editor);
+        }
     }
 
     /// <summary>
@@ -32,7 +36,15 @@ public static class ValueEditorRegistry
     {
         if (property == null) return null;
 
-        foreach (var editor in _editors)
+        // Snapshot the editors under the lock so a concurrent Register (the designer can
+        // build property grids on several threads) cannot invalidate the enumeration.
+        IValueEditor[] snapshot;
+        lock (_sync)
+        {
+            snapshot = _editors.ToArray();
+        }
+
+        foreach (var editor in snapshot)
         {
             if (editor.Handles(property))
                 return editor;

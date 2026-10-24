@@ -376,6 +376,45 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Abbrechen</value>
   </data>
+  <data name="FontDialog_Title" xml:space="preserve">
+    <value>Schriftart bearbeiten</value>
+  </data>
+  <data name="FontDialog_Family" xml:space="preserve">
+    <value>Schriftart</value>
+  </data>
+  <data name="FontDialog_Search" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="FontDialog_Size" xml:space="preserve">
+    <value>Größe</value>
+  </data>
+  <data name="FontDialog_Style" xml:space="preserve">
+    <value>Schriftstil</value>
+  </data>
+  <data name="FontDialog_Bold" xml:space="preserve">
+    <value>Fett</value>
+  </data>
+  <data name="FontDialog_Italic" xml:space="preserve">
+    <value>Kursiv</value>
+  </data>
+  <data name="FontDialog_Underline" xml:space="preserve">
+    <value>Unterstrichen</value>
+  </data>
+  <data name="FontDialog_Strikeout" xml:space="preserve">
+    <value>Durchgestrichen</value>
+  </data>
+  <data name="FontDialog_Preview" xml:space="preserve">
+    <value>Vorschau</value>
+  </data>
+  <data name="FontDialog_PreviewSample" xml:space="preserve">
+    <value>AaBbYyZz 0123456789</value>
+  </data>
+  <data name="FontDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="FontDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
   <data name="Runtime_AppManifestMissing" xml:space="preserve">
     <value>App-Manifest fehlt: {0}</value>
   </data>

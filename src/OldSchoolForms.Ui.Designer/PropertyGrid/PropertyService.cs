@@ -33,6 +33,7 @@ public class PropertyService
     };
 
     private static bool _editorsRegistered;
+    private static readonly object _editorRegistrationLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PropertyService"/> and registers
@@ -40,8 +41,10 @@ public class PropertyService
     /// </summary>
     public PropertyService()
     {
-        if (!_editorsRegistered)
+        if (_editorsRegistered) return;
+        lock (_editorRegistrationLock)
         {
+            if (_editorsRegistered) return;
             ValueEditorRegistry.Register(new TabPagesEditor());
             ValueEditorRegistry.Register(new DataGridViewColumnsEditor());
             ValueEditorRegistry.Register(new ToolStripItemsEditor());
@@ -50,6 +53,7 @@ public class PropertyService
             ValueEditorRegistry.Register(new StatusStripItemsEditor());
             ValueEditorRegistry.Register(new ToolStripMenuItemDropDownItemsEditor());
             ValueEditorRegistry.Register(new PaddingEditor());
+            ValueEditorRegistry.Register(new FontEditor());
             _editorsRegistered = true;
         }
     }

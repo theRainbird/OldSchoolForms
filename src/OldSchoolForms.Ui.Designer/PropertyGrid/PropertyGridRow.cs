@@ -160,6 +160,18 @@ public class PropertyGridRow
             return true;
         }
 
+        if (_descriptor.PropertyType == typeof(Font))
+        {
+            // Font values are edited through the dedicated font dialog (family, size, style).
+            // Clicking the value opens it directly instead of the inline text editor, which
+            // cannot represent a Font. Returning false keeps the grid from opening the enum
+            // dropdown; the dialog writes the new value back through the descriptor, which
+            // refreshes the row display on the next render.
+            if (_descriptor.Editor != null)
+                _descriptor.Editor.Open(_descriptor.Target, _descriptor);
+            return false;
+        }
+
         if (_descriptor.PropertyType.IsEnum)
         {
             // Enum values are selected exclusively through the dropdown; the value text is

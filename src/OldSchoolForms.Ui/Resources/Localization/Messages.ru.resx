@@ -190,6 +190,45 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Отмена</value>
   </data>
+  <data name="FontDialog_Title" xml:space="preserve">
+    <value>Изменить шрифт</value>
+  </data>
+  <data name="FontDialog_Family" xml:space="preserve">
+    <value>Шрифт</value>
+  </data>
+  <data name="FontDialog_Search" xml:space="preserve">
+    <value>Поиск</value>
+  </data>
+  <data name="FontDialog_Size" xml:space="preserve">
+    <value>Размер</value>
+  </data>
+  <data name="FontDialog_Style" xml:space="preserve">
+    <value>Начертание</value>
+  </data>
+  <data name="FontDialog_Bold" xml:space="preserve">
+    <value>Жирный</value>
+  </data>
+  <data name="FontDialog_Italic" xml:space="preserve">
+    <value>Курсив</value>
+  </data>
+  <data name="FontDialog_Underline" xml:space="preserve">
+    <value>Подчеркнутый</value>
+  </data>
+  <data name="FontDialog_Strikeout" xml:space="preserve">
+    <value>Зачеркнутый</value>
+  </data>
+  <data name="FontDialog_Preview" xml:space="preserve">
+    <value>Предпросмотр</value>
+  </data>
+  <data name="FontDialog_PreviewSample" xml:space="preserve">
+    <value>AaBbYyZz 0123456789</value>
+  </data>
+  <data name="FontDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="FontDialog_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
   <data name="Runtime_AppManifestMissing" xml:space="preserve">
     <value>Отсутствует манифест приложения: {0}</value>
   </data>

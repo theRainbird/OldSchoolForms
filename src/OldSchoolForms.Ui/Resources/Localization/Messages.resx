@@ -376,6 +376,45 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="FontDialog_Title" xml:space="preserve">
+    <value>Edit Font</value>
+  </data>
+  <data name="FontDialog_Family" xml:space="preserve">
+    <value>Font family</value>
+  </data>
+  <data name="FontDialog_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="FontDialog_Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="FontDialog_Style" xml:space="preserve">
+    <value>Style</value>
+  </data>
+  <data name="FontDialog_Bold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="FontDialog_Italic" xml:space="preserve">
+    <value>Italic</value>
+  </data>
+  <data name="FontDialog_Underline" xml:space="preserve">
+    <value>Underline</value>
+  </data>
+  <data name="FontDialog_Strikeout" xml:space="preserve">
+    <value>Strikeout</value>
+  </data>
+  <data name="FontDialog_Preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="FontDialog_PreviewSample" xml:space="preserve">
+    <value>AaBbYyZz 0123456789</value>
+  </data>
+  <data name="FontDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="FontDialog_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="Runtime_AppManifestMissing" xml:space="preserve">
     <value>App manifest missing: {0}</value>
   </data>

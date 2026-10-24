@@ -190,6 +190,45 @@
   <data name="PaddingDialog_Cancel" xml:space="preserve">
     <value>Cancelar</value>
   </data>
+  <data name="FontDialog_Title" xml:space="preserve">
+    <value>Editar fuente</value>
+  </data>
+  <data name="FontDialog_Family" xml:space="preserve">
+    <value>Fuente</value>
+  </data>
+  <data name="FontDialog_Search" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="FontDialog_Size" xml:space="preserve">
+    <value>Tamaño</value>
+  </data>
+  <data name="FontDialog_Style" xml:space="preserve">
+    <value>Estilo</value>
+  </data>
+  <data name="FontDialog_Bold" xml:space="preserve">
+    <value>Negrita</value>
+  </data>
+  <data name="FontDialog_Italic" xml:space="preserve">
+    <value>Cursiva</value>
+  </data>
+  <data name="FontDialog_Underline" xml:space="preserve">
+    <value>Subrayado</value>
+  </data>
+  <data name="FontDialog_Strikeout" xml:space="preserve">
+    <value>Tachado</value>
+  </data>
+  <data name="FontDialog_Preview" xml:space="preserve">
+    <value>Vista previa</value>
+  </data>
+  <data name="FontDialog_PreviewSample" xml:space="preserve">
+    <value>AaBbYyZz 0123456789</value>
+  </data>
+  <data name="FontDialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="FontDialog_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
   <data name="Runtime_AppManifestMissing" xml:space="preserve">
     <value>Falta el manifiesto de la aplicación: {0}</value>
   </data>
