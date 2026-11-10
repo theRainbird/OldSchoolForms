@@ -10,6 +10,7 @@ using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer;
 using OldSchoolForms.Ui.Designer.Services;
+using OldSchoolForms.Ui.Layout;
 
 namespace OldSchoolForms.Ui.Designer.Roslyn;
 
@@ -148,10 +149,26 @@ public class CodeGenerator
 
             if (control is StatusStrip statusStrip)
                 GenerateStatusStripItems(sb, bodyIndent, statusStrip, fieldName);
+
+            if (control is TableLayoutPanel table)
+                GenerateTableLayoutStyles(sb, bodyIndent, table, fieldName);
         }
 
         // Controls.Add hierarchy
         GenerateControlHierarchy(sb, bodyIndent, _surface, fieldNameMap);
+
+        // Explicit table cell assignments must come after the controls exist and are
+        // parented, mirroring the designer's drop-to-cell behaviour.
+        foreach (var kvp in fieldNameMap)
+        {
+            if (kvp.Key is not TableLayoutPanel tbl) continue;
+            foreach (Control child in tbl.Controls)
+            {
+                var cell = tbl.GetCellPosition(child);
+                if (cell.HasValue && fieldNameMap.TryGetValue(child, out var childField))
+                    sb.AppendLine($"{bodyIndent}{kvp.Value}.SetCellPosition({childField}, {cell.Value.Row}, {cell.Value.Col});");
+            }
+        }
 
         sb.AppendLine($"{bodyIndent}ResumeLayout(false);");
         sb.AppendLine($"{subIndent}}}");
@@ -261,6 +278,30 @@ public class CodeGenerator
             else
                 sb.AppendLine($"{indent}{fieldName}.Columns.Add(new DataGridViewColumn {{ {string.Join(", ", parts)} }});");
         }
+    }
+
+    /// <summary>
+    /// Emits <c>RowStyles.Add(new TableLayoutStyle(SizeType.X, yf))</c> and
+    /// <c>ColumnStyles.Add(...)</c> calls for every style of the given table layout
+    /// panel so designer-created rows and columns round-trip into the generated
+    /// <c>InitializeComponent</c>. A non-default <see cref="TableLayoutPanel.CellSpacing"/>
+    /// is emitted as a <c>CellSpacing = new Padding(...)</c> assignment.
+    /// </summary>
+    /// <param name="sb">The builder to append to.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="table">The table layout panel whose styles are serialized.</param>
+    /// <param name="fieldName">The field name of the table layout panel.</param>
+    private static void GenerateTableLayoutStyles(StringBuilder sb, string indent, TableLayoutPanel table, string fieldName)
+    {
+        var spacing = table.CellSpacing;
+        if (spacing.Left != 0 || spacing.Top != 0 || spacing.Right != 0 || spacing.Bottom != 0)
+            sb.AppendLine($"{indent}{fieldName}.CellSpacing = {FormatPadding(spacing)};");
+
+        foreach (var style in table.RowStyles)
+            sb.AppendLine($"{indent}{fieldName}.RowStyles.Add(new TableLayoutStyle(SizeType.{style.SizeType}, {style.Value.ToString("0.####", CultureInfo.InvariantCulture)}f));");
+
+        foreach (var style in table.ColumnStyles)
+            sb.AppendLine($"{indent}{fieldName}.ColumnStyles.Add(new TableLayoutStyle(SizeType.{style.SizeType}, {style.Value.ToString("0.####", CultureInfo.InvariantCulture)}f));");
     }
 
     /// <summary>

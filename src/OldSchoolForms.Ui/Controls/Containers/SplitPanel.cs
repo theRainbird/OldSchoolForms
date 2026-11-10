@@ -22,7 +22,7 @@ public enum SplitOrientation
 
 /// <summary>
 /// Represents a container that divides the available space into two resizable panels
-/// separated by a movable splitter bar. Similar to WinForms SplitContainer.
+/// separated by a movable splitter bar.
 /// </summary>
 [ToolboxIcon("OldSchoolForms.Ui.Resources.Icons.Controls.ctrl_splitpanel.svg")]
 public class SplitPanel : ContainerControl

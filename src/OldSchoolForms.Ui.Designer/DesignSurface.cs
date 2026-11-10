@@ -6,6 +6,7 @@ using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Designer.Reports;
 using OldSchoolForms.Ui.Designer.Services;
+using OldSchoolForms.Ui.Layout;
 using OldSchoolForms.Ui.Reports;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
@@ -771,6 +772,15 @@ public class DesignSurface : ContainerControl
             var offset = container.GetChildRenderOffsetPublic();
             var localPoint = new Point(client.X - offset.X, client.Y - offset.Y);
             AddControl(control, container, localPoint);
+
+            // On a table layout the clicked cell decides where the control lands,
+            // not the fill order.
+            if (container is TableLayoutPanel table)
+            {
+                var cell = table.HitTestCell(localPoint);
+                if (cell.HasValue)
+                    table.SetCellPosition(control, cell.Value.Row, cell.Value.Col);
+            }
         }
         else
         {

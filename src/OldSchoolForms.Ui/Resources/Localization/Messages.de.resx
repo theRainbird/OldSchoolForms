@@ -193,6 +193,45 @@
     <data name="DataGridViewColumnsDialog_NewColumn">
       <value>Neue Spalte</value>
     </data>
+    <data name="TableLayoutDialog_Title">
+      <value>Zeilen und Spalten bearbeiten</value>
+    </data>
+    <data name="TableLayoutDialog_Add">
+      <value>Hinzufügen</value>
+    </data>
+    <data name="TableLayoutDialog_Delete">
+      <value>Löschen</value>
+    </data>
+    <data name="TableLayoutDialog_Ok">
+      <value>OK</value>
+    </data>
+    <data name="TableLayoutDialog_Cancel">
+      <value>Abbrechen</value>
+    </data>
+    <data name="TableLayoutDialog_RowsTab">
+      <value>Zeilen</value>
+    </data>
+    <data name="TableLayoutDialog_ColumnsTab">
+      <value>Spalten</value>
+    </data>
+    <data name="TableLayoutDialog_ColSizeType">
+      <value>Größentyp</value>
+    </data>
+    <data name="TableLayoutDialog_ColSize">
+      <value>Größe</value>
+    </data>
+    <data name="TableLayoutDialog_SizeTypeAutoSize">
+      <value>Auto</value>
+    </data>
+    <data name="TableLayoutDialog_SizeTypeFill">
+      <value>Füllen</value>
+    </data>
+    <data name="TableLayoutDialog_SizeTypePercent">
+      <value>Prozent</value>
+    </data>
+    <data name="TableLayoutDialog_SizeTypeAbsolute">
+      <value>Fest</value>
+    </data>
   <data name="ColorPickerDialog_LabelR">
     <value>R</value>
   </data>

@@ -5,7 +5,6 @@ namespace OldSchoolForms.Ui;
 
 /// <summary>
 /// Displays a standard dialog that prompts the user to open a file.
-/// Mirrors the WinForms OpenFileDialog API.
 /// </summary>
 public class OpenFileDialog : FileDialog
 {

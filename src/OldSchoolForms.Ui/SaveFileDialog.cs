@@ -5,7 +5,6 @@ namespace OldSchoolForms.Ui;
 
 /// <summary>
 /// Displays a standard dialog that prompts the user to save a file.
-/// Mirrors the WinForms SaveFileDialog API.
 /// </summary>
 public class SaveFileDialog : FileDialog
 {

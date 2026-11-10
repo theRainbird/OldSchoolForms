@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Layout;
 
 namespace OldSchoolForms.Ui.Designer.Services;
 
@@ -170,6 +171,23 @@ public class DragService
             // nesting, or the grid toggle, so controls align to sibling edges and to the
             // client edges of their container (or the form).
             ApplyMoveSnap();
+
+            // When the drop target is a table layout, the cell under the cursor decides
+            // where the control lands. ctrl.Location cannot be used here because the
+            // layout engine has already snapped it to the fill-order cell; the cursor
+            // point is the only reliable source of the user's intended cell.
+            if (_dropTarget is TableLayoutPanel table)
+            {
+                var local = table.PointToClient(screenPoint);
+                var offset = table.GetChildRenderOffsetPublic();
+                var cell = table.HitTestCell(new Point(local.X - offset.X, local.Y - offset.Y));
+                if (cell.HasValue)
+                {
+                    var primary = _selectionService.PrimarySelection?.Control;
+                    if (primary != null && ReferenceEquals(primary.Parent, table))
+                        table.SetCellPosition(primary, cell.Value.Row, cell.Value.Col);
+                }
+            }
         }
         else
         {
@@ -381,6 +399,11 @@ public class DragService
         if (!_isDragging) return;
         _isDragging = false;
         _activeHandle = ResizeHandle.None;
+
+        // Table cell assignment is finalized during ContinueDrag from the cursor
+        // position (see the TableLayoutPanel branch there); ctrl.Location is not
+        // used here because the layout engine snaps it to the assigned cell.
+
         _dragItems.Clear();
         _currentSnap = new SnapResult();
         OnDragCompleted();

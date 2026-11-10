@@ -4,7 +4,6 @@ namespace OldSchoolForms.Ui;
 
 /// <summary>
 /// Provides an abstract base class for file dialog boxes.
-/// Mirrors the WinForms FileDialog API for familiarity.
 /// </summary>
 public abstract class FileDialog : Core.Component
 {
@@ -217,7 +216,7 @@ public abstract class FileDialog : Core.Component
     }
 
     /// <summary>
-    /// Parses a WinForms filter string into named entries with patterns.
+    /// Parses a filter string into named entries with patterns.
     /// </summary>
     protected static List<(string Name, List<string> Patterns)> ParseFilter(string filter)
     {

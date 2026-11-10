@@ -1004,7 +1004,7 @@ public class PropertyGrid : ContainerControl
         // Ctrl combinations (clipboard) and Alt combinations (menu mnemonics /
         // accelerator keys) are deliberately excluded so they still reach the
         // form: Alt+letter must keep opening menus even while a text value is
-        // being edited, exactly like classic WinForms.
+        // being edited.
         if (_editingRow != null && !e.Handled
             && !e.Modifiers.HasFlag(ModifierKeys.Control)
             && !e.Modifiers.HasFlag(ModifierKeys.Alt))

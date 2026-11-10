@@ -31,6 +31,8 @@ dotnet run --project samples/OldSchoolForms.Ui.Demo  # Run demo (requires X11/di
 
 **Layout:**
 - FlowLayoutPanel, TableLayoutPanel
+- TableLayoutPanel row/column sizing: `RowStyles`/`ColumnStyles` (`TableLayoutStyle` with `SizeType` AutoSize/Fill/Absolute/Percent), computed by shared `TableLayoutCalculator` (used by both panel layout and designer preview; Percent entries take their percentage of the space left after absolute/auto, Fill entries take the leftover after percent, split equally). PropertyGrid `…` editor (`TableLayoutRowsColumnsEditor` → `TableLayoutRowsColumnsEditorDialog`) with tabbed Rows/Columns grids and a live `TableLayoutPreviewControl`. Round-trips through JSON (`rowStyles`/`columnStyles`) and generated C# (`RowStyles.Add(new TableLayoutStyle(SizeType.X, yf))`).
+- TableLayoutPanel cell placement: `SetCellPosition`/`GetCellPosition`/`ClearCellPosition` map a child to a specific cell; toolbox drops onto a table land in the clicked cell (`HitTestCell`) instead of fill order. Empty Auto-sized rows/columns keep a clickable `AutoEmptyMinSize` (default 24px) instead of collapsing to 0. Auto rows/columns size to the child's actual `Size` (max with `PreferredSize`) plus the 4px cell gap, so resizing a child in the designer grows the row/column and stays stable across layout passes (no per-pass shrink). A user-driven child resize propagates to the parent (`Control.OnBoundsChanged` → `Parent.MarkLayoutDirty`/`PerformLayout`, guarded against layout-driven loops). Cell map round-trips through JSON (`cellMap`) and generated C# (`table.SetCellPosition(child, row, col)`).
 
 **Rendering:**
 - Graphics (command-list pattern)

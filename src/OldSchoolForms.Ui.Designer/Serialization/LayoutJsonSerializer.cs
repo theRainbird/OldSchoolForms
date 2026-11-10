@@ -248,6 +248,31 @@ internal static class LayoutJsonSerializer
             node["items"] = items;
         }
 
+        if (control is TableLayoutPanel table)
+        {
+            if (table.RowStyles.Count > 0)
+                node["rowStyles"] = SaveStyles(table.RowStyles);
+            if (table.ColumnStyles.Count > 0)
+                node["columnStyles"] = SaveStyles(table.ColumnStyles);
+
+            JsonNode? cellMap = null;
+            foreach (Control child in table.Controls)
+            {
+                var cell = table.GetCellPosition(child);
+                if (cell.HasValue && !string.IsNullOrEmpty(child.Name))
+                {
+                    cellMap ??= new JsonObject();
+                    cellMap.AsObject()[child.Name] = new JsonObject
+                    {
+                        ["row"] = cell.Value.Row,
+                        ["col"] = cell.Value.Col
+                    };
+                }
+            }
+            if (cellMap != null)
+                node["cellMap"] = cellMap;
+        }
+
         var children = new JsonArray();
         foreach (Control child in control.Controls)
             children.Add(SaveControl(child));
@@ -444,6 +469,12 @@ internal static class LayoutJsonSerializer
             }
         }
 
+        if (control is TableLayoutPanel table)
+        {
+            LoadStyles(table.RowStyles, node["rowStyles"] as JsonArray, warnings);
+            LoadStyles(table.ColumnStyles, node["columnStyles"] as JsonArray, warnings);
+        }
+
         if (node["children"] is JsonArray children)
         {
             foreach (var childNode in children)
@@ -451,6 +482,27 @@ internal static class LayoutJsonSerializer
                 if (childNode is JsonObject childObj)
                     LoadControl(childObj, surface, control as ContainerControl, warnings);
             }
+        }
+
+        // Cell positions reference child controls by name, so they can only be
+        // applied once the children exist.
+        if (control is TableLayoutPanel tableWithCells && node["cellMap"] is JsonObject cellMap)
+        {
+            foreach (var kvp in cellMap)
+            {
+                if (kvp.Value is not JsonObject cellObj) continue;
+                var child = tableWithCells.Controls.OfType<Control>()
+                    .FirstOrDefault(c => c.Name == kvp.Key);
+                if (child == null)
+                {
+                    warnings.Add($"Zelle für Control '{kvp.Key}' nicht gefunden (Name existiert nicht).");
+                    continue;
+                }
+                var row = GetInt(cellObj, "row", 0);
+                var col = GetInt(cellObj, "col", 0);
+                tableWithCells.SetCellPosition(child, row, col);
+            }
+            tableWithCells.InvalidateTableLayout();
         }
     }
 
@@ -490,6 +542,54 @@ internal static class LayoutJsonSerializer
         }
 
         return column;
+    }
+
+    private static JsonArray SaveStyles(System.Collections.Generic.IList<TableLayoutStyle> styles)
+    {
+        var array = new JsonArray();
+        foreach (var style in styles)
+        {
+            array.Add(new JsonObject
+            {
+                ["sizeType"] = style.SizeType.ToString(),
+                ["value"] = style.Value
+            });
+        }
+        return array;
+    }
+
+    private static void LoadStyles(System.Collections.Generic.IList<TableLayoutStyle> target, JsonArray? array, List<string> warnings)
+    {
+        if (array == null) return;
+
+        foreach (var node in array)
+        {
+            if (node is not JsonObject obj) continue;
+
+            var style = new TableLayoutStyle();
+
+            var sizeTypeText = GetString(obj, "sizeType");
+            if (!string.IsNullOrEmpty(sizeTypeText) &&
+                Enum.TryParse<SizeType>(sizeTypeText, true, out var parsedSizeType))
+            {
+                style.SizeType = parsedSizeType;
+            }
+
+            var valueNode = obj["value"];
+            if (valueNode != null)
+            {
+                try
+                {
+                    style.Value = (float)valueNode.GetValue<double>();
+                }
+                catch
+                {
+                    warnings.Add($"Ungültiger Style-Wert '{valueNode}' wurde übersprungen.");
+                }
+            }
+
+            target.Add(style);
+        }
     }
 
     private static ToolStripItem? LoadStripItem(JsonObject node, List<string> warnings)

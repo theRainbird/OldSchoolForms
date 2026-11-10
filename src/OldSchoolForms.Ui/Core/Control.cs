@@ -1088,6 +1088,16 @@ if (_controls == null || _controls.Count == 0) return;
         }
         MarkLayoutDirty();
         PerformLayout();
+
+        // A user-driven bounds change must also re-run the parent's layout so that
+        // content-driven containers (e.g. TableLayoutPanel auto rows/columns) grow
+        // or shrink with the resized child. Layout-driven changes (the parent sizing
+        // this control) are skipped to avoid a layout feedback loop.
+        if (!_layoutDrivenBoundsChange && Parent != null)
+        {
+            Parent.MarkLayoutDirty();
+            Parent.PerformLayout();
+        }
     }
 
     /// <summary>

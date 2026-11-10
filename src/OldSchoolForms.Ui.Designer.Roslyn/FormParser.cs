@@ -196,6 +196,28 @@ public class FormParser
                 }
             }
 
+            foreach (var (fieldName, collectionName, style) in ParseTableLayoutStyleAdds(body))
+            {
+                if (!controlMap.TryGetValue(fieldName, out var control))
+                {
+                    warnings.Add($"Warning: Could not resolve table layout parent '{fieldName}' for {collectionName} style.");
+                    continue;
+                }
+
+                if (control is TableLayoutPanel table)
+                {
+                    if (collectionName == "RowStyles")
+                        table.RowStyles.Add(style);
+                    else
+                        table.ColumnStyles.Add(style);
+                    warnings.Add($"Parsed table layout {collectionName} style: {style.SizeType} {style.Value} on {fieldName}");
+                }
+                else
+                {
+                    warnings.Add($"Warning: {collectionName} style target '{fieldName}' is not a TableLayoutPanel.");
+                }
+            }
+
             // Register every control as a design item so that controls nested inside
             // containers become selectable too. Parents must be placed before their
             // children so each child can resolve its parent design item (mirrors the
@@ -236,6 +258,22 @@ public class FormParser
                 var item = surface.AddControl(control, control.Location);
                 item.Selected = false;
                 warnings.Add($"Added to surface (fallback): {fieldName}");
+            }
+
+            // Apply explicit table cell assignments after the hierarchy is placed so
+            // the child is already parented to its table.
+            foreach (var (tableField, childField, row, col) in ParseSetCellPositionAdds(body))
+            {
+                if (controlMap.TryGetValue(tableField, out var tbl) && tbl is TableLayoutPanel panel &&
+                    controlMap.TryGetValue(childField, out var child))
+                {
+                    panel.SetCellPosition(child, row, col);
+                    warnings.Add($"Parsed cell position: {childField} -> {tableField}[{row},{col}]");
+                }
+                else
+                {
+                    warnings.Add($"Warning: Could not resolve SetCellPosition '{tableField}.SetCellPosition({childField}, ...)'.");
+                }
             }
 
             surface.Invalidate();
@@ -374,6 +412,79 @@ public class FormParser
             var item = ParseItemExpression(inner);
             if (item != null)
                 result.Add((parentFieldName, item));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Finds <c>field.RowStyles.Add(new TableLayoutStyle(SizeType.X, yf))</c> and
+    /// <c>field.ColumnStyles.Add(...)</c> calls in the method body and reconstructs the
+    /// style objects so designer-created rows and columns round-trip from generated C#.
+    /// </summary>
+    /// <param name="body">The InitializeComponent method body.</param>
+    /// <returns>A list of (field name, collection name, reconstructed style) triples in source order.</returns>
+    private List<(string fieldName, string collectionName, TableLayoutStyle style)> ParseTableLayoutStyleAdds(string body)
+    {
+        var result = new List<(string, string, TableLayoutStyle)>();
+        var pattern = @"(\w+)\.(RowStyles|ColumnStyles)\.Add\(\s*new\s+TableLayoutStyle\s*\(([^)]*)\)\s*\)\s*;";
+        var matches = System.Text.RegularExpressions.Regex.Matches(body, pattern);
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var fieldName = match.Groups[1].Value;
+            var collectionName = match.Groups[2].Value;
+            var argsText = match.Groups[3].Value.Trim();
+
+            var style = new TableLayoutStyle();
+
+            if (!string.IsNullOrEmpty(argsText))
+            {
+                var args = SplitTopLevel(argsText);
+
+                if (args.Count >= 1)
+                {
+                    var sizeTypeArg = args[0].Trim();
+                    var dot = sizeTypeArg.LastIndexOf('.');
+                    var sizeTypeName = dot >= 0 ? sizeTypeArg.Substring(dot + 1) : sizeTypeArg;
+                    if (Enum.TryParse<SizeType>(sizeTypeName, true, out var parsedSizeType))
+                        style.SizeType = parsedSizeType;
+                }
+
+                if (args.Count >= 2)
+                {
+                    var valueArg = args[1].Trim().TrimEnd('f', 'F');
+                    if (float.TryParse(valueArg, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var parsedValue))
+                        style.Value = parsedValue;
+                }
+            }
+
+            result.Add((fieldName, collectionName, style));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Finds <c>table.SetCellPosition(child, row, col)</c> calls in the method body so
+    /// designer-assigned cell positions round-trip from generated C#.
+    /// </summary>
+    /// <param name="body">The InitializeComponent method body.</param>
+    /// <returns>A list of (table field, child field, row, column) tuples in source order.</returns>
+    private List<(string tableField, string childField, int row, int col)> ParseSetCellPositionAdds(string body)
+    {
+        var result = new List<(string, string, int, int)>();
+        var pattern = @"(\w+)\.SetCellPosition\(\s*(\w+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*;";
+        var matches = System.Text.RegularExpressions.Regex.Matches(body, pattern);
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            result.Add((
+                match.Groups[1].Value,
+                match.Groups[2].Value,
+                int.Parse(match.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture),
+                int.Parse(match.Groups[4].Value, System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         return result;

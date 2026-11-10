@@ -54,6 +54,7 @@ public class PropertyService
             ValueEditorRegistry.Register(new ToolStripMenuItemDropDownItemsEditor());
             ValueEditorRegistry.Register(new PaddingEditor());
             ValueEditorRegistry.Register(new FontEditor());
+            ValueEditorRegistry.Register(new TableLayoutRowsColumnsEditor());
             _editorsRegistered = true;
         }
     }
