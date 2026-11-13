@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using OldSchoolForms.Ui.Core;
@@ -105,6 +106,7 @@ public class FormParser
 
         var warnings = new List<string>();
         surface.ClearAll();
+        surface.EventBindings.Clear();
 
         // ClearAll detaches the previous root from the surface's render tree without
         // replacing it. Re-establish a fresh root so the controls added below are
@@ -276,6 +278,10 @@ public class FormParser
                 }
             }
 
+            // Parse event wiring (field.Event += Handler; / this.Event += Handler; /
+            // strip.Items[i].Event += Handler;) after items exist so index paths resolve.
+            ParseEventWiring(body, surface, controlMap, warnings);
+
             surface.Invalidate();
         }
         catch (Exception ex)
@@ -284,6 +290,137 @@ public class FormParser
         }
 
         return warnings;
+    }
+
+    /// <summary>
+    /// Parses event wiring statements from the InitializeComponent body and records them in the
+    /// surface's <see cref="EventBindingStore"/>. Recognises control wiring
+    /// (<c>button1.Click += Handler;</c>), root wiring (<c>this.Load += Handler;</c>) and
+    /// strip item index wiring (<c>toolStrip1.Items[0].Click += Handler;</c>).
+    /// </summary>
+    /// <param name="body">The InitializeComponent method body.</param>
+    /// <param name="surface">The design surface whose event binding store is populated.</param>
+    /// <param name="controlMap">Map of generated field names to control instances.</param>
+    /// <param name="warnings">Collector for unresolvable wiring.</param>
+    private void ParseEventWiring(string body, Designer.DesignSurface surface, Dictionary<string, Core.Control> controlMap, List<string> warnings)
+    {
+        var pattern = @"(?<target>[\w.]+(?:\[\d+\])*)\.(?<evt>\w+)\s*\+=\s*(?<handler>\w+)\s*;";
+        var matches = System.Text.RegularExpressions.Regex.Matches(body, pattern);
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var target = match.Groups["target"].Value;
+            var eventName = match.Groups["evt"].Value;
+            var handler = match.Groups["handler"].Value;
+
+            object? targetObject = ResolveWiringTarget(target, surface, controlMap, warnings);
+            if (targetObject == null)
+                continue;
+
+            surface.EventBindings.SetHandler(targetObject, eventName, handler);
+            warnings.Add($"Parsed event wiring: {target}.{eventName} += {handler}");
+        }
+    }
+
+    /// <summary>
+    /// Resolves the left-hand target of an event wiring statement to a live object: the surface
+    /// root for <c>this</c>, a control from the field map, or a strip item addressed by an
+    /// index path.
+    /// </summary>
+    /// <param name="target">The raw target expression.</param>
+    /// <param name="surface">The design surface (for the root).</param>
+    /// <param name="controlMap">Map of generated field names to control instances.</param>
+    /// <param name="warnings">Collector for unresolvable targets.</param>
+    /// <returns>The resolved target object, or <see langword="null"/> when unresolvable.</returns>
+    private static object? ResolveWiringTarget(string target, Designer.DesignSurface surface, Dictionary<string, Core.Control> controlMap, List<string> warnings)
+    {
+        if (target == "this")
+            return surface.RootControl;
+
+        if (target.Contains('['))
+            return ResolveIndexPath(target, controlMap, warnings);
+
+        if (controlMap.TryGetValue(target, out var control))
+            return control;
+
+        warnings.Add($"Warning: Event wiring target '{target}' not found.");
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves an index path such as <c>toolStrip1.Items[0].DropDownItems[1]</c> by walking
+    /// the named collection properties from the base control.
+    /// </summary>
+    /// <param name="path">The index path expression.</param>
+    /// <param name="controlMap">Map of generated field names to control instances.</param>
+    /// <param name="warnings">Collector for unresolvable steps.</param>
+    /// <returns>The resolved item, or <see langword="null"/> when unresolvable.</returns>
+    private static object? ResolveIndexPath(string path, Dictionary<string, Core.Control> controlMap, List<string> warnings)
+    {
+        var head = System.Text.RegularExpressions.Regex.Match(path, @"^(?<field>\w+)\.(?<rest>.+)$");
+        if (!head.Success)
+        {
+            warnings.Add($"Warning: Malformed event wiring index path '{path}'.");
+            return null;
+        }
+
+        if (!controlMap.TryGetValue(head.Groups["field"].Value, out var current))
+        {
+            warnings.Add($"Warning: Event wiring index path base '{head.Groups["field"].Value}' not found.");
+            return null;
+        }
+
+        var stepPattern = new System.Text.RegularExpressions.Regex(@"(?<name>\w+)\[(?<idx>\d+)\]");
+        object? obj = current;
+
+        foreach (var step in head.Groups["rest"].Value.Split('.'))
+        {
+            var stepMatch = stepPattern.Match(step);
+            if (!stepMatch.Success)
+            {
+                warnings.Add($"Warning: Malformed index step '{step}' in path '{path}'.");
+                return null;
+            }
+
+            var name = stepMatch.Groups["name"].Value;
+            var index = int.Parse(stepMatch.Groups["idx"].Value, CultureInfo.InvariantCulture);
+            obj = GetIndexed(obj, name, index);
+            if (obj == null)
+            {
+                warnings.Add($"Warning: Could not resolve '{name}[{index}]' in path '{path}'.");
+                return null;
+            }
+        }
+
+        return obj;
+    }
+
+    /// <summary>
+    /// Reads an element from a named collection property by integer index, supporting both
+    /// non-generic <see cref="System.Collections.IList"/> and typed collections exposing an
+    /// <c>this[int]</c> indexer.
+    /// </summary>
+    /// <param name="obj">The object exposing the collection property.</param>
+    /// <param name="collectionName">The collection property name.</param>
+    /// <param name="index">The zero-based index.</param>
+    /// <returns>The element at the index, or <see langword="null"/> when unavailable.</returns>
+    private static object? GetIndexed(object? obj, string collectionName, int index)
+    {
+        if (obj == null)
+            return null;
+
+        var collection = obj.GetType().GetProperty(collectionName)?.GetValue(obj);
+        if (collection == null)
+            return null;
+
+        if (collection is System.Collections.IList nonGeneric)
+            return index >= 0 && index < nonGeneric.Count ? nonGeneric[index] : null;
+
+        var indexer = collection.GetType().GetProperty("Item", new[] { typeof(int) });
+        if (indexer != null && indexer.CanRead)
+            return indexer.GetValue(collection, new object[] { index });
+
+        return null;
     }
 
     /// <summary>

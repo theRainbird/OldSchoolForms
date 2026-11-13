@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using OldSchoolForms.Ui.Core;
 using OldSchoolForms.Ui.Reports;
+using OldSchoolForms.Ui.Resources;
 using PlatformHelper = OldSchoolForms.Ui.Platform.Platform;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
@@ -78,6 +79,7 @@ public class PropertyGridRow
 
     public const int DropdownArrowWidth = 20;
     public const int EllipsisButtonWidth = 24;
+    public const int ClearButtonWidth = 20;
     public const int ColorSwatchSize = 18;
     public const int ColorPaletteCols = 17;
     public const int ColorPaletteMaxVisibleRows = 10;
@@ -245,6 +247,7 @@ public class PropertyGridRow
         }
 
         DrawEllipsisButton(g, x, y, width, height, theme);
+        DrawClearButton(g, x, y, width, height, theme, value);
 
         var type = _descriptor.PropertyType;
 
@@ -254,8 +257,12 @@ public class PropertyGridRow
             return;
         }
 
-        // Leave room for the ellipsis button so long value text never overlaps it.
-        int textMaxWidth = _descriptor.Editor != null ? width - EllipsisButtonWidth : width;
+        // Reserve space on the right so long value text never overlaps the ellipsis or the
+        // event-binding clear button.
+        int reservedRight = _descriptor.Editor != null ? EllipsisButtonWidth : 0;
+        if (ShowClearButton(value))
+            reservedRight += ClearButtonWidth;
+        int textMaxWidth = width - reservedRight;
         g.SetClip(new Rectangle(x, y, textMaxWidth, height));
 
         if (type == typeof(string))
@@ -346,6 +353,68 @@ public class PropertyGridRow
         var textWidth = g.MeasureString(_descriptor.Editor.ButtonText, theme.DefaultFont).width;
         g.DrawString(_descriptor.Editor.ButtonText, theme.DefaultFont, theme.ControlText,
             buttonX + (EllipsisButtonWidth - textWidth) / 2, y + 4);
+    }
+
+    /// <summary>
+    /// Gets whether the row should show the clear (delete-handler) button: only for an event
+    /// binding that currently has a non-empty handler name.
+    /// </summary>
+    /// <param name="value">The current row value.</param>
+    /// <returns><see langword="true"/> when the clear button should be drawn and clickable.</returns>
+    private bool ShowClearButton(object? value)
+        => _descriptor.IsEventBinding && !string.IsNullOrEmpty(value as string);
+
+    /// <summary>
+    /// Draws the clear (trash) button at the right edge of the value column for an event binding
+    /// that has a handler wired, letting the user remove the binding with a single click.
+    /// </summary>
+    /// <param name="g">The graphics surface.</param>
+    /// <param name="x">The X position of the value column.</param>
+    /// <param name="y">The Y position of the row.</param>
+    /// <param name="width">The width of the value column.</param>
+    /// <param name="height">The height of the row.</param>
+    /// <param name="theme">The active theme.</param>
+    /// <param name="value">The current row value.</param>
+    private void DrawClearButton(Graphics g, int x, int y, int width, int height, Theme theme, object? value)
+    {
+        if (!ShowClearButton(value)) return;
+
+        int buttonX = x + width - ClearButtonWidth;
+        var icon = Icons.Trash;
+        if (icon != null)
+        {
+            const int size = 14;
+            int ix = buttonX + (ClearButtonWidth - size) / 2;
+            int iy = y + (height - size) / 2;
+            g.DrawImage(icon, ix, iy, size, size);
+        }
+    }
+
+    /// <summary>
+    /// Handles a click on the clear (delete-handler) button of an event-binding row. When the
+    /// button is hit, the binding is removed by writing an empty handler name.
+    /// </summary>
+    /// <param name="mouseX">The X coordinate of the click.</param>
+    /// <param name="mouseY">The Y coordinate of the click.</param>
+    /// <param name="valueColumnX">The X position of the value column.</param>
+    /// <param name="valueColumnWidth">The width of the value column.</param>
+    /// <returns><see langword="true"/> when the clear button was clicked and the binding removed.</returns>
+    public bool TryHandleClearClick(int mouseX, int mouseY, int valueColumnX, int valueColumnWidth)
+    {
+        if (!_descriptor.IsEventBinding || mouseX < valueColumnX)
+            return false;
+
+        var current = _descriptor.GetValue() as string;
+        if (string.IsNullOrEmpty(current))
+            return false;
+
+        if (mouseX >= valueColumnX + valueColumnWidth - ClearButtonWidth)
+        {
+            _descriptor.SetValue(string.Empty);
+            return true;
+        }
+
+        return false;
     }
 
     private static void DrawCheckBox(Graphics g, int x, int y, bool checked_, Theme theme)
@@ -592,6 +661,15 @@ public class PropertyGridRow
     {
         var value = _descriptor.GetValue();
         _editBuffer = ValueToEditText(value);
+
+        // For an event binding with no handler yet, prefill the suggested handler name so the
+        // user can accept it with Enter or edit it into a custom name.
+        if (_descriptor.IsEventBinding && string.IsNullOrEmpty(_editBuffer)
+            && !string.IsNullOrEmpty(_descriptor.SuggestedValue))
+        {
+            _editBuffer = _descriptor.SuggestedValue!;
+        }
+
         _caretPos = _editBuffer.Length;
         _anchor = _caretPos;
         _isEditing = true;

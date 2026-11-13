@@ -25,6 +25,12 @@ public class DesignerForm : Form
     private readonly IDesignDocumentService _documentService;
     private readonly IJsonLayoutService _jsonService;
     private string? _currentFilePath;
+
+    /// <summary>
+    /// The C# source text of the currently loaded form file. Retained so that user-edited
+    /// event handler bodies can be preserved when the designer regenerates the file.
+    /// </summary>
+    private string? _loadedCsSource;
     private ToolboxControl _toolbox = null!;
     private Panel _toolboxPanel = null!;
     private SplitPanel _sidebarSplit = null!;
@@ -64,7 +70,11 @@ public class DesignerForm : Form
 
         _toolboxService = new ToolboxService();
         _designSurface = new DesignSurface();
-        _propertyGrid = new PropertyGrid.PropertyGrid(_designSurface.Selection);
+        _propertyGrid = new PropertyGrid.PropertyGrid(_designSurface.Selection)
+        {
+            ShowEventsToggle = true,
+            EventStore = _designSurface.EventBindings
+        };
 
         BuildUI();
         WireEvents();
@@ -334,7 +344,20 @@ public class DesignerForm : Form
 
         _propertyGrid.PropertyValueChanged += (_, e) =>
         {
-            if (e.Control != null)
+            if (e.IsEventBinding && e.Target != null)
+            {
+                // Event-handler bindings live in the store, not on the object, so the property
+                // snapshot path cannot restore them. Push an explicit undo/redo action instead.
+                var target = e.Target;
+                var eventName = e.PropertyName;
+                var oldHandler = e.OldValue as string ?? string.Empty;
+                var newHandler = e.NewValue as string ?? string.Empty;
+                var store = _designSurface.EventBindings;
+                _designSurface.Undo.PushAction(
+                    () => store.SetHandler(target, eventName, oldHandler),
+                    () => store.SetHandler(target, eventName, newHandler));
+            }
+            else if (e.Control != null)
                 _designSurface.Undo.PushPropertyChange(e.Control, e.PropertyName, e.OldValue);
             else if (e.Target != null)
                 _designSurface.Undo.PushPropertyChangeOn(e.Target, e.PropertyName, e.OldValue);
@@ -385,6 +408,7 @@ public class DesignerForm : Form
         }
 
         _currentFilePath = null;
+        _loadedCsSource = null;
         Text = LangRes.GetString("Designer_TitleUntitled");
         ApplyToolboxForDocument(_designSurface.RootControl is Reports.DesignReport);
     }
@@ -455,12 +479,16 @@ public class DesignerForm : Form
             try
             {
                 _designSurface.ClearAll();
+                _loadedCsSource = null;
                 if (Services.DocumentKindRegistry.TryGet(dialog.FileName, out var kind))
                     kind.Load(_designSurface, dialog.FileName);
                 else if (IsJsonPath(dialog.FileName))
                     _jsonService.LoadFromFile(_designSurface, dialog.FileName);
                 else
-                    _documentService.Load(File.ReadAllText(dialog.FileName), _designSurface);
+                {
+                    _loadedCsSource = File.ReadAllText(dialog.FileName);
+                    _documentService.Load(_loadedCsSource, _designSurface);
+                }
 
                 _currentFilePath = dialog.FileName;
                 _statusLabel.Text = string.Format(LangRes.GetString("Designer_StatusOpened"), dialog.FileName);
@@ -507,7 +535,10 @@ public class DesignerForm : Form
             return;
         }
 
-        string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName);
+        string existing = _currentFilePath != null && File.Exists(_currentFilePath)
+            ? File.ReadAllText(_currentFilePath)
+            : _loadedCsSource;
+        string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName, existing);
         _statusLabel.Text = LangRes.GetString("Designer_StatusSavedPreview");
     }
 
@@ -532,8 +563,12 @@ public class DesignerForm : Form
                 }
                 else
                 {
-                    string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName);
+                    string existing = File.Exists(dialog.FileName)
+                        ? File.ReadAllText(dialog.FileName)
+                        : _loadedCsSource;
+                    string code = _documentService.Save(_designSurface, _jsonService.Namespace, _jsonService.ClassName, existing);
                     File.WriteAllText(dialog.FileName, code);
+                    _loadedCsSource = code;
                 }
 
                 _currentFilePath = dialog.FileName;

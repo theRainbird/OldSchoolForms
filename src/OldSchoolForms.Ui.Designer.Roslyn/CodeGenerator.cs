@@ -59,8 +59,12 @@ public class CodeGenerator
     /// </summary>
     /// <param name="namespaceName">The namespace for the generated partial class.</param>
     /// <param name="className">The class name of the form.</param>
+    /// <param name="existingSource">Optional previously generated source. When supplied, the
+    /// handler methods inside the <c>#region Event handlers</c> block are preserved so
+    /// user-edited bodies survive regeneration; a fresh stub is emitted only for handlers that
+    /// do not yet have a method.</param>
     /// <returns>A string containing the complete generated code.</returns>
-    public string Generate(string namespaceName, string className)
+    public string Generate(string namespaceName, string className, string? existingSource = null)
     {
         var sb = new StringBuilder();
 
@@ -94,6 +98,10 @@ public class CodeGenerator
         // Resolve a guaranteed-unique field name for every control once, so the four
         // generation passes below never emit duplicate variable names.
         var fieldNameMap = BuildFieldNameMap(className);
+
+        // Collect the handler methods referenced by event bindings so stubs can be
+        // emitted once, after InitializeComponent, with merge against existing source.
+        var handlerStubs = new List<(string Name, string ArgsType)>();
 
         // Field declarations
         foreach (var kvp in fieldNameMap)
@@ -152,6 +160,8 @@ public class CodeGenerator
 
             if (control is TableLayoutPanel table)
                 GenerateTableLayoutStyles(sb, bodyIndent, table, fieldName);
+
+            GenerateEventWiring(sb, bodyIndent, control, fieldName, handlerStubs);
         }
 
         // Controls.Add hierarchy
@@ -170,8 +180,50 @@ public class CodeGenerator
             }
         }
 
+        // Root (form/user control) level event wiring. The root is not in the field map,
+        // so its handlers attach to the generated class instance itself. This is emitted
+        // inside InitializeComponent so the parser reads it back together with the rest of
+        // the wiring (the parser only scans the InitializeComponent body).
+        var rootControl = _surface.RootControl;
+        if (rootControl != null)
+        {
+            foreach (var kvp in _surface.EventBindings.GetBindings(rootControl))
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Value))
+                    continue;
+                string rootArgs = ResolveEventArgsType(rootControl, kvp.Key);
+                sb.AppendLine();
+                sb.AppendLine($"{bodyIndent}this.{kvp.Key} += {kvp.Value};");
+                AddHandlerStub(handlerStubs, kvp.Value, rootArgs);
+            }
+        }
+
         sb.AppendLine($"{bodyIndent}ResumeLayout(false);");
         sb.AppendLine($"{subIndent}}}");
+
+        // Event handler methods. The region between the markers is preserved verbatim on
+        // regeneration so user-edited bodies survive; fresh stubs are added only for
+        // handlers that do not yet have a method in the preserved region.
+        sb.AppendLine();
+        sb.AppendLine($"{subIndent}#region Event handlers");
+        string preserved = ExtractPreservedHandlerRegion(existingSource);
+        if (!string.IsNullOrEmpty(preserved))
+        {
+            sb.Append(preserved);
+            sb.AppendLine();
+        }
+
+        foreach (var stub in handlerStubs)
+        {
+            if (RegionContainsMethod(preserved, stub.Name))
+                continue;
+            sb.AppendLine($"{subIndent}private void {stub.Name}(object sender, {stub.ArgsType} e)");
+            sb.AppendLine($"{subIndent}{{");
+            sb.AppendLine($"{subIndent}}}");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"{subIndent}#endregion");
 
         sb.AppendLine($"{indent}}}");
 
@@ -181,6 +233,208 @@ public class CodeGenerator
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Emits <c>fieldName.EventName += Handler;</c> wiring for every event binding of the
+    /// given control. For tool/menu/status strips the bindings of nested items are emitted
+    /// using index paths (<c>strip.Items[0].Click += Handler;</c>) because items are created
+    /// inline. Each referenced handler is registered for stub generation.
+    /// </summary>
+    /// <param name="sb">The target builder.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="control">The control whose bindings are emitted.</param>
+    /// <param name="fieldName">The generated field name of the control.</param>
+    /// <param name="stubs">The accumulator of handler stubs to emit after InitializeComponent.</param>
+    private void GenerateEventWiring(StringBuilder sb, string indent, Control control, string fieldName, List<(string Name, string ArgsType)> stubs)
+    {
+        foreach (var kvp in _surface.EventBindings.GetBindings(control))
+        {
+            if (string.IsNullOrWhiteSpace(kvp.Value))
+                continue;
+            string argsType = ResolveEventArgsType(control, kvp.Key);
+            sb.AppendLine($"{indent}{fieldName}.{kvp.Key} += {kvp.Value};");
+            AddHandlerStub(stubs, kvp.Value, argsType);
+        }
+
+        if (control is ToolStrip toolStrip)
+            GenerateStripItemWiring(sb, indent, toolStrip.Items, fieldName + ".Items", stubs);
+        else if (control is MenuStrip menuStrip)
+            GenerateStripItemWiring(sb, indent, menuStrip.Items, fieldName + ".Items", stubs);
+        else if (control is StatusStrip statusStrip)
+            GenerateStripItemWiring(sb, indent, statusStrip.Items, fieldName + ".Items", stubs);
+    }
+
+    /// <summary>
+    /// Recursively emits event wiring for strip items addressed by an index path, including
+    /// nested drop-down items of buttons and menu items. Accepts a non-generic enumerable so
+    /// differently typed item collections (tool strip, menu strip, status strip) can share it.
+    /// </summary>
+    /// <param name="sb">The target builder.</param>
+    /// <param name="indent">The current indentation.</param>
+    /// <param name="items">The items to walk.</param>
+    /// <param name="basePath">The C# expression that resolves this collection.</param>
+    /// <param name="stubs">The accumulator of handler stubs.</param>
+    private void GenerateStripItemWiring(StringBuilder sb, string indent, System.Collections.IEnumerable items, string basePath, List<(string Name, string ArgsType)> stubs)
+    {
+        int index = 0;
+        foreach (var obj in items)
+        {
+            if (obj == null)
+            {
+                index++;
+                continue;
+            }
+
+            string path = $"{basePath}[{index}]";
+
+            foreach (var kvp in _surface.EventBindings.GetBindings(obj))
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Value))
+                    continue;
+                string argsType = ResolveEventArgsType(obj, kvp.Key);
+                sb.AppendLine($"{indent}{path}.{kvp.Key} += {kvp.Value};");
+                AddHandlerStub(stubs, kvp.Value, argsType);
+            }
+
+            if (obj is ToolStripButton button)
+                GenerateStripItemWiring(sb, indent, button.DropDownItems, path + ".DropDownItems", stubs);
+            else if (obj is ToolStripMenuItem menuItem)
+                GenerateStripItemWiring(sb, indent, menuItem.DropDownItems, path + ".DropDownItems", stubs);
+
+            index++;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the CLR type of the second parameter of the event's delegate (the event args)
+    /// and formats it as a C# type name for a handler stub signature.
+    /// </summary>
+    /// <param name="target">The control or strip item that declares the event.</param>
+    /// <param name="eventName">The event name.</param>
+    /// <returns>A C# type name for the event arguments, defaulting to <c>System.EventArgs</c>.</returns>
+    private static string ResolveEventArgsType(object target, string eventName)
+    {
+        var handlerType = target.GetType().GetEvent(eventName)?.EventHandlerType;
+        var invoke = handlerType?.GetMethod("Invoke");
+        var parameters = invoke?.GetParameters();
+        if (parameters == null || parameters.Length < 2)
+            return "System.EventArgs";
+        var argsType = parameters[1].ParameterType;
+        return argsType.FullName ?? argsType.Name;
+    }
+
+    /// <summary>
+    /// Adds a handler stub to the accumulator unless a handler with the same name is already
+    /// present, so a single method is emitted per distinct handler name.
+    /// </summary>
+    /// <param name="stubs">The accumulator list.</param>
+    /// <param name="name">The handler method name.</param>
+    /// <param name="argsType">The C# event args type name.</param>
+    private static void AddHandlerStub(List<(string Name, string ArgsType)> stubs, string name, string argsType)
+    {
+        foreach (var existing in stubs)
+        {
+            if (existing.Name == name)
+                return;
+        }
+        stubs.Add((name, argsType));
+    }
+
+    /// <summary>
+    /// Extracts the text inside the <c>#region Event handlers</c> / <c>#endregion</c> block
+    /// from previously generated source, so user-edited handler bodies survive regeneration.
+    /// The matching <c>#endregion</c> is resolved with nesting awareness, in case the user
+    /// introduced additional <c>#region</c> blocks inside the handler region. Returns an
+    /// empty string when the region is absent.
+    /// </summary>
+    /// <param name="source">The previously generated source, or <c>null</c>.</param>
+    /// <returns>The preserved handler region, without trailing newlines.</returns>
+    private static string ExtractPreservedHandlerRegion(string? source)
+    {
+        if (string.IsNullOrEmpty(source))
+            return string.Empty;
+
+        const string beginMarker = "#region Event handlers";
+        const string regionKeyword = "#region";
+        const string endMarker = "#endregion";
+
+        int begin = source.IndexOf(beginMarker, StringComparison.Ordinal);
+        if (begin < 0)
+            return string.Empty;
+
+        int contentStart = source.IndexOf('\n', begin);
+        if (contentStart < 0)
+            return string.Empty;
+        contentStart++;
+
+        // Walk forward tracking #region/#endregion nesting so a nested region inside the
+        // handler block does not prematurely terminate the preserved region.
+        int depth = 1;
+        int cursor = contentStart;
+        int end = -1;
+        while (cursor < source.Length)
+        {
+            int nextRegion = source.IndexOf(regionKeyword, cursor, StringComparison.Ordinal);
+            int nextEnd = source.IndexOf(endMarker, cursor, StringComparison.Ordinal);
+            if (nextEnd < 0)
+                break;
+
+            if (nextRegion >= 0 && nextRegion < nextEnd)
+            {
+                depth++;
+                cursor = nextRegion + regionKeyword.Length;
+            }
+            else
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    end = nextEnd;
+                    break;
+                }
+                cursor = nextEnd + endMarker.Length;
+            }
+        }
+
+        if (end < 0)
+            return string.Empty;
+
+        return source.Substring(contentStart, end - contentStart).TrimEnd('\r', '\n');
+    }
+
+    /// <summary>
+    /// Determines whether the preserved handler region already defines a method with the given
+    /// name (a whole-word identifier followed by an opening parenthesis).
+    /// </summary>
+    /// <param name="region">The preserved handler region text.</param>
+    /// <param name="methodName">The handler method name to look for.</param>
+    /// <returns><see langword="true"/> when a matching method definition is present.</returns>
+    private static bool RegionContainsMethod(string region, string methodName)
+    {
+        if (string.IsNullOrEmpty(region) || string.IsNullOrEmpty(methodName))
+            return false;
+
+        int idx = 0;
+        while ((idx = region.IndexOf(methodName, idx, StringComparison.Ordinal)) >= 0)
+        {
+            bool leftOk = idx == 0 || !(char.IsLetterOrDigit(region[idx - 1]) || region[idx - 1] == '_');
+            int after = idx + methodName.Length;
+            bool rightOk = after >= region.Length || !(char.IsLetterOrDigit(region[after]) || region[after] == '_');
+
+            if (leftOk && rightOk)
+            {
+                int p = after;
+                while (p < region.Length && char.IsWhiteSpace(region[p]))
+                    p++;
+                if (p < region.Length && region[p] == '(')
+                    return true;
+            }
+
+            idx = after;
+        }
+
+        return false;
     }
 
     private static void GeneratePropertyAssignments(StringBuilder sb, string indent, Control control, string fieldName)

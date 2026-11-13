@@ -81,6 +81,13 @@ public class DesignSurface : ContainerControl
     public UndoService Undo => _undoService;
 
     /// <summary>
+    /// Gets the store that records which event handler method names are wired to which events of the
+    /// designed controls and tool strip items. The property grid's events view reads and writes through
+    /// this store, and the JSON layout serializer and C# code generator persist its contents.
+    /// </summary>
+    public EventBindingStore EventBindings { get; } = new();
+
+    /// <summary>
     /// Gets the list of all design items on the surface.
     /// </summary>
     public IReadOnlyList<DesignItem> Items => _designItems.AsReadOnly();

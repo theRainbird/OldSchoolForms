@@ -4,6 +4,7 @@ using System.Linq;
 using OldSchoolForms.Ui.Core;
 using PlatformHelper = OldSchoolForms.Ui.Platform.Platform;
 using OldSchoolForms.Ui.Designer.Services;
+using OldSchoolForms.Ui.Resources;
 using OldSchoolForms.Ui.Theming;
 using Graphics = OldSchoolForms.Ui.Rendering.Graphics;
 
@@ -58,6 +59,102 @@ public class PropertyGrid : ContainerControl
     private int _rgbEditingChannel = -1;
     private PropertyGridRow? _rgbPickerRow;
     private int _systemColorHoveredIndex = -1;
+
+    private const int HeaderButtonSize = 18;
+    private const int HeaderButtonGap = 2;
+    private const int HeaderButtonMargin = 4;
+
+    /// <summary>
+    /// The two display modes of the grid: the ordinary property list, or the event-handler list.
+    /// </summary>
+    public enum ViewMode
+    {
+        Properties,
+        Events
+    }
+
+    private ViewMode _viewMode = ViewMode.Properties;
+    private int _hoveredHeaderButton = -1; // -1 none, 0 properties, 1 events
+
+    /// <summary>
+    /// Gets or sets whether the grid shows the small properties/events toggle in its header.
+    /// Off by default so grids embedded in editor dialogs keep the plain property list; the
+    /// main designer form turns it on.
+    /// </summary>
+    public bool ShowEventsToggle { get; set; }
+
+    /// <summary>
+    /// Gets or sets the store that holds the event-handler bindings shown in the events view.
+    /// Typically wired to <see cref="DesignSurface.EventBindings"/> by the designer host. When null,
+    /// the events view is empty.
+    /// </summary>
+    public EventBindingStore? EventStore { get; set; }
+
+    /// <summary>
+    /// Gets the current display mode of the grid.
+    /// </summary>
+    public ViewMode CurrentView => _viewMode;
+
+    /// <summary>
+    /// Gets the rectangle of the properties toggle button in the header.
+    /// </summary>
+    /// <param name="scrollBarWidth">The width of the vertical scrollbar.</param>
+    /// <returns>The button bounds in grid coordinates.</returns>
+    private Rectangle PropertiesButtonRect(int scrollBarWidth)
+    {
+        int eventsX = Width - scrollBarWidth - HeaderButtonMargin - HeaderButtonSize;
+        int propsX = eventsX - HeaderButtonGap - HeaderButtonSize;
+        return new Rectangle(propsX, (HeaderHeight - HeaderButtonSize) / 2, HeaderButtonSize, HeaderButtonSize);
+    }
+
+    /// <summary>
+    /// Gets the rectangle of the events toggle button in the header.
+    /// </summary>
+    /// <param name="scrollBarWidth">The width of the vertical scrollbar.</param>
+    /// <returns>The button bounds in grid coordinates.</returns>
+    private Rectangle EventsButtonRect(int scrollBarWidth)
+    {
+        int eventsX = Width - scrollBarWidth - HeaderButtonMargin - HeaderButtonSize;
+        return new Rectangle(eventsX, (HeaderHeight - HeaderButtonSize) / 2, HeaderButtonSize, HeaderButtonSize);
+    }
+
+    /// <summary>
+    /// Switches the grid between the properties and events views, cancelling any active inline
+    /// edit or overlay first so no editor is left dangling across the mode change.
+    /// </summary>
+    /// <param name="mode">The view mode to switch to.</param>
+    private void SwitchView(ViewMode mode)
+    {
+        if (_viewMode == mode)
+            return;
+        CancelActiveEdits();
+        _viewMode = mode;
+        RebuildRows();
+        Invalidate();
+    }
+
+    /// <summary>
+    /// Cancels any open inline edit, enum dropdown or color picker without committing partial state.
+    /// </summary>
+    private void CancelActiveEdits()
+    {
+        if (_editingRow != null)
+        {
+            _editingRow.CancelEdit();
+            _editingRow = null;
+        }
+        if (_dropdownOpen)
+        {
+            _dropdownRow?.CancelEdit();
+            CloseEnumDropdown();
+        }
+        if (_colorPickerRow != null && _colorPickerRow.IsColorPickerOpen)
+        {
+            _colorPickerRow.CancelColorPicker();
+            _colorPickerRow = null;
+            CapturingMouse = false;
+        }
+    }
 
     /// <summary>
     /// Gets the current target control whose properties are being edited.
@@ -170,6 +267,22 @@ public class PropertyGrid : ContainerControl
         if (target == null)
             return;
 
+        if (_viewMode == ViewMode.Events)
+        {
+            if (EventStore != null && EventService.IsEventTarget(target))
+            {
+                foreach (var descriptor in EventService.GetEventDescriptors(target, EventStore))
+                {
+                    descriptor.ValueChanged += OnDescriptorValueChanged;
+                    _rows.Add(new PropertyGridRow(descriptor, NameColumnWidth));
+                }
+            }
+
+            UpdateScrollBar();
+            _vScrollBar.EnsureVisible(0, RowHeight);
+            return;
+        }
+
         var properties = _propertyService.GetPropertiesFor(target);
 
         foreach (var prop in properties)
@@ -231,6 +344,18 @@ public class PropertyGrid : ContainerControl
         }
         else
         {
+            return;
+        }
+
+        // Header toggle buttons (properties / events) live in the header band, left of the scrollbar.
+        if (ShowEventsToggle && args.Y >= 0 && args.Y < HeaderHeight)
+        {
+            int headerSbw = _vScrollBar.ScrollBarSize;
+            if (EventsButtonRect(headerSbw).Contains(args.X, args.Y))
+                SwitchView(ViewMode.Events);
+            else if (PropertiesButtonRect(headerSbw).Contains(args.X, args.Y))
+                SwitchView(ViewMode.Properties);
+            base.OnMouseDown(e);
             return;
         }
 
@@ -379,6 +504,15 @@ public class PropertyGrid : ContainerControl
             if (row.TryHandleEditorClick(args.X, args.Y, valueX, Width - _vScrollBar.ScrollBarSize - valueX))
             {
                 RebuildRows();
+                Invalidate();
+                PropertyCommitted?.Invoke(this, EventArgs.Empty);
+                base.OnMouseDown(e);
+                return;
+            }
+
+            // Event-binding clear (delete-handler) button, drawn at the right edge of the value column.
+            if (row.TryHandleClearClick(args.X, args.Y, valueX, valueWidth))
+            {
                 Invalidate();
                 PropertyCommitted?.Invoke(this, EventArgs.Empty);
                 base.OnMouseDown(e);
@@ -1024,6 +1158,28 @@ public class PropertyGrid : ContainerControl
                 base.OnMouseMove(e);
                 return;
             }
+
+            // Track hover over the header toggle buttons for highlight + tooltip.
+            if (ShowEventsToggle && args.Y >= 0 && args.Y < HeaderHeight)
+            {
+                int hovered = -1;
+                if (PropertiesButtonRect(sbw).Contains(args.X, args.Y))
+                    hovered = 0;
+                else if (EventsButtonRect(sbw).Contains(args.X, args.Y))
+                    hovered = 1;
+                if (hovered != _hoveredHeaderButton)
+                {
+                    _hoveredHeaderButton = hovered;
+                    Invalidate();
+                }
+                base.OnMouseMove(e);
+                return;
+            }
+            if (_hoveredHeaderButton != -1)
+            {
+                _hoveredHeaderButton = -1;
+                Invalidate();
+            }
         }
 
         // Drag-select within an inline-editing row
@@ -1241,7 +1397,16 @@ public class PropertyGrid : ContainerControl
 
         // Header
         g.FillRectangle(theme.ActiveCaption, 0, 0, Width, HeaderHeight);
-        g.DrawString("Eigenschaften", theme.DefaultFont, theme.ActiveCaptionText, 6, 4);
+        string headerTitle = _viewMode == ViewMode.Events ? "Ereignisse" : "Eigenschaften";
+        g.DrawString(headerTitle, theme.DefaultFont, theme.ActiveCaptionText, 6, 4);
+
+        if (ShowEventsToggle)
+        {
+            DrawHeaderButton(g, PropertiesButtonRect(sbw), Icons.List,
+                _viewMode == ViewMode.Properties, _hoveredHeaderButton == 0, theme);
+            DrawHeaderButton(g, EventsButtonRect(sbw), Icons.FlashOn,
+                _viewMode == ViewMode.Events, _hoveredHeaderButton == 1, theme);
+        }
 
         if (_boundObject == null && TargetControl == null)
         {
@@ -1286,9 +1451,70 @@ public class PropertyGrid : ContainerControl
         _vScrollBar.Render(g, new Rectangle(Width - sbw, 0, sbw, Height), theme);
     }
 
+    /// <summary>
+    /// Draws one of the header toggle buttons: a bordered box with the icon centered, highlighted
+    /// when it is the active view and softly shaded when hovered.
+    /// </summary>
+    /// <param name="g">The graphics surface.</param>
+    /// <param name="rect">The button bounds.</param>
+    /// <param name="icon">The icon to draw, or null if unavailable.</param>
+    /// <param name="active">Whether this button represents the current view.</param>
+    /// <param name="hovered">Whether the mouse is over this button.</param>
+    /// <param name="theme">The active theme.</param>
+    private void DrawHeaderButton(Graphics g, Rectangle rect, SvgImage? icon, bool active, bool hovered, Theme theme)
+    {
+        if (active)
+            g.FillRectangle(theme.ButtonPressedBackground, rect.X, rect.Y, rect.Width, rect.Height);
+        else if (hovered)
+            g.FillRectangle(theme.ButtonHoverBackground, rect.X, rect.Y, rect.Width, rect.Height);
+
+        g.DrawRectangle(theme.ButtonBorder, rect.X, rect.Y, rect.Width, rect.Height, 1);
+
+        if (icon != null)
+        {
+            const int pad = 2;
+            g.DrawImage(icon, rect.X + pad, rect.Y + pad, rect.Width - pad * 2, rect.Height - pad * 2);
+        }
+    }
+
+    /// <summary>
+    /// Draws the tooltip for the currently hovered header toggle button, mirroring the tool strip's
+    /// tooltip box style.
+    /// </summary>
+    /// <param name="g">The graphics surface.</param>
+    /// <param name="buttonIndex">0 for the properties button, 1 for the events button.</param>
+    /// <param name="theme">The active theme.</param>
+    private void DrawHeaderButtonToolTip(Graphics g, int buttonIndex, Theme theme)
+    {
+        int sbw = _vScrollBar.ScrollBarSize;
+        var rect = buttonIndex == 0 ? PropertiesButtonRect(sbw) : EventsButtonRect(sbw);
+        string text = buttonIndex == 0 ? "Eigenschaften anzeigen" : "Ereignisse anzeigen";
+
+        var font = theme.SmallFont;
+        var size = g.MeasureString(text, font);
+        int tipWidth = size.width + 12;
+        int tipHeight = (int)font.Size + 8;
+        int tipX = rect.X;
+        int tipY = rect.Bottom + 4;
+        if (tipX + tipWidth > Width)
+            tipX = Math.Max(0, Width - tipWidth);
+
+        g.FillRectangle(theme.MenuDropdownBackground, tipX, tipY, tipWidth, tipHeight);
+        g.DrawRectangle(theme.MenuDropdownBorder, tipX, tipY, tipWidth, tipHeight, 1);
+        g.DrawString(text, font, theme.ToolStripItemText, tipX + 6, tipY + 4);
+    }
+
    public override void RenderOverlay(Graphics g)
     {
         var theme = ThemeManager.CurrentTheme;
+
+        // Header toggle tooltip paints above everything while a header button is hovered and no
+        // other overlay (color picker / enum dropdown) is active.
+        if (ShowEventsToggle && _hoveredHeaderButton != -1 && !_dropdownOpen && _colorPickerRow == null)
+        {
+            DrawHeaderButtonToolTip(g, _hoveredHeaderButton, theme);
+            return;
+        }
 
         // Color picker overlay
         if (_colorPickerRow != null && _colorPickerRow.IsColorPickerOpen)
@@ -1414,6 +1640,13 @@ public sealed class PropertyValueChangedEventArgs : EventArgs
     public object? NewValue { get; }
 
     /// <summary>
+    /// Gets whether this change was made to an event-handler binding rather than an ordinary
+    /// property. The designer uses this to route the change to the event-binding undo path
+    /// instead of the property-snapshot path.
+    /// </summary>
+    public bool IsEventBinding { get; }
+
+    /// <summary>
     /// Initializes a new instance.
     /// </summary>
     /// <param name="control">The control whose property changed, or null if unavailable.</param>
@@ -1421,12 +1654,14 @@ public sealed class PropertyValueChangedEventArgs : EventArgs
     /// <param name="oldValue">The previous property value.</param>
     /// <param name="newValue">The new property value.</param>
     /// <param name="target">The object owning the property; defaults to <paramref name="control"/> when null.</param>
-    public PropertyValueChangedEventArgs(Control? control, string propertyName, object? oldValue, object? newValue, object? target = null)
+    /// <param name="isEventBinding">When true, the change was made to an event-handler binding.</param>
+    public PropertyValueChangedEventArgs(Control? control, string propertyName, object? oldValue, object? newValue, object? target = null, bool isEventBinding = false)
     {
         Control = control;
         PropertyName = propertyName;
         OldValue = oldValue;
         NewValue = newValue;
         Target = target ?? control;
+        IsEventBinding = isEventBinding;
     }
 }

@@ -7,6 +7,7 @@ using OldSchoolForms.Ui.Controls.Basic;
 using OldSchoolForms.Ui.Controls.Containers;
 using OldSchoolForms.Ui.Controls.Separators;
 using OldSchoolForms.Ui.Core;
+using OldSchoolForms.Ui.Designer.Services;
 using OldSchoolForms.Ui.Layout;
 using OldSchoolForms.Ui.Serialization;
 
@@ -126,13 +127,21 @@ internal static class LayoutJsonSerializer
         if (root != null)
         {
             doc["rootSize"] = new JsonObject { ["width"] = root.Width, ["height"] = root.Height };
+
+            if (surface.EventBindings.HasBindings(root))
+            {
+                var rootEvents = new JsonObject();
+                foreach (var kvp in surface.EventBindings.GetBindings(root))
+                    rootEvents[kvp.Key] = kvp.Value;
+                doc["rootEvents"] = rootEvents;
+            }
         }
 
         var controls = new JsonArray();
         if (root != null)
         {
             foreach (Control child in root.Controls)
-                controls.Add(SaveControl(child));
+                controls.Add(SaveControl(child, surface.EventBindings));
         }
         doc["controls"] = controls;
 
@@ -178,6 +187,7 @@ internal static class LayoutJsonSerializer
         var rootType = GetString(doc, "rootType") ?? "Form";
 
         surface.ClearAll();
+        surface.EventBindings.Clear();
         if (string.Equals(rootType, "UserControl", StringComparison.OrdinalIgnoreCase))
             surface.BeginDesignUserControl();
         else
@@ -188,6 +198,24 @@ internal static class LayoutJsonSerializer
             int width = GetInt(rootSize, "width", surface.RootControl.Width);
             int height = GetInt(rootSize, "height", surface.RootControl.Height);
             surface.RootControl.Size = new Size(width, height);
+        }
+
+        if (doc["rootEvents"] is JsonObject rootEvents && surface.RootControl != null)
+        {
+            foreach (var kvp in rootEvents)
+            {
+                string? handler;
+                try
+                {
+                    handler = kvp.Value?.GetValue<string>();
+                }
+                catch
+                {
+                    handler = null;
+                }
+                if (!string.IsNullOrWhiteSpace(handler))
+                    surface.EventBindings.SetHandler(surface.RootControl, kvp.Key, handler);
+            }
         }
 
         bool oldSnap = surface.SnapToGrid;
@@ -212,7 +240,7 @@ internal static class LayoutJsonSerializer
         return warnings;
     }
 
-    private static JsonObject SaveControl(Control control)
+    private static JsonObject SaveControl(Control control, EventBindingStore? store)
     {
         var node = new JsonObject
         {
@@ -223,6 +251,8 @@ internal static class LayoutJsonSerializer
             node["name"] = control.Name;
 
         node["props"] = SaveProperties(control);
+
+        AddEventsNode(node, control, store);
 
         if (control is DataGridView grid && grid.Columns.Count > 0)
         {
@@ -236,7 +266,7 @@ internal static class LayoutJsonSerializer
         {
             var items = new JsonArray();
             foreach (var item in strip.Items)
-                items.Add(SaveStripItem(item));
+                items.Add(SaveStripItem(item, store));
             node["items"] = items;
         }
 
@@ -244,7 +274,7 @@ internal static class LayoutJsonSerializer
         {
             var items = new JsonArray();
             foreach (var label in statusStrip.Items)
-                items.Add(SaveStatusLabel(label));
+                items.Add(SaveStatusLabel(label, store));
             node["items"] = items;
         }
 
@@ -275,7 +305,7 @@ internal static class LayoutJsonSerializer
 
         var children = new JsonArray();
         foreach (Control child in control.Controls)
-            children.Add(SaveControl(child));
+            children.Add(SaveControl(child, store));
         if (children.Count > 0)
             node["children"] = children;
 
@@ -342,6 +372,58 @@ internal static class LayoutJsonSerializer
         return obj;
     }
 
+    /// <summary>
+    /// Writes an <c>events</c> object mapping event names to handler method names
+    /// into the given node when the target has any event bindings recorded.
+    /// </summary>
+    /// <param name="node">The JSON object to enrich with an <c>events</c> member.</param>
+    /// <param name="target">The control or strip item whose bindings are recorded.</param>
+    /// <param name="store">The event binding store, or <c>null</c> to skip.</param>
+    private static void AddEventsNode(JsonObject node, object target, EventBindingStore? store)
+    {
+        if (store == null || !store.HasBindings(target))
+            return;
+
+        var events = new JsonObject();
+        foreach (var kvp in store.GetBindings(target))
+            events[kvp.Key] = kvp.Value;
+
+        if (events.Count > 0)
+            node["events"] = events;
+    }
+
+    /// <summary>
+    /// Reads an <c>events</c> object from the given node and registers each
+    /// event-to-handler mapping against the freshly created target instance.
+    /// </summary>
+    /// <param name="node">The JSON object that may contain an <c>events</c> member.</param>
+    /// <param name="target">The control or strip item to bind handlers to.</param>
+    /// <param name="store">The event binding store, or <c>null</c> to skip.</param>
+    private static void ApplyEventsNode(JsonObject node, object target, EventBindingStore? store)
+    {
+        if (store == null)
+            return;
+
+        if (node["events"] is not JsonObject events)
+            return;
+
+        foreach (var kvp in events)
+        {
+            string? handler;
+            try
+            {
+                handler = kvp.Value?.GetValue<string>();
+            }
+            catch
+            {
+                handler = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(handler))
+                store.SetHandler(target, kvp.Key, handler);
+        }
+    }
+
     private static JsonObject SaveColumn(DataGridViewColumn column)
     {
         var obj = SaveProperties(column);
@@ -366,7 +448,7 @@ internal static class LayoutJsonSerializer
         return obj;
     }
 
-    private static JsonObject SaveStripItem(ToolStripItem item)
+    private static JsonObject SaveStripItem(ToolStripItem item, EventBindingStore? store)
     {
         var node = new JsonObject
         {
@@ -374,13 +456,15 @@ internal static class LayoutJsonSerializer
             ["props"] = SaveProperties(item)
         };
 
+        AddEventsNode(node, item, store);
+
         if (GetDropDownItems(item) is System.Collections.IList dropDowns && dropDowns.Count > 0)
         {
             var children = new JsonArray();
             foreach (var child in dropDowns)
             {
                 if (child is ToolStripItem childItem)
-                    children.Add(SaveStripItem(childItem));
+                    children.Add(SaveStripItem(childItem, store));
             }
             if (children.Count > 0)
                 node["dropDownItems"] = children;
@@ -389,13 +473,17 @@ internal static class LayoutJsonSerializer
         return node;
     }
 
-    private static JsonObject SaveStatusLabel(ToolStripStatusLabel label)
+    private static JsonObject SaveStatusLabel(ToolStripStatusLabel label, EventBindingStore? store)
     {
-        return new JsonObject
+        var node = new JsonObject
         {
             ["type"] = label.GetType().Name,
             ["props"] = SaveProperties(label)
         };
+
+        AddEventsNode(node, label, store);
+
+        return node;
     }
 
     private static void LoadControl(JsonObject node, DesignSurface surface, ContainerControl? parent, List<string> warnings)
@@ -434,6 +522,8 @@ internal static class LayoutJsonSerializer
         var item = surface.AddControl(control, parent ?? root, control.Location);
         item.Selected = false;
 
+        ApplyEventsNode(node, control, surface.EventBindings);
+
         if (control is DataGridView grid && node["columns"] is JsonArray columns)
         {
             foreach (var columnNode in columns)
@@ -449,7 +539,7 @@ internal static class LayoutJsonSerializer
             {
                 if (itemNode is JsonObject itemObj)
                 {
-                    var stripItem = LoadStripItem(itemObj, warnings);
+                    var stripItem = LoadStripItem(itemObj, warnings, surface.EventBindings);
                     if (stripItem != null)
                         toolStrip.Items.Add(stripItem);
                 }
@@ -462,7 +552,7 @@ internal static class LayoutJsonSerializer
             {
                 if (itemNode is JsonObject itemObj)
                 {
-                    var label = LoadStatusLabel(itemObj, warnings);
+                    var label = LoadStatusLabel(itemObj, warnings, surface.EventBindings);
                     if (label != null)
                         statusStrip.Items.Add(label);
                 }
@@ -592,7 +682,7 @@ internal static class LayoutJsonSerializer
         }
     }
 
-    private static ToolStripItem? LoadStripItem(JsonObject node, List<string> warnings)
+    private static ToolStripItem? LoadStripItem(JsonObject node, List<string> warnings, EventBindingStore? store)
     {
         var typeName = GetString(node, "type");
         var type = ResolveType(typeName ?? string.Empty);
@@ -615,13 +705,15 @@ internal static class LayoutJsonSerializer
 
         ApplyProperties(item, node["props"] as JsonObject, warnings);
 
+        ApplyEventsNode(node, item, store);
+
         if (node["dropDownItems"] is JsonArray dropDownNodes && GetDropDownItems(item) is System.Collections.IList dropDowns)
         {
             foreach (var dropDownNode in dropDownNodes)
             {
                 if (dropDownNode is JsonObject dropDownObj)
                 {
-                    var child = LoadStripItem(dropDownObj, warnings);
+                    var child = LoadStripItem(dropDownObj, warnings, store);
                     if (child != null)
                         dropDowns.Add(child);
                 }
@@ -631,10 +723,11 @@ internal static class LayoutJsonSerializer
         return item;
     }
 
-    private static ToolStripStatusLabel? LoadStatusLabel(JsonObject node, List<string> warnings)
+    private static ToolStripStatusLabel? LoadStatusLabel(JsonObject node, List<string> warnings, EventBindingStore? store)
     {
         var label = new ToolStripStatusLabel();
         ApplyProperties(label, node["props"] as JsonObject, warnings);
+        ApplyEventsNode(node, label, store);
         return label;
     }
 

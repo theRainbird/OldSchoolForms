@@ -30,13 +30,15 @@ public sealed class RoslynDocumentService : IDesignDocumentService
     /// <param name="surface">The design surface to serialize.</param>
     /// <param name="namespaceName">The namespace for the generated partial class.</param>
     /// <param name="className">The class name of the generated form.</param>
+    /// <param name="existingSource">Optional previously generated source used to preserve
+    /// user-edited event handler bodies during regeneration.</param>
     /// <returns>A string containing the generated source code.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="surface"/> is null.</exception>
-    public string Save(DesignSurface surface, string namespaceName, string className)
+    public string Save(DesignSurface surface, string namespaceName, string className, string? existingSource = null)
     {
         if (surface == null) throw new ArgumentNullException(nameof(surface));
 
         var generator = new CodeGenerator(surface);
-        return generator.Generate(namespaceName, className);
+        return generator.Generate(namespaceName, className, existingSource);
     }
 }
